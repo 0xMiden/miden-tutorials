@@ -29,14 +29,9 @@ cd compiler
 git checkout next
 ```
 
-Then install the Miden compiler:
+Then install the Miden compiler and cargo-miden extension:
 ```bash
-cargo install --path midenc --locked
-```
-
-and the cargo-miden extension:
-```bash
-cargo install --path tools/cargo-miden --locked
+cargo make build 
 ```
 
 ## Step 2: Writing the Rust Program
