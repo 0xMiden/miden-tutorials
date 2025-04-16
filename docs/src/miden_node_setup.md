@@ -7,28 +7,15 @@ There are two ways to connect to a Miden node:
 1. Run the Miden node locally
 2. Connect to the Miden testnet
 
-## Prerequisites
-
-To run `miden-node` locally, you need to:
-
-1. Install the `miden-node` crate.
-2. Provide a `genesis.toml` file.
-3. Provide a `miden-node.toml` file.
-
-Example `genesis.toml` and `miden-node.toml` files can be found in the **miden-tutorials** repository:
-
-- The `genesis.toml` file defines the **start timestamp** for the `miden-node` testnet and allows you to pre-deploy accounts and funding faucets.
-- The `miden-node.toml` file configures the **RPC endpoint** and other settings for the `miden-node`.
-
 ## Running the Miden node locally
 
-### Step 1: Clone the miden-tutorials repository
+### Step 1: Clone the miden-node repository
 
 In a terminal window, clone the miden-tutorials repository and navigate to the root of the repository using this command:
 
 ```bash
-git clone git@github.com:0xPolygonMiden/miden-tutorials.git
-cd miden-tutorials
+git clone git@github.com:0xPolygonMiden/miden-node.git
+cd miden-node
 ```
 
 ### Step 2: Install the Miden node
@@ -36,7 +23,7 @@ cd miden-tutorials
 Next, install the miden-node crate using this command:
 
 ```bash
-cargo install miden-node --locked
+make install-node
 ```
 
 ### Step 3: Initializing the node
@@ -44,30 +31,28 @@ cargo install miden-node --locked
 To start the node, we first need to generate the genesis file. To do so, navigate to the `/node` directory and create the genesis file using this command:
 
 ```bash
-cd node
-miden-node make-genesis \
-  --inputs-path  config/genesis.toml \
-  --output-path  storage/genesis.dat
+miden-node store dump-genesis > genesis.toml
+mkdir -p data accounts
+miden-node bundled bootstrap \
+  --data-directory data \
+  --accounts-directory accounts \
+  --config genesis.toml
 ```
 
 Expected output:
 
 ```
-Genesis input file: config/genesis.toml has successfully been loaded.
-Creating fungible faucet account...
-Account "faucet" has successfully been saved to: storage/accounts/faucet.mac
-Miden node genesis successful: storage/genesis.dat has been created
+2025-04-16T18:05:30.049129Z  INFO miden_node::commands::store: bin/node/src/commands/store.rs:145: Generating account, index: 0, total: 1
 ```
 
 ### Step 4: Starting the node
 
-Now, to start the node, navigate to the storage directory and run this command:
+To start the node run this command:
 
 ```bash
-cd storage
-miden-node start \
-  --config node/config/miden-node.toml \
-  node
+miden-node bundled start \
+  --data-directory data \
+  --rpc.url http://0.0.0.0:57123
 ```
 
 Expected output:
@@ -83,18 +68,18 @@ Congratulations, you now have a Miden node running locally. Now we can start cre
 The endpoint of the Miden node running locally is:
 
 ```
-http://localhost:57291
+http://localhost:57123
 ```
 
 ### Reseting the node
 
-_If you need to reset the local state of the node and the rust-client, navigate to the root of the miden-tutorials repository and run this command:_
+_If you need to reset the local state of the node run this command:_
 
 ```bash
-rm -rf rust-client/store.sqlite3
-rm -rf node/storage/accounts
-rm -rf node/storage/blocks
+rm -r data
 ```
+
+After resetting the state of the node, follow steps 3 and 4 again.
 
 ## Connecting to the Miden testnet
 
