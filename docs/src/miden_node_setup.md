@@ -1,6 +1,6 @@
 # Miden Node Setup Tutorial
 
-To run the Miden tutorial examples, you will need to set up a test enviorment and connect to a Miden node.
+To run the Miden tutorial examples, you will need to set up a test environment and connect to a Miden node.
 
 There are two ways to connect to a Miden node:
 
@@ -71,7 +71,7 @@ The endpoint of the Miden node running locally is:
 http://localhost:57123
 ```
 
-### Reseting the node
+### Resetting the node
 
 _If you need to reset the local state of the node run this command:_
 
