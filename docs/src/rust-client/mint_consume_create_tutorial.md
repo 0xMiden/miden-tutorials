@@ -1,10 +1,10 @@
 # Mint, Consume, and Create Notes
 
-*Using the Miden client in Rust to mint, consume, and create notes*
+_Using the Miden client in Rust to mint, consume, and create notes_
 
 ## Overview
 
-In the previous section, we initialized our repository and covered how to create an account and deploy a faucet. In this section, we will mint tokens from the faucet for *Alice*, consume the newly created notes, and demonstrate how to send assets to other accounts.
+In the previous section, we initialized our repository and covered how to create an account and deploy a faucet. In this section, we will mint tokens from the faucet for _Alice_, consume the newly created notes, and demonstrate how to send assets to other accounts.
 
 ## What we'll cover
 
@@ -14,11 +14,11 @@ In the previous section, we initialized our repository and covered how to create
 
 ## Step 1: Minting tokens from the faucet
 
-To mint notes with tokens from the faucet we created, Alice needs to call the faucet with a mint transaction request. 
+To mint notes with tokens from the faucet we created, Alice needs to call the faucet with a mint transaction request.
 
-*In essence, a transaction request is a structured template that outlines the data required to generate a zero-knowledge proof of a state change of an account. It specifies which input notes (if any) will be consumed, includes an optional transaction script to execute, and enumerates the set of notes expected to be created (if any).*
+_In essence, a transaction request is a structured template that outlines the data required to generate a zero-knowledge proof of a state change of an account. It specifies which input notes (if any) will be consumed, includes an optional transaction script to execute, and enumerates the set of notes expected to be created (if any)._
 
-Below is an example of a transaction request minting tokens from the faucet for Alice. This code snippet will create 5 transaction mint transaction requests. 
+Below is an example of a transaction request minting tokens from the faucet for Alice. This code snippet will create 5 transaction mint transaction requests.
 
 Add this snippet to the end of your file in the `main()` function that we created in the previous chapter:
 
@@ -33,17 +33,20 @@ let fungible_asset = FungibleAsset::new(faucet_account.id(), amount).unwrap();
 
 for i in 1..=5 {
     let transaction_request = TransactionRequestBuilder::mint_fungible_asset(
-        fungible_asset.clone(),
+        fungible_asset,
         alice_account.id(),
         NoteType::Public,
         client.rng(),
     )
     .unwrap()
-    .build();
+    .build()
+    .unwrap();
+
+    println!("tx request built");
+
     let tx_execution_result = client
         .new_transaction(faucet_account.id(), transaction_request)
         .await?;
-
     client.submit_transaction(tx_execution_result).await?;
     println!("Minted note #{} of {} tokens for Alice.", i, amount);
 }
@@ -55,13 +58,13 @@ client.sync_state().await?;
 
 ## Step 2: Identifying consumable notes
 
-Once Alice has minted a note from the faucet, she will eventually want to spend the tokens that she received in the note created by the mint transaction. 
+Once Alice has minted a note from the faucet, she will eventually want to spend the tokens that she received in the note created by the mint transaction.
 
 Minting a note from a faucet on Miden means a faucet account creates a new note targeted to the requesting account. The requesting account needs to consume this new note to have the assets appear in their account.
 
 To identify consumable notes, the Miden client provides the `get_consumable_notes` function. Before calling it, ensure that the client state is synced.
 
-*Tip: If you know how many notes to expect after a transaction, use an await or loop condition to check how many notes of the type you expect are available for consumption instead of using a set timeout before calling `get_consumable_notes`. This ensures your application isn't idle for longer than necessary.*
+_Tip: If you know how many notes to expect after a transaction, use an await or loop condition to check how many notes of the type you expect are available for consumption instead of using a set timeout before calling `get_consumable_notes`. This ensures your application isn't idle for longer than necessary._
 
 #### Identifying which notes are available:
 
@@ -95,8 +98,9 @@ loop {
 
     if list_of_note_ids.len() == 5 {
         println!("Found 5 consumable notes for Alice. Consuming them now...");
-        let transaction_request =
-            TransactionRequestBuilder::consume_notes(list_of_note_ids).build();
+        let transaction_request = TransactionRequestBuilder::consume_notes(list_of_note_ids)
+            .build()
+            .unwrap();
         let tx_execution_result = client
             .new_transaction(alice_account.id(), transaction_request)
             .await?;
@@ -106,7 +110,7 @@ loop {
         break;
     } else {
         println!(
-            "Currently, Alice has {} consumable notes. Waiting for 5...",
+            "Currently, Alice has {} consumable notes. Waiting...",
             list_of_note_ids.len()
         );
         tokio::time::sleep(Duration::from_secs(3)).await;
@@ -118,11 +122,11 @@ loop {
 
 After consuming the notes, Alice has tokens in her wallet. Now, she wants to send tokens to her friends. She has two options: create a separate transaction for each transfer or batch multiple transfers into a single transaction.
 
-*The standard asset transfer note on Miden is the P2ID note (Pay to Id). There is also the P2IDR (Pay to Id Reclaimable) variant which allows the creator of the note to reclaim the note after a certain block height.*
+_The standard asset transfer note on Miden is the P2ID note (Pay to Id). There is also the P2IDR (Pay to Id Reclaimable) variant which allows the creator of the note to reclaim the note after a certain block height._
 
 In our example, Alice will now send 50 tokens to 5 different accounts.
 
-For the sake of the example, the first four P2ID transfers are handled in a single transaction, and the fifth transfer is a standard P2ID transfer. 
+For the sake of the example, the first four P2ID transfers are handled in a single transaction, and the fifth transfer is a standard P2ID transfer.
 
 ### Output multiple P2ID notes in a single transaction
 
@@ -141,12 +145,13 @@ println!("\n[STEP 5] Alice sends 5 notes of 50 tokens each to 5 different users.
 // Send 50 tokens to 4 accounts in one transaction
 println!("Creating multiple P2ID notes for 4 target accounts in one transaction...");
 let mut p2id_notes = vec![];
+
+// Creating 4 P2ID notes to 4 'dummy' AccountIds
 for _ in 1..=4 {
-    let init_seed = {
-        let mut seed = [0u8; 15];
-        rand::thread_rng().fill(&mut seed);
-        seed[0] = 99u8;
-        seed
+    let init_seed: [u8; 15] = {
+        let mut init_seed = [0_u8; 15];
+        client.rng().fill_bytes(&mut init_seed);
+        init_seed
     };
     let target_account_id = AccountId::dummy(
         init_seed,
@@ -168,17 +173,19 @@ for _ in 1..=4 {
     )?;
     p2id_notes.push(p2id_note);
 }
-let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
 
+// Specifying output notes and creating a tx request to create them
+let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
 let transaction_request = TransactionRequestBuilder::new()
     .with_own_output_notes(output_notes)
-    .unwrap()
-    .build();
+    .build()
+    .unwrap();
 
 let tx_execution_result = client
     .new_transaction(alice_account.id(), transaction_request)
     .await?;
 
+// Submitting the transaction
 client.submit_transaction(tx_execution_result).await?;
 println!("Submitted a transaction with 4 P2ID notes.");
 ```
@@ -190,13 +197,11 @@ Now as an example, Alice will send some tokens to an account in a single transac
 Add this snippet to the end of your file in the `main()` function:
 
 ```Rust
-// Send 50 tokens to 1 more account as a single P2ID transaction
 println!("Submitting one more single P2ID transaction...");
-let init_seed = {
-    let mut seed = [0u8; 15];
-    rand::thread_rng().fill(&mut seed);
-    seed[0] = 99u8;
-    seed
+let init_seed: [u8; 15] = {
+    let mut init_seed = [0_u8; 15];
+    client.rng().fill_bytes(&mut init_seed);
+    init_seed
 };
 let target_account_id = AccountId::dummy(
     init_seed,
@@ -220,21 +225,27 @@ let transaction_request = TransactionRequestBuilder::pay_to_id(
     client.rng(),     // rng
 )
 .unwrap()
-.build();
+.build()
+.unwrap();
 let tx_execution_result = client
     .new_transaction(alice_account.id(), transaction_request)
     .await?;
 
 client.submit_transaction(tx_execution_result).await?;
+
 ```
 
-Note: *In a production environment do not use `AccountId::new_dummy()`, this is simply for the sake of the tutorial example.*
+Note: _In a production environment do not use `AccountId::new_dummy()`, this is simply for the sake of the tutorial example._
 
 ## Summary
 
 Your `src/main.rs` function should now look like this:
 
 ```rust
+use rand::RngCore;
+use std::sync::Arc;
+use tokio::time::Duration;
+
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
@@ -242,61 +253,39 @@ use miden_client::{
     },
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
-    crypto::{RpoRandomCoin, SecretKey},
-    note::NoteType,
+    builder::ClientBuilder,
+    crypto::SecretKey,
+    keystore::FilesystemKeyStore,
+    note::{create_p2id_note, NoteType},
     rpc::{Endpoint, TonicRpcClient},
-    store::{sqlite_store::SqliteStore, StoreAuthenticator},
     transaction::{OutputNote, PaymentTransactionData, TransactionRequestBuilder},
-    Client, ClientError, Felt,
+    ClientError, Felt,
 };
-use miden_lib::note::create_p2id_note;
 use miden_objects::account::AccountIdVersion;
-
-use rand::Rng;
-use std::sync::Arc;
-use tokio::time::Duration;
-
-pub async fn initialize_client() -> Result<Client<RpoRandomCoin>, ClientError> {
-    // RPC endpoint and timeout
-    let endpoint = Endpoint::new("http".to_string(), "localhost".to_string(), Some(57291));
-    let timeout_ms = 10_000;
-
-    // Build RPC client
-    let rpc_api = Box::new(TonicRpcClient::new(endpoint, timeout_ms));
-
-    // Seed RNG
-    let mut seed_rng = rand::thread_rng();
-    let coin_seed: [u64; 4] = seed_rng.gen();
-
-    // Create random coin instance
-    let rng = RpoRandomCoin::new(coin_seed.map(Felt::new));
-
-    // SQLite path
-    let store_path = "store.sqlite3";
-
-    // Initialize SQLite store
-    let store = SqliteStore::new(store_path.into())
-        .await
-        .map_err(ClientError::StoreError)?;
-    let arc_store = Arc::new(store);
-
-    // Create authenticator referencing the same store and RNG
-    let authenticator = StoreAuthenticator::new_with_rng(arc_store.clone(), rng.clone());
-
-    // Instantiate the client. Toggle `in_debug_mode` as needed
-    let client = Client::new(rpc_api, rng, arc_store, Arc::new(authenticator), true);
-
-    Ok(client)
-}
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    let mut client = initialize_client().await?;
-    println!("Client initialized successfully.");
+    // Initialize client & keystore
+    let endpoint = Endpoint::new(
+        "https".to_string(),
+        "rpc.testnet.miden.io".to_string(),
+        Some(443),
+    );
+    let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+
+    let mut client = ClientBuilder::new()
+        .with_rpc(rpc_api)
+        .with_filesystem_keystore("./keystore")
+        .in_debug_mode(true)
+        .build()
+        .await?;
 
     let sync_summary = client.sync_state().await.unwrap();
-    let block_number = sync_summary.block_num;
-    println!("Latest block number: {}", block_number);
+    println!("Latest block: {}", sync_summary.block_num);
+
+    let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
+        FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     //------------------------------------------------------------
     // STEP 1: Create a basic wallet for Alice
@@ -304,10 +293,9 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating a new account for Alice");
 
     // Account seed
-    let mut init_seed = [0u8; 32];
+    let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    // Generate key pair
     let key_pair = SecretKey::with_rng(client.rng());
 
     // Anchor block
@@ -325,13 +313,13 @@ async fn main() -> Result<(), ClientError> {
 
     // Add the account to the client
     client
-        .add_account(
-            &alice_account,
-            Some(seed),
-            &AuthSecretKey::RpoFalcon512(key_pair),
-            false,
-        )
+        .add_account(&alice_account, Some(seed), false)
         .await?;
+
+    // Add the key pair to the keystore
+    keystore
+        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .unwrap();
 
     println!("Alice's account ID: {:?}", alice_account.id().to_hex());
 
@@ -364,13 +352,13 @@ async fn main() -> Result<(), ClientError> {
 
     // Add the faucet to the client
     client
-        .add_account(
-            &faucet_account,
-            Some(seed),
-            &AuthSecretKey::RpoFalcon512(key_pair),
-            false,
-        )
+        .add_account(&faucet_account, Some(seed), false)
         .await?;
+
+    // Add the key pair to the keystore
+    keystore
+        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .unwrap();
 
     println!("Faucet account ID: {:?}", faucet_account.id().to_hex());
 
@@ -388,17 +376,20 @@ async fn main() -> Result<(), ClientError> {
 
     for i in 1..=5 {
         let transaction_request = TransactionRequestBuilder::mint_fungible_asset(
-            fungible_asset.clone(),
+            fungible_asset,
             alice_account.id(),
             NoteType::Public,
             client.rng(),
         )
         .unwrap()
-        .build();
+        .build()
+        .unwrap();
+
+        println!("tx request built");
+
         let tx_execution_result = client
             .new_transaction(faucet_account.id(), transaction_request)
             .await?;
-
         client.submit_transaction(tx_execution_result).await?;
         println!("Minted note #{} of {} tokens for Alice.", i, amount);
     }
@@ -424,8 +415,9 @@ async fn main() -> Result<(), ClientError> {
 
         if list_of_note_ids.len() == 5 {
             println!("Found 5 consumable notes for Alice. Consuming them now...");
-            let transaction_request =
-                TransactionRequestBuilder::consume_notes(list_of_note_ids).build();
+            let transaction_request = TransactionRequestBuilder::consume_notes(list_of_note_ids)
+                .build()
+                .unwrap();
             let tx_execution_result = client
                 .new_transaction(alice_account.id(), transaction_request)
                 .await?;
@@ -435,7 +427,7 @@ async fn main() -> Result<(), ClientError> {
             break;
         } else {
             println!(
-                "Currently, Alice has {} consumable notes. Waiting for 5...",
+                "Currently, Alice has {} consumable notes. Waiting...",
                 list_of_note_ids.len()
             );
             tokio::time::sleep(Duration::from_secs(3)).await;
@@ -450,12 +442,13 @@ async fn main() -> Result<(), ClientError> {
     // Send 50 tokens to 4 accounts in one transaction
     println!("Creating multiple P2ID notes for 4 target accounts in one transaction...");
     let mut p2id_notes = vec![];
+
+    // Creating 4 P2ID notes to 4 'dummy' AccountIds
     for _ in 1..=4 {
-        let init_seed = {
-            let mut seed = [0u8; 15];
-            rand::thread_rng().fill(&mut seed);
-            seed[0] = 99u8;
-            seed
+        let init_seed: [u8; 15] = {
+            let mut init_seed = [0_u8; 15];
+            client.rng().fill_bytes(&mut init_seed);
+            init_seed
         };
         let target_account_id = AccountId::dummy(
             init_seed,
@@ -477,27 +470,27 @@ async fn main() -> Result<(), ClientError> {
         )?;
         p2id_notes.push(p2id_note);
     }
-    let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
 
+    // Specifying output notes and creating a tx request to create them
+    let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
     let transaction_request = TransactionRequestBuilder::new()
         .with_own_output_notes(output_notes)
-        .unwrap()
-        .build();
+        .build()
+        .unwrap();
 
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;
 
+    // Submitting the transaction
     client.submit_transaction(tx_execution_result).await?;
     println!("Submitted a transaction with 4 P2ID notes.");
 
-    // Send 50 tokens to 1 more account as a single P2ID transaction
     println!("Submitting one more single P2ID transaction...");
-    let init_seed = {
-        let mut seed = [0u8; 15];
-        rand::thread_rng().fill(&mut seed);
-        seed[0] = 99u8;
-        seed
+    let init_seed: [u8; 15] = {
+        let mut init_seed = [0_u8; 15];
+        client.rng().fill_bytes(&mut init_seed);
+        init_seed
     };
     let target_account_id = AccountId::dummy(
         init_seed,
@@ -521,7 +514,8 @@ async fn main() -> Result<(), ClientError> {
         client.rng(),     // rng
     )
     .unwrap()
-    .build();
+    .build()
+    .unwrap();
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;
@@ -540,34 +534,36 @@ async fn main() -> Result<(), ClientError> {
 Let's run the `src/main.rs` program again:
 
 ```bash
-cargo run --release 
+cargo run --release
 ```
 
 The output will look like this:
 
 ```
-Client initialized successfully.
-Latest block number: 1519
+Latest block: 17795
 
 [STEP 1] Creating a new account for Alice
-Alice's account ID: "0xd0e8ba5acf2e83100000887188d2b9"
+Alice's account ID: "0xebc34ec1637352100000cb8699d5c0"
 
 [STEP 2] Deploying a new fungible faucet.
-Faucet account ID: "0xcdf877e221333a2000002e2b7ff0b2"
+Faucet account ID: "0xd0736ee6005c0e200000d6f081f0ef"
 
 [STEP 3] Minting 5 notes of 100 tokens each for Alice.
+tx request built
 Minted note #1 of 100 tokens for Alice.
+tx request built
 Minted note #2 of 100 tokens for Alice.
+tx request built
 Minted note #3 of 100 tokens for Alice.
+tx request built
 Minted note #4 of 100 tokens for Alice.
+tx request built
 Minted note #5 of 100 tokens for Alice.
 All 5 notes minted for Alice successfully!
 
 [STEP 4] Alice will now consume all of her notes to consolidate them.
-Currently, Alice has 1 consumable notes. Waiting for 5...
-Currently, Alice has 4 consumable notes. Waiting for 5...
+Currently, Alice has 3 consumable notes. Waiting...
 Found 5 consumable notes for Alice. Consuming them now...
-one or more warnings were emitted
 All of Alice's notes consumed successfully.
 
 [STEP 5] Alice sends 5 notes of 50 tokens each to 5 different users.

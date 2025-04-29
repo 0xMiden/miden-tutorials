@@ -1,5 +1,6 @@
 target/
-*.sqlite3
 *.dat
 node/storage/*
-docs/book/*
+
+keystore
+*.sqlite3

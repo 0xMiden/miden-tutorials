@@ -1,10 +1,10 @@
 # Mint, Consume, and Create Notes
 
-*Using the Miden WebClient in TypeScript to mint, consume, and create notes*
+_Using the Miden WebClient in TypeScript to mint, consume, and create notes_
 
 ## Overview
 
-In the previous section, we initialized our repository and covered how to create an account and deploy a faucet. In this section, we will mint tokens from the faucet for *Alice*, consume the newly created notes, and demonstrate how to send assets to other accounts.
+In the previous section, we initialized our repository and covered how to create an account and deploy a faucet. In this section, we will mint tokens from the faucet for _Alice_, consume the newly created notes, and demonstrate how to send assets to other accounts.
 
 ## What we'll cover
 
@@ -16,38 +16,43 @@ In the previous section, we initialized our repository and covered how to create
 
 To mint notes with tokens from the faucet we created, Alice can use the WebClient's `new_mint_transaction()` function.
 
-Below is an example of a transaction request minting tokens from the faucet for Alice. 
+Below is an example of a transaction request minting tokens from the faucet for Alice.
 
 Add this snippet to the end of the `webClient` function in the `src/webClient.ts` file that we created in the previous chapter:
 
 ```ts
-await client.fetch_and_cache_account_auth_by_pub_key(
-  AccountId.from_hex(faucetIdHex),
+// 5. Mint tokens to Alice
+await client.fetchAndCacheAccountAuthByAccountId(
+  AccountId.fromHex(faucetIdHex),
 );
-await client.sync_state();
+await client.syncState();
 
 console.log("Minting tokens to Alice...");
-await client.new_mint_transaction(
-  AccountId.from_hex(aliceIdHex),  // target wallet id
-  AccountId.from_hex(faucetIdHex), // faucet id
-  NoteType.public(),               // note type
-  BigInt(1000),                    // amount
+let mintTxRequest = client.newMintTransactionRequest(
+  AccountId.fromHex(aliceIdHex),
+  AccountId.fromHex(faucetIdHex),
+  NoteType.public(),
+  BigInt(1000),
 );
+
+let txResult = await client.newTransaction(faucetAccount.id(), mintTxRequest);
+
+await client.submitTransaction(txResult);
 
 console.log("Waiting 15 seconds for transaction confirmation...");
 await new Promise((resolve) => setTimeout(resolve, 15000));
-await client.sync_state();
+await client.syncState();
 ```
 
 ## Step 2: Identifying consumable notes
 
-Once Alice has minted a note from the faucet, she will eventually want to spend the tokens that she received in the note created by the mint transaction. 
+Once Alice has minted a note from the faucet, she will eventually want to spend the tokens that she received in the note created by the mint transaction.
 
 Minting a note from a faucet on Miden means a faucet account creates a new note targeted to the requesting account. The requesting account must consume this note for the assets to appear in their account.
 
-To identify notes that are ready to consume, the Miden WebClient has a useful function `get_consumable_notes`. It is also important to sync the state of the client before calling the `get_consumable_notes` function. 
+To identify notes that are ready to consume, the Miden WebClient has a useful function `get_consumable_notes`. It is also important to sync the state of the client before calling the `get_consumable_notes` function.
 
-*Tip: If you know the expected number of notes after a transaction, use `await` or a loop condition to verify their availability before calling `get_consumable_notes`. This prevents unnecessary application idling.*
+_Tip: If you know the expected number of notes after a transaction, use `await` or a loop condition to verify their availability before calling `get_consumable_notes`. This prevents unnecessary application idling._
 
 #### Identifying which notes are available:
 
@@ -64,24 +69,27 @@ The following code snippet identifies and consumes notes in a single transaction
 Add this snippet to the end of the `webClient` function in the `src/webClient.ts` file:
 
 ```ts
-await client.fetch_and_cache_account_auth_by_pub_key(
-  AccountId.from_hex(aliceIdHex),
-);
-
-const mintedNotes = await client.get_consumable_notes(
-  AccountId.from_hex(aliceIdHex),
+// 6. Fetch minted notes
+const mintedNotes = await client.getConsumableNotes(
+  AccountId.fromHex(aliceIdHex),
 );
 const mintedNoteIds = mintedNotes.map((n) =>
-  n.input_note_record().id().to_string(),
+  n.inputNoteRecord().id().toString(),
 );
 console.log("Minted note IDs:", mintedNoteIds);
 
+// 7. Consume minted notes
 console.log("Consuming minted notes...");
-await client.new_consume_transaction(
-  AccountId.from_hex(aliceIdHex), // account id
-  mintedNoteIds,                  // array of note ids to consume
+let consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
+
+let txResult_2 = await client.newTransaction(
+  aliceAccount.id(),
+  consumeTxRequest,
 );
-await client.sync_state();
+
+await client.submitTransaction(txResult_2);
+
+await client.syncState();
 console.log("Notes consumed.");
 ```
 
@@ -89,7 +97,7 @@ console.log("Notes consumed.");
 
 After consuming the notes, Alice has tokens in her wallet. Now, she wants to send tokens to her friends. She has two options: create a separate transaction for each transfer or batch multiple notes in a single transaction.
 
-*The standard asset transfer note on Miden is the P2ID note (Pay to Id). There is also the P2IDR (Pay to Id Reclaimable) variant which allows the creator of the note to reclaim the note after a certain block height.*
+_The standard asset transfer note on Miden is the P2ID note (Pay to Id). There is also the P2IDR (Pay to Id Reclaimable) variant which allows the creator of the note to reclaim the note after a certain block height._
 
 In our example, Alice will now send 50 tokens to a different account.
 
@@ -100,17 +108,20 @@ Now as an example, Alice will send some tokens to an account in a single transac
 Add this snippet to the end of your file in the `main()` function:
 
 ```ts
-// send single P2ID note
+// 8. Send tokens to a dummy account
 const dummyIdHex = "0x599a54603f0cf9000000ed7a11e379";
 console.log("Sending tokens to dummy account...");
-await client.new_send_transaction(
-  AccountId.from_hex(aliceIdHex),  // sender account id
-  AccountId.from_hex(dummyIdHex),  // receiver account id
-  AccountId.from_hex(faucetIdHex), // faucet account id
-  NoteType.public(),               // note type
-  BigInt(100),                     // amount
+let sendTxRequest = client.newSendTransactionRequest(
+  AccountId.fromHex(aliceIdHex),
+  AccountId.fromHex(dummyIdHex),
+  AccountId.fromHex(faucetIdHex),
+  NoteType.public(),
+  BigInt(100),
 );
-await client.sync_state();
+
+let txResult_3 = await client.newTransaction(aliceAccount.id(), sendTxRequest);
+
+await client.submitTransaction(txResult_3);
 ```
 
 ## Summary
@@ -125,90 +136,109 @@ import {
   NoteType,
 } from "@demox-labs/miden-sdk";
 
-const nodeEndpoint = "http://localhost:57291";
+const nodeEndpoint = "https://rpc.testnet.miden.io:443";
 
 export async function webClient(): Promise<void> {
   try {
     // 1. Create client
-    const client = new WebClient();
-    await client.create_client(nodeEndpoint);
+    const client = await WebClient.createClient(nodeEndpoint);
 
     // 2. Sync and log block
-    const state = await client.sync_state();
-    console.log("Latest block number:", state.block_num());
+    const state = await client.syncState();
+    console.log("Latest block number:", state.blockNum());
 
     // 3. Create Alice account (public, updatable)
     console.log("Creating account for Alice");
-    const aliceAccount = await client.new_wallet(
-      AccountStorageMode.public(), // account type
-      true                         // mutability
+    const aliceAccount = await client.newWallet(
+      AccountStorageMode.public(),
+      true,
     );
-    const aliceIdHex = aliceAccount.id().to_string();
+    const aliceIdHex = aliceAccount.id().toString();
     console.log("Alice's account ID:", aliceIdHex);
 
     // 4. Create faucet
     console.log("Creating faucet...");
-    const faucetAccount = await client.new_faucet(
-      AccountStorageMode.public(),  // account type
-      false,                        // fungible
-      "MID",                        // symbol
-      8,                            // decimals
-      BigInt(1_000_000)             // max supply
+    const faucetAccount = await client.newFaucet(
+      AccountStorageMode.public(),
+      false,
+      "MID",
+      8,
+      BigInt(1_000_000),
     );
-    const faucetIdHex = faucetAccount.id().to_string();
+    const faucetIdHex = faucetAccount.id().toString();
     console.log("Faucet account ID:", faucetIdHex);
 
     // 5. Mint tokens to Alice
-    await client.fetch_and_cache_account_auth_by_pub_key(
-      AccountId.from_hex(faucetIdHex),
+    await client.fetchAndCacheAccountAuthByAccountId(
+      AccountId.fromHex(faucetIdHex),
     );
-    await client.sync_state();
+    await client.syncState();
 
     console.log("Minting tokens to Alice...");
-    await client.new_mint_transaction(
-      AccountId.from_hex(aliceIdHex),  // target wallet id
-      AccountId.from_hex(faucetIdHex), // faucet id
-      NoteType.public(),               // note type
-      BigInt(1000),                    // amount
+    let mintTxRequest = client.newMintTransactionRequest(
+      AccountId.fromHex(aliceIdHex),
+      AccountId.fromHex(faucetIdHex),
+      NoteType.public(),
+      BigInt(1000),
     );
+
+    let txResult = await client.newTransaction(
+      faucetAccount.id(),
+      mintTxRequest,
+    );
+
+    await client.submitTransaction(txResult);
 
     console.log("Waiting 15 seconds for transaction confirmation...");
     await new Promise((resolve) => setTimeout(resolve, 15000));
-    await client.sync_state();
+    await client.syncState();
+
+    await client.fetchAndCacheAccountAuthByAccountId(
+      AccountId.fromHex(aliceIdHex),
+    );
 
     // 6. Fetch minted notes
-    await client.fetch_and_cache_account_auth_by_pub_key(
-      AccountId.from_hex(aliceIdHex),
-    );
-
-    const mintedNotes = await client.get_consumable_notes(
-      AccountId.from_hex(aliceIdHex),
+    const mintedNotes = await client.getConsumableNotes(
+      AccountId.fromHex(aliceIdHex),
     );
     const mintedNoteIds = mintedNotes.map((n) =>
-      n.input_note_record().id().to_string(),
+      n.inputNoteRecord().id().toString(),
     );
     console.log("Minted note IDs:", mintedNoteIds);
 
     // 7. Consume minted notes
     console.log("Consuming minted notes...");
-    await client.new_consume_transaction(
-      AccountId.from_hex(aliceIdHex), // account id
-      mintedNoteIds,                  // array of note ids to consume
+    let consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
+
+    let txResult_2 = await client.newTransaction(
+      aliceAccount.id(),
+      consumeTxRequest,
     );
-    await client.sync_state();
+
+    await client.submitTransaction(txResult_2);
+
+    await client.syncState();
     console.log("Notes consumed.");
 
     // 8. Send tokens to a dummy account
     const dummyIdHex = "0x599a54603f0cf9000000ed7a11e379";
     console.log("Sending tokens to dummy account...");
-    await client.new_send_transaction(
-      AccountId.from_hex(aliceIdHex),  // sender account id
-      AccountId.from_hex(dummyIdHex),  // receiver account id
-      AccountId.from_hex(faucetIdHex), // faucet account id
-      NoteType.public(),               // note type
-      BigInt(100),                     // amount
+    let sendTxRequest = client.newSendTransactionRequest(
+      AccountId.fromHex(aliceIdHex),
+      AccountId.fromHex(dummyIdHex),
+      AccountId.fromHex(faucetIdHex),
+      NoteType.public(),
+      BigInt(100),
     );
-    await client.sync_state();
+
+    let txResult_3 = await client.newTransaction(
+      aliceAccount.id(),
+      sendTxRequest,
+    );
+
+    await client.submitTransaction(txResult_3);
+
+    await client.syncState();
     console.log("Tokens sent.");
   } catch (error) {
     console.error("Error:", error);
@@ -217,9 +247,9 @@ export async function webClient(): Promise<void> {
 }
 ```
 
-Let's run the `src/webClient.ts` function again. Reload the page and click "Start WebClient". 
+Let's run the `src/webClient.ts` function again. Reload the page and click "Start WebClient".
 
-**Note**: *Currently there is a minor bug in the WebClient that produces a warning message, "Error inserting code with root" when creating multiple accounts. This is currently being fixed.*
+**Note**: _Currently there is a minor bug in the WebClient that produces a warning message, "Error inserting code with root" when creating multiple accounts. This is currently being fixed._
 
 The output will look like this:
 

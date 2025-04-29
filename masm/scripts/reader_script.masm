@@ -1,4 +1,19 @@
+use.external_contract::count_reader_contract
+use.std::sys
+
 begin
     # => []
-    call.{copy_count}
+    push.{get_count_proc_hash}
+
+    # => [GET_COUNT_HASH]
+    push.{account_id_suffix}
+
+    # => [account_id_suffix]
+    push.{account_id_prefix}
+
+    # => []
+    push.111 debug.stack drop
+    call.count_reader_contract::copy_count
+
+    exec.sys::truncate_stack
 end

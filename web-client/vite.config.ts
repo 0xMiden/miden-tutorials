@@ -5,8 +5,24 @@ export default defineConfig({
   plugins: [react()],
   build: {
     target: 'esnext',
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
+    rollupOptions: {
+      external: ['@demox-labs/miden-sdk'],
+      output: {
+        format: "es",
+      },
+    },
   },
   optimizeDeps: {
-    exclude: ['@demox-labs/miden-sdk'], // Exclude the SDK from optimization
+    include: ['@demox-labs/miden-sdk'],
+    esbuildOptions: {
+      target: "esnext",
+      supported: {
+        "top-level-await": true, 
+      },
+    },
   },
 });

@@ -1,6 +1,6 @@
 # Interacting with Public Smart Contracts
 
-*Using the Miden client in Rust to interact with public smart contracts on Miden*
+_Using the Miden client in Rust to interact with public smart contracts on Miden_
 
 ## Overview
 
@@ -17,7 +17,7 @@ Just like in the previous tutorial, we will use a script to invoke the increment
 
 ## Prerequisites
 
-This tutorial assumes you have a basic understanding of Miden assembly and completed the previous tutorial on deploying the counter contract. Although not a requirement, it is recommended to complete the counter contract deployment tutorial before starting this tutorial. 
+This tutorial assumes you have a basic understanding of Miden assembly and completed the previous tutorial on deploying the counter contract. Although not a requirement, it is recommended to complete the counter contract deployment tutorial before starting this tutorial.
 
 ## Step 1: Initialize your repository
 
@@ -32,22 +32,23 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.7", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.7", default-features = false }
-miden-objects = { version = "0.7.2", default-features = false }
-miden-crypto = { version = "0.13.2", features = ["executable"] }
-rand = { version = "0.8" }
+miden-client = { version = "0.8.1", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.8", default-features = false }
+miden-objects = { version = "0.8", default-features = false }
+miden-crypto = { version = "0.14.0", features = ["executable"] }
+miden-assembly = "0.13.0"
+rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 tokio = { version = "1.40", features = ["rt-multi-thread", "net", "macros"] }
-rand_chacha = "0.3.1"
+rand_chacha = "0.9.0"
 ```
 
 ## Step 2: Build the counter contract
 
 For better code organization, we will separate the Miden assembly code from our Rust code.
 
-Create a directory named `masm` at the **root** of your `miden-counter-contract` directory. This will contain our contract and script masm code. 
+Create a directory named `masm` at the **root** of your `miden-counter-contract` directory. This will contain our contract and script masm code.
 
 Initialize the `masm` directory:
 
@@ -72,7 +73,7 @@ use.std::sys
 export.get_count
     # => []
     push.0
-    
+
     # => [index]
     exec.account::get_item
 
@@ -110,103 +111,69 @@ end
 Inside of the `masm/scripts/` directory, create the `counter_script.masm` file:
 
 ```masm
+use.external_contract::counter_contract
+
 begin
-    # => []
-    call.{increment_count}
+    call.counter_contract::increment_count
 end
+
 ```
 
-**Note**: *We explained in the previous counter contract tutorial what exactly happens at each step in the `increment_count` procedure.*
+**Note**: _We explained in the previous counter contract tutorial what exactly happens at each step in the `increment_count` procedure._
 
 ### Step 3: Set up your `src/main.rs` file
 
 Copy and paste the following code into your `src/main.rs` file:
+
 ```rust
 use std::{fs, path::Path, sync::Arc};
 
-use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
-use rand_chacha::ChaCha20Rng;
-use tokio::time::Duration;
-
+use miden_assembly::{
+    ast::{Module, ModuleKind},
+    LibraryPath,
+};
 use miden_client::{
-    account::{Account, AccountCode, AccountId, AccountType},
-    asset::AssetVault,
-    crypto::RpoRandomCoin,
-    rpc::{domain::account::AccountDetails, Endpoint, TonicRpcClient},
-    store::{sqlite_store::SqliteStore, StoreAuthenticator},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt,
+    account::AccountId,
+    builder::ClientBuilder,
+    rpc::{Endpoint, TonicRpcClient},
+    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
+    ClientError,
 };
+use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
 
-use miden_objects::{
-    account::{AccountComponent, AccountStorage, AuthSecretKey, StorageSlot},
-    assembly::Assembler,
-    crypto::dsa::rpo_falcon512::SecretKey,
-    Word,
-};
+fn create_library(
+    assembler: Assembler,
+    library_path: &str,
+    source_code: &str,
+) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let module = Module::parser(ModuleKind::Library).parse_str(
+        LibraryPath::new(library_path)?,
+        source_code,
+        &source_manager,
+    )?;
+    let library = assembler.clone().assemble_library([module])?;
+    Ok(library)
+}
 
-pub async fn initialize_client() -> Result<Client<RpoRandomCoin>, ClientError> {
-    // RPC endpoint and timeout
+#[tokio::main]
+async fn main() -> Result<(), ClientError> {
+    // Initialize client
     let endpoint = Endpoint::new(
         "https".to_string(),
         "rpc.testnet.miden.io".to_string(),
         Some(443),
     );
     let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
-    // Build RPC client
-    let rpc_api = Box::new(TonicRpcClient::new(endpoint, timeout_ms));
+    let mut client = ClientBuilder::new()
+        .with_rpc(rpc_api)
+        .with_filesystem_keystore("./keystore")
+        .in_debug_mode(true)
+        .build()
+        .await?;
 
-    // Seed RNG
-    let mut seed_rng = rand::thread_rng();
-    let coin_seed: [u64; 4] = seed_rng.gen();
-
-    // Create random coin instance
-    let rng = RpoRandomCoin::new(coin_seed.map(Felt::new));
-
-    // SQLite path
-    let store_path = "store.sqlite3";
-
-    // Initialize SQLite store
-    let store = SqliteStore::new(store_path.into())
-        .await
-        .map_err(ClientError::StoreError)?;
-    let arc_store = Arc::new(store);
-
-    // Create authenticator referencing the store and RNG
-    let authenticator = StoreAuthenticator::new_with_rng(arc_store.clone(), rng.clone());
-
-    // Instantiate client (toggle debug mode as needed)
-    let client = Client::new(rpc_api, rng, arc_store, Arc::new(authenticator), true);
-
-    Ok(client)
-}
-
-pub fn get_new_pk_and_authenticator() -> (Word, AuthSecretKey) {
-    // Create a deterministic RNG with zeroed seed
-    let seed = [0_u8; 32];
-    let mut rng = ChaCha20Rng::from_seed(seed);
-
-    // Generate Falcon-512 secret key
-    let sec_key = SecretKey::with_rng(&mut rng);
-
-    // Convert public key to `Word` (4xFelt)
-    let pub_key: Word = sec_key.public_key().into();
-
-    // Wrap secret key in `AuthSecretKey`
-    let auth_secret_key = AuthSecretKey::RpoFalcon512(sec_key);
-
-    (pub_key, auth_secret_key)
-}
-
-#[tokio::main]
-async fn main() -> Result<(), ClientError> {
-    // Initialize client
-    let mut client = initialize_client().await?;
-    println!("Client initialized successfully.");
-
-    // Fetch latest block from node
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
 
@@ -214,10 +181,9 @@ async fn main() -> Result<(), ClientError> {
 }
 ```
 
-
 ## Step 4: Reading public state from a smart contract
 
-To read the public storage state of a smart contract on Miden we either instantiate the `TonicRpcClient` by itself, or use the `test_rpc_api()` method on the `Client` instance. In this example, we will be using the `test_rpc_api()` method. 
+To read the public storage state of a smart contract on Miden we either instantiate the `TonicRpcClient` by itself, or use the `test_rpc_api()` method on the `Client` instance. In this example, we will be using the `test_rpc_api()` method.
 
 We will be reading the public storage state of the counter contract deployed on the testnet at address `0x303dd027d27adc0000012b07dbf1b4`.
 
@@ -229,129 +195,78 @@ Add the following code snippet to the end of your `src/main.rs` function:
 // -------------------------------------------------------------------------
 println!("\n[STEP 1] Reading data from public state");
 
-// Define the AccountId of the account to read from
-let counter_contract_id = AccountId::from_hex("0x4eedb9db1bdcf90000036bcebfe53a").unwrap();
+// Define the Counter Contract account id from counter contract deploy
+let counter_contract_id = AccountId::from_hex("0x104002887c1187000000ba20f61387").unwrap();
 
-let account_details = client
-    .test_rpc_api()
-    .get_account_update(counter_contract_id)
+client
+    .import_account_by_id(counter_contract_id)
     .await
     .unwrap();
 
-let AccountDetails::Public(counter_contract_details, _) = account_details else {
-    panic!("counter contract must be public");
+let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
+
+let counter_contract = if let Some(account_record) = counter_contract_details {
+    // Clone the account to get an owned instance
+    let account = account_record.account().clone();
+    println!(
+        "Account details: {:?}",
+        account.storage().slots().first().unwrap()
+    );
+    account // Now returns an owned account
+} else {
+    panic!("Counter contract not found!");
 };
-
-// Getting the value of the count from slot 0 and the nonce of the counter contract
-let count_value = counter_contract_details.storage().slots().get(0).unwrap();
-let counter_nonce = counter_contract_details.nonce();
-
-println!("count val: {:?}", count_value.value());
-println!("counter nonce: {:?}", counter_nonce);
 ```
 
 Run the following command to execute src/main.rs:
 
 ```bash
-cargo run --release 
+cargo run --release
 ```
 
 After the program executes, you should see the counter contract count value and nonce printed to the terminal, for example:
+
 ```
 count val: [0, 0, 0, 5]
 counter nonce: 5
 ```
 
-## Step 5: Building an account from parts
-
-Now that we know the storage state of the counter contract and its nonce, we can build the account from its parts. We know the account ID, asset vault value, the storage layout, account code, and nonce. We need the full account data to interact with it locally. From these values, we can build the counter contract from scratch.
+## Step 5: Importing a public account
 
 Add the following code snippet to the end of your `src/main.rs` function:
+
 ```rust
 // -------------------------------------------------------------------------
-// STEP 2: Build the Counter Contract
+// STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
-println!("\n[STEP 2] Building the counter contract");
 
-// Load the MASM file for the counter contract
-let file_path = Path::new("./masm/accounts/counter.masm");
-let account_code = fs::read_to_string(file_path).unwrap();
+// Load the MASM script referencing the increment procedure
+let script_path = Path::new("../masm/scripts/counter_script.masm");
+let script_code = fs::read_to_string(script_path).unwrap();
 
-// Prepare assembler (debug mode = true)
+let counter_path = Path::new("../masm/accounts/counter.masm");
+let counter_code = fs::read_to_string(counter_path).unwrap();
+
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-
-// Compile the account code into `AccountComponent` with the count value returned by the node 
-let account_component = AccountComponent::compile(
-    account_code,
-    assembler,
-    vec![StorageSlot::Value(count_value.value())],
-)
-.unwrap()
-.with_supports_all_types();
-
-// Initialize the AccountStorage with the count value returned by the node  
-let account_storage =
-    AccountStorage::new(vec![StorageSlot::Value(count_value.value())]).unwrap();
-
-// Build AccountCode from components
-let account_code = AccountCode::from_components(
-    &[account_component],
-    AccountType::RegularAccountImmutableCode,
+let account_component_lib = create_library(
+    assembler.clone(),
+    "external_contract::counter_contract",
+    &counter_code,
 )
 .unwrap();
 
-// The counter contract doesn't have any assets so we pass an empty vector
-let vault = AssetVault::new(&[]).unwrap();
-
-// Build the counter contract from parts
-let counter_contract = Account::from_parts(
-    counter_contract_id,
-    vault,
-    account_storage,
-    account_code,
-    counter_nonce,
-);
-
-// Since anyone should be able to write to the counter contract, auth_secret_key is not required.
-// However, to import to the client, we must generate a random value.
-let (_, _auth_secret_key) = get_new_pk_and_authenticator();
-
-client
-    .add_account(&counter_contract.clone(), None, &_auth_secret_key, true)
-    .await
-    .unwrap();
-```
-
-## Step 6: Incrementing the count
-This step is exactly the same as in the counter contract deploy tutorial, the only change being that we hardcode the `increment_count` procedure hash since this value will not change.
-
-Add the following code snippet to the end of your `src/main.rs` function:
-
-```rust
-// -------------------------------------------------------------------------
-// STEP 3: Call the Counter Contract with a script
-// -------------------------------------------------------------------------
-println!("\n[STEP 3] Call the increment_count procedure in the counter contract");
-
-// The increment_count procedure hash is constant
-let increment_procedure = "0xecd7eb223a5524af0cc78580d96357b298bb0b3d33fe95aeb175d6dab9de2e54";
-
-// Load the MASM script referencing the increment procedure
-let file_path = Path::new("./masm/scripts/counter_script.masm");
-let original_code = fs::read_to_string(file_path).unwrap();
-
-// Replace the placeholder with the actual procedure call
-let replaced_code = original_code.replace("{increment_count}", &increment_procedure);
-println!("Final script:\n{}", replaced_code);
-
-// Compile the script
-let tx_script = client.compile_tx_script(vec![], &replaced_code).unwrap();
+let tx_script = TransactionScript::compile(
+    script_code,
+    [],
+    assembler.with_library(&account_component_lib).unwrap(),
+)
+.unwrap();
 
 // Build a transaction request with the custom script
 let tx_increment_request = TransactionRequestBuilder::new()
     .with_custom_script(tx_script)
-    .unwrap()
-    .build();
+    .build()
+    .unwrap();
 
 // Execute the transaction locally
 let tx_result = client
@@ -368,8 +283,6 @@ println!(
 // Submit transaction to the network
 let _ = client.submit_transaction(tx_result).await;
 
-// Wait, then re-sync
-tokio::time::sleep(Duration::from_secs(3)).await;
 client.sync_state().await.unwrap();
 
 // Retrieve updated contract data to see the incremented counter
@@ -438,7 +351,7 @@ pub async fn initialize_client() -> Result<Client<RpoRandomCoin>, ClientError> {
     let arc_store = Arc::new(store);
 
     // Create authenticator referencing the store and RNG
-    let authenticator = StoreAuthenticator::new_with_rng(arc_store.clone(), rng.clone());
+    let authenticator = StoreAuthenticator::new_with_rng(arc_store.clone(), rng);
 
     // Instantiate client (toggle debug mode as needed)
     let client = Client::new(rpc_api, rng, arc_store, Arc::new(authenticator), true);
@@ -492,7 +405,7 @@ async fn main() -> Result<(), ClientError> {
     };
 
     // Getting the value of the count from slot 0 and the nonce of the counter contract
-    let count_value = counter_contract_details.storage().slots().get(0).unwrap();
+    let count_value = counter_contract_details.storage().slots().first().unwrap();
     let counter_nonce = counter_contract_details.nonce();
 
     println!("count val: {:?}", count_value.value());
@@ -564,7 +477,8 @@ async fn main() -> Result<(), ClientError> {
     let original_code = fs::read_to_string(file_path).unwrap();
 
     // Replace the placeholder with the actual procedure call
-    let replaced_code = original_code.replace("{increment_count}", &increment_procedure);
+
+    let replaced_code = original_code.replace("{increment_count}", increment_procedure);
     println!("Final script:\n{}", replaced_code);
 
     // Compile the script
@@ -607,8 +521,9 @@ async fn main() -> Result<(), ClientError> {
 ```
 
 Run the following command to execute src/main.rs:
+
 ```bash
-cargo run --release 
+cargo run --release
 ```
 
 The output of our program will look something like this depending on the current count value in the smart contract:

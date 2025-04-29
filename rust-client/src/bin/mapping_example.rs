@@ -13,7 +13,9 @@ use miden_client::{
     ClientError, Felt,
 };
 use miden_objects::{
-    account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
+    account::{AccountComponent, StorageMap},
+    assembly::Assembler,
+    assembly::DefaultSourceManager,
 };
 
 fn create_library(
@@ -53,76 +55,72 @@ async fn main() -> Result<(), ClientError> {
     println!("Latest block: {}", sync_summary.block_num);
 
     // -------------------------------------------------------------------------
-    // STEP 1: Create a basic counter contract
+    // STEP 1: Deploy a smart contract with a mapping
     // -------------------------------------------------------------------------
-    println!("\n[STEP 1] Creating counter contract.");
+    println!("\n[STEP 1] Deploy a smart contract with a mapping");
 
     // Load the MASM file for the counter contract
-    let counter_path = Path::new("../masm/accounts/counter.masm");
-    let counter_code = fs::read_to_string(counter_path).unwrap();
+    let file_path = Path::new("../masm/accounts/mapping_example_contract.masm");
+    let account_code = fs::read_to_string(file_path).unwrap();
 
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
+    // Using an empty storage value in slot 0 since this is usually resurved
+    // for the account pub_key and metadata
+    let empty_storage_slot = StorageSlot::empty_value();
+
+    // initialize storage map
+    let storage_map = StorageMap::new();
+    let storage_slot_map = StorageSlot::Map(storage_map.clone());
+
     // Compile the account code into `AccountComponent` with one storage slot
-    let counter_component = AccountComponent::compile(
-        counter_code.clone(),
-        assembler,
-        vec![StorageSlot::Value([
-            Felt::new(0),
-            Felt::new(0),
-            Felt::new(0),
-            Felt::new(0),
-        ])],
+    let mapping_contract_component = AccountComponent::compile(
+        account_code.clone(),
+        assembler.clone(),
+        vec![empty_storage_slot, storage_slot_map],
     )
     .unwrap()
     .with_supports_all_types();
 
     // Init seed for the counter contract
-    let mut seed = [0_u8; 32];
-    client.rng().fill_bytes(&mut seed);
+    let mut init_seed = [0_u8; 32];
+    client.rng().fill_bytes(&mut init_seed);
 
     // Anchor block of the account
     let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
     // Build the new `Account` with the component
-    let (counter_contract, counter_seed) = AccountBuilder::new(seed)
+    let (mapping_example_contract, seed) = AccountBuilder::new(init_seed)
         .anchor((&anchor_block).try_into().unwrap())
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(counter_component.clone())
+        .with_component(mapping_contract_component.clone())
         .build()
         .unwrap();
 
-    println!(
-        "counter_contract commitment: {:?}",
-        counter_contract.commitment()
-    );
-    println!("counter_contract id: {:?}", counter_contract.id().to_hex());
-    println!("counter_contract storage: {:?}", counter_contract.storage());
-
     client
-        .add_account(&counter_contract.clone(), Some(counter_seed), false)
+        .add_account(&mapping_example_contract.clone(), Some(seed), false)
         .await
         .unwrap();
 
     // -------------------------------------------------------------------------
-    // STEP 2: Call the Counter Contract with a script
+    // STEP 2: Call the Mapping Contract with a Script
     // -------------------------------------------------------------------------
-    println!("\n[STEP 2] Call Counter Contract With Script");
+    println!("\n[STEP 2] Call Mapping Contract With Script");
 
-    // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("../masm/scripts/counter_script.masm");
-    let script_code = fs::read_to_string(script_path).unwrap();
+    let script_code =
+        fs::read_to_string(Path::new("../masm/scripts/mapping_example_script.masm")).unwrap();
 
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+    // Create the library from the account source code using the helper function.
     let account_component_lib = create_library(
         assembler.clone(),
-        "external_contract::counter_contract",
-        &counter_code,
+        "miden_by_example::mapping_example_contract",
+        &account_code,
     )
     .unwrap();
 
+    // Compile the transaction script with the library.
     let tx_script = TransactionScript::compile(
         script_code,
         [],
@@ -138,7 +136,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Execute the transaction locally
     let tx_result = client
-        .new_transaction(counter_contract.id(), tx_increment_request)
+        .new_transaction(mapping_example_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
@@ -153,11 +151,21 @@ async fn main() -> Result<(), ClientError> {
 
     client.sync_state().await.unwrap();
 
-    // Retrieve updated contract data to see the incremented counter
-    let account = client.get_account(counter_contract.id()).await.unwrap();
+    let account = client
+        .get_account(mapping_example_contract.id())
+        .await
+        .unwrap();
+    let index = 1;
+    let key = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)];
     println!(
-        "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        "Mapping state\n Index: {:?}\n Key: {:?}\n Value: {:?}",
+        index,
+        key,
+        account
+            .unwrap()
+            .account()
+            .storage()
+            .get_map_item(index, key)
     );
 
     Ok(())

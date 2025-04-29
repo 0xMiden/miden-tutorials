@@ -1,0 +1,25 @@
+use.miden_by_example::mapping_example_contract
+use.std::sys
+
+begin
+    push.1.2.3.4
+    push.0.0.0.0
+    # => [KEY, VALUE]
+
+    call.mapping_example_contract::write_to_map
+    # => []
+
+    push.0.0.0.0
+    # => [KEY]
+
+    call.mapping_example_contract::get_value_in_map
+    # => [VALUE]
+
+    dropw
+    # => []
+
+    call.mapping_example_contract::get_current_map_root
+    # => [CURRENT_ROOT]
+
+    exec.sys::truncate_stack
+end

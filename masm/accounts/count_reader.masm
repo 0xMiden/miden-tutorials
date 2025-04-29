@@ -2,31 +2,23 @@ use.miden::account
 use.miden::tx
 use.std::sys
 
+# => [account_id_prefix, account_id_suffix, get_count_proc_hash]
 export.copy_count
-  # => []
-  push.{get_count_proc_hash}
+    exec.tx::execute_foreign_procedure
+    # => [count]
+    
+    debug.stack
+    # => [count]
+    
+    push.0
+    # [index, count]
+    
+    exec.account::set_item
+    # => []
+    
+    push.1 exec.account::incr_nonce
+    # => []
 
-  # => [GET_COUNT_HASH]
-  push.{account_id_suffix}
-
-  # => [account_id_suffix]
-  push.{account_id_prefix}
-
-  # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
-  exec.tx::execute_foreign_procedure
-
-  # => [count]
-  debug.stack
-
-  # => [count]
-  push.0 
-
-  # [index, count]
-  exec.account::set_item
-
-  # => []
-  push.1 exec.account::incr_nonce
-
-  # => []
-  exec.sys::truncate_stack
+    exec.sys::truncate_stack
+    # => []
 end

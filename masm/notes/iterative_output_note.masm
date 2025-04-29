@@ -1,0 +1,90 @@
+use.miden::note
+use.miden::tx
+use.std::sys
+use.std::crypto::hashes::rpo
+use.miden::contracts::wallets::basic->wallet
+
+# Memory Addresses
+const.ASSET=0
+const.ASSET_HALF=4
+const.ACCOUNT_ID_PREFIX=8
+const.ACCOUNT_ID_SUFFIX=9
+const.TAG=10
+
+# => []
+begin
+    # Drop word if user accidentally pushes note_args
+    dropw
+    # => []
+
+    # Get note inputs
+    push.ACCOUNT_ID_PREFIX exec.note::get_inputs drop drop
+    # => []
+
+    # Get asset contained in note
+    push.ASSET exec.note::get_assets drop drop
+    # => []
+
+    mem_loadw.ASSET
+    # => [ASSET]
+
+    # Compute half amount of asset
+    swap.3 push.2 div swap.3
+    # => [ASSET_HALF]
+
+    mem_storew.ASSET_HALF dropw
+    # => []
+
+    mem_loadw.ASSET
+    # => [ASSET]
+
+    # Receive the entire asset amount to the wallet
+    call.wallet::receive_asset
+    # => []
+
+    # Get note inputs commitment
+    push.8.ACCOUNT_ID_PREFIX
+    # => [memory_address_pointer, number_of_inputs]
+
+    # Note: Must pad with 0s to nearest multiple of 8
+    exec.rpo::hash_memory
+    # => [INPUTS_COMMITMENT]
+
+    # Push script hash
+    exec.note::get_script_root
+    # => [SCRIPT_HASH, INPUTS_COMMITMENT]
+
+    # Get the current note serial number
+    exec.note::get_serial_number
+    # => [SERIAL_NUM, SCRIPT_HASH, INPUTS_COMMITMENT]
+
+    # Increment serial number by 1
+    push.1 add
+    # => [SERIAL_NUM+1, SCRIPT_HASH, INPUTS_COMMITMENT]
+
+    exec.tx::build_recipient_hash
+    # => [RECIPIENT]
+
+    # Push hint, note type, and aux to stack
+    push.1.1.0
+    # => [aux, public_note, execution_hint_always, RECIPIENT]
+
+    # Load tag from memory
+    mem_load.TAG
+    # => [tag, aux, note_type, execution_hint, RECIPIENT]
+
+    call.wallet::create_note
+    # => [note_idx, pad(15) ...]
+
+    padw mem_loadw.ASSET_HALF
+    # => [ASSET / 2, note_idx]
+
+    call.wallet::move_asset_to_note
+    # => [ASSET, note_idx, pad(11)]
+
+    dropw drop
+    # => []
+
+    exec.sys::truncate_stack
+    # => []
+end

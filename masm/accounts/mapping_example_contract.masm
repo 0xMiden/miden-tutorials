@@ -1,0 +1,43 @@
+use.miden::account
+use.std::sys
+
+# Inputs: [KEY, VALUE]
+# Outputs: []
+export.write_to_map
+    # The storage map is in storage slot 1
+    push.1
+    # => [index, KEY, VALUE]
+
+    # Setting the key value pair in the map
+    exec.account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    dropw dropw dropw dropw
+    # => []
+
+    # Incrementing the nonce by 1
+    push.1 exec.account::incr_nonce
+    # => []
+end
+
+# Inputs: [KEY]
+# Outputs: [VALUE]
+export.get_value_in_map
+    # The storage map is in storage slot 1
+    push.1
+    # => [index]
+
+    exec.account::get_map_item
+    # => [VALUE]
+end
+
+# Inputs: []
+# Outputs: [CURRENT_ROOT]
+export.get_current_map_root
+    # Getting the current root from slot 1
+    push.1 exec.account::get_item
+    # => [CURRENT_ROOT]
+
+    exec.sys::truncate_stack
+    # => [CURRENT_ROOT]
+end

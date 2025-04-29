@@ -1,3 +1,7 @@
+use rand::RngCore;
+use std::sync::Arc;
+use tokio::time::Duration;
+
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
@@ -5,61 +9,39 @@ use miden_client::{
     },
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
-    crypto::{RpoRandomCoin, SecretKey},
-    note::NoteType,
+    builder::ClientBuilder,
+    crypto::SecretKey,
+    keystore::FilesystemKeyStore,
+    note::{create_p2id_note, NoteType},
     rpc::{Endpoint, TonicRpcClient},
-    store::{sqlite_store::SqliteStore, StoreAuthenticator},
     transaction::{OutputNote, PaymentTransactionData, TransactionRequestBuilder},
-    Client, ClientError, Felt,
+    ClientError, Felt,
 };
-use miden_lib::note::create_p2id_note;
 use miden_objects::account::AccountIdVersion;
-
-use rand::Rng;
-use std::sync::Arc;
-use tokio::time::Duration;
-
-pub async fn initialize_client() -> Result<Client<RpoRandomCoin>, ClientError> {
-    // RPC endpoint and timeout
-    let endpoint = Endpoint::new("http".to_string(), "localhost".to_string(), Some(57291));
-    let timeout_ms = 10_000;
-
-    // Build RPC client
-    let rpc_api = Box::new(TonicRpcClient::new(endpoint, timeout_ms));
-
-    // Seed RNG
-    let mut seed_rng = rand::thread_rng();
-    let coin_seed: [u64; 4] = seed_rng.gen();
-
-    // Create random coin instance
-    let rng = RpoRandomCoin::new(coin_seed.map(Felt::new));
-
-    // SQLite path
-    let store_path = "store.sqlite3";
-
-    // Initialize SQLite store
-    let store = SqliteStore::new(store_path.into())
-        .await
-        .map_err(ClientError::StoreError)?;
-    let arc_store = Arc::new(store);
-
-    // Create authenticator referencing the same store and RNG
-    let authenticator = StoreAuthenticator::new_with_rng(arc_store.clone(), rng.clone());
-
-    // Instantiate the client. Toggle `in_debug_mode` as needed
-    let client = Client::new(rpc_api, rng, arc_store, Arc::new(authenticator), true);
-
-    Ok(client)
-}
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    let mut client = initialize_client().await?;
-    println!("Client initialized successfully.");
+    // Initialize client & keystore
+    let endpoint = Endpoint::new(
+        "https".to_string(),
+        "rpc.testnet.miden.io".to_string(),
+        Some(443),
+    );
+    let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+
+    let mut client = ClientBuilder::new()
+        .with_rpc(rpc_api)
+        .with_filesystem_keystore("./keystore")
+        .in_debug_mode(true)
+        .build()
+        .await?;
 
     let sync_summary = client.sync_state().await.unwrap();
-    let block_number = sync_summary.block_num;
-    println!("Latest block number: {}", block_number);
+    println!("Latest block: {}", sync_summary.block_num);
+
+    let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
+        FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     //------------------------------------------------------------
     // STEP 1: Create a basic wallet for Alice
@@ -67,10 +49,9 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating a new account for Alice");
 
     // Account seed
-    let mut init_seed = [0u8; 32];
+    let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    // Generate key pair
     let key_pair = SecretKey::with_rng(client.rng());
 
     // Anchor block
@@ -88,13 +69,13 @@ async fn main() -> Result<(), ClientError> {
 
     // Add the account to the client
     client
-        .add_account(
-            &alice_account,
-            Some(seed),
-            &AuthSecretKey::RpoFalcon512(key_pair),
-            false,
-        )
+        .add_account(&alice_account, Some(seed), false)
         .await?;
+
+    // Add the key pair to the keystore
+    keystore
+        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .unwrap();
 
     println!("Alice's account ID: {:?}", alice_account.id().to_hex());
 
@@ -127,13 +108,13 @@ async fn main() -> Result<(), ClientError> {
 
     // Add the faucet to the client
     client
-        .add_account(
-            &faucet_account,
-            Some(seed),
-            &AuthSecretKey::RpoFalcon512(key_pair),
-            false,
-        )
+        .add_account(&faucet_account, Some(seed), false)
         .await?;
+
+    // Add the key pair to the keystore
+    keystore
+        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .unwrap();
 
     println!("Faucet account ID: {:?}", faucet_account.id().to_hex());
 
@@ -151,17 +132,20 @@ async fn main() -> Result<(), ClientError> {
 
     for i in 1..=5 {
         let transaction_request = TransactionRequestBuilder::mint_fungible_asset(
-            fungible_asset.clone(),
+            fungible_asset,
             alice_account.id(),
             NoteType::Public,
             client.rng(),
         )
         .unwrap()
-        .build();
+        .build()
+        .unwrap();
+
+        println!("tx request built");
+
         let tx_execution_result = client
             .new_transaction(faucet_account.id(), transaction_request)
             .await?;
-
         client.submit_transaction(tx_execution_result).await?;
         println!("Minted note #{} of {} tokens for Alice.", i, amount);
     }
@@ -187,8 +171,9 @@ async fn main() -> Result<(), ClientError> {
 
         if list_of_note_ids.len() == 5 {
             println!("Found 5 consumable notes for Alice. Consuming them now...");
-            let transaction_request =
-                TransactionRequestBuilder::consume_notes(list_of_note_ids).build();
+            let transaction_request = TransactionRequestBuilder::consume_notes(list_of_note_ids)
+                .build()
+                .unwrap();
             let tx_execution_result = client
                 .new_transaction(alice_account.id(), transaction_request)
                 .await?;
@@ -198,7 +183,7 @@ async fn main() -> Result<(), ClientError> {
             break;
         } else {
             println!(
-                "Currently, Alice has {} consumable notes. Waiting for 5...",
+                "Currently, Alice has {} consumable notes. Waiting...",
                 list_of_note_ids.len()
             );
             tokio::time::sleep(Duration::from_secs(3)).await;
@@ -213,12 +198,13 @@ async fn main() -> Result<(), ClientError> {
     // Send 50 tokens to 4 accounts in one transaction
     println!("Creating multiple P2ID notes for 4 target accounts in one transaction...");
     let mut p2id_notes = vec![];
+
+    // Creating 4 P2ID notes to 4 'dummy' AccountIds
     for _ in 1..=4 {
-        let init_seed = {
-            let mut seed = [0u8; 15];
-            rand::thread_rng().fill(&mut seed);
-            seed[0] = 99u8;
-            seed
+        let init_seed: [u8; 15] = {
+            let mut init_seed = [0_u8; 15];
+            client.rng().fill_bytes(&mut init_seed);
+            init_seed
         };
         let target_account_id = AccountId::dummy(
             init_seed,
@@ -240,27 +226,27 @@ async fn main() -> Result<(), ClientError> {
         )?;
         p2id_notes.push(p2id_note);
     }
-    let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
 
+    // Specifying output notes and creating a tx request to create them
+    let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
     let transaction_request = TransactionRequestBuilder::new()
         .with_own_output_notes(output_notes)
-        .unwrap()
-        .build();
+        .build()
+        .unwrap();
 
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;
 
+    // Submitting the transaction
     client.submit_transaction(tx_execution_result).await?;
     println!("Submitted a transaction with 4 P2ID notes.");
 
-    // Send 50 tokens to 1 more account as a single P2ID transaction
     println!("Submitting one more single P2ID transaction...");
-    let init_seed = {
-        let mut seed = [0u8; 15];
-        rand::thread_rng().fill(&mut seed);
-        seed[0] = 99u8;
-        seed
+    let init_seed: [u8; 15] = {
+        let mut init_seed = [0_u8; 15];
+        client.rng().fill_bytes(&mut init_seed);
+        init_seed
     };
     let target_account_id = AccountId::dummy(
         init_seed,
@@ -284,7 +270,8 @@ async fn main() -> Result<(), ClientError> {
         client.rng(),     // rng
     )
     .unwrap()
-    .build();
+    .build()
+    .unwrap();
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;

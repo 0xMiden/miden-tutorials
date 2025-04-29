@@ -1,0 +1,42 @@
+use.miden::note
+use.miden::contracts::wallets::basic->wallet
+
+# => [HASH_PREIMAGE_SECRET]
+begin
+
+    # Hashing the secret number
+    hperm
+    # => [F,E,D]
+    # E is digest
+
+    dropw swapw dropw
+    # => [DIGEST]
+
+    # Writing the note inputs to memory
+    push.0 exec.note::get_inputs drop drop
+    # => [DIGEST]
+
+    # Pad stack and load note inputs from memory
+    padw push.0 mem_loadw
+    # => [INPUTS, DIGEST]
+
+    # Assert that the note input matches the digest
+    # Will fail if the two hashes do not match
+    assert_eqw
+    # => []
+
+    # Write the asset in note to memory address 0
+    push.0 exec.note::get_assets
+    # => [num_assets, dest_ptr]
+
+    drop
+    # => [dest_ptr]
+
+    # Load asset from memory
+    mem_loadw
+    # => [ASSET]
+
+    # Call receive asset in wallet
+    call.wallet::receive_asset
+    # => []
+end

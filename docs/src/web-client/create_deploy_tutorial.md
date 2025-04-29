@@ -1,12 +1,12 @@
-# Creating Accounts and Deploying Faucets 
+# Creating Accounts and Deploying Faucets
 
-*Using the Miden WebClient in TypeScript to create accounts and deploy faucets*
+_Using the Miden WebClient in TypeScript to create accounts and deploy faucets_
 
 ## Overview
 
-In this tutorial, we will create a basic web application that interacts with Miden using the Miden WebClient. 
+In this tutorial, we will create a basic web application that interacts with Miden using the Miden WebClient.
 
-Our web application will create a Miden account for *Alice* and then deploy a fungible faucet. In the next section we will mint tokens from the faucet to fund her account, and then send the tokens from Alice's account to other Miden accounts.
+Our web application will create a Miden account for _Alice_ and then deploy a fungible faucet. In the next section we will mint tokens from the faucet to fund her account, and then send the tokens from Alice's account to other Miden accounts.
 
 ## What we'll cover
 
@@ -17,9 +17,7 @@ Our web application will create a Miden account for *Alice* and then deploy a fu
 
 ## Prerequisites
 
-To begin, make sure you have a miden-node running locally in a separate terminal window. To get the Miden node running locally, you can follow the instructions on the [Miden Node Setup](./miden_node_setup_tutorial.md) page.
-
-Note: In this tutorial we use [pnpm](https://pnpm.io/installation) which is a drop in replacement for npm.
+In this tutorial we use [pnpm](https://pnpm.io/installation) which is a drop in replacement for npm.
 
 ## Public vs. private accounts & notes
 
@@ -30,22 +28,22 @@ Before we dive into the coding, let's clarify the concepts of public and private
 - Public notes: The note's state is visible to anyone - perfect for scenarios where transparency is desired.
 - Private notes: The note's state is stored off-chain, you will need to share the note data with the relevant parties (via email or Telegram) for them to be able to consume the note.
 
-Note: *The term "account" can be used interchangeably with the term "smart contract" since account abstraction on Miden is handled natively.*
+Note: _The term "account" can be used interchangeably with the term "smart contract" since account abstraction on Miden is handled natively._
 
-*It is useful to think of notes on Miden as "cryptographic cashier's checks" that allow users to send tokens. If the note is private, the note transfer is only known to the sender and receiver.*
+_It is useful to think of notes on Miden as "cryptographic cashier's checks" that allow users to send tokens. If the note is private, the note transfer is only known to the sender and receiver._
 
 ## Step 1: Initialize your repository
 
 Create a new React TypeScript repository for your Miden web application, navigate to it, and install the Miden WebClient using this command:
 
 ```bash
-pnpm create vite miden-app --template react-ts
+pnpm create vite miden-webapp --template react-ts
 ```
 
 Navigate to the new repository:
 
 ```bash
-cd miden-app
+cd miden-webapp
 ```
 
 Install dependencies:
@@ -57,27 +55,43 @@ pnpm install
 Install the Miden WebClient SDK:
 
 ```bash
-pnpm i @demox-labs/miden-sdk@0.6.1-next.4
+pnpm i @demox-labs/miden-sdk@0.8.1
 ```
 
 Save this as your `vite.config.ts` file:
 
 ```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
   build: {
-    target: 'esnext',
+    target: "esnext",
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
+    rollupOptions: {
+      external: ["@demox-labs/miden-sdk"],
+      output: {
+        format: "es",
+      },
+    },
   },
   optimizeDeps: {
-    exclude: ['@demox-labs/miden-sdk'], // Exclude the SDK from optimization
+    include: ["@demox-labs/miden-sdk"],
+    esbuildOptions: {
+      target: "esnext",
+      supported: {
+        "top-level-await": true,
+      },
+    },
   },
 });
 ```
 
-**Note**: *ensure you are using Node version `v20.12.0`*
+**Note**: _ensure you are using Node version `v20.12.0`_
 
 ## Step 2: Initialize the client
 
@@ -92,33 +106,34 @@ To instantiate the WebClient, pass in the endpoint of the Miden node. You can al
 
 Since we will be handling proof generation in the computationally constrained environment of the browser, it will be slower than proof generation handled by the Rust client. Currently, the Miden WebClient is thread-blocking when not used within a web worker.
 
-Example of instantiating the WebClient with a delegated prover:
+Example of instantiating the WebClient:
 
 ```ts
-const nodeEndpoint = "http://localhost:57291";
-const delegatedProver = 'http://18.118.151.210:8082'
-
-let client = new WebClient();
-await client.create_client(nodeEndpoint, delegatedProver);
+const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+const client = await WebClient.create_client(nodeEndpoint);
 ```
 
 In the `src/` directory create a file named `webClient.ts` and paste the following into it:
 
 ```ts
 // src/webClient.ts
-import { WebClient } from "@demox-labs/miden-sdk";
+import {
+  WebClient,
+  AccountStorageMode,
+  AccountId,
+  NoteType,
+} from "@demox-labs/miden-sdk";
 
-const nodeEndpoint = "http://localhost:57291";
+const nodeEndpoint = "https://rpc.testnet.miden.io:443";
 
 export async function webClient(): Promise<void> {
   try {
     // 1. Create client
-    const client = new WebClient();
-    await client.create_client(nodeEndpoint);
+    const client = await WebClient.createClient(nodeEndpoint);
 
     // 2. Sync and log block
-    const state = await client.sync_state();
-    console.log("Latest block number:", state.block_num());
+    const state = await client.syncState();
+    console.log("Latest block number:", state.blockNum());
   } catch (error) {
     console.error("Error", error);
     throw error;
@@ -164,7 +179,7 @@ export default App;
 pnpm run dev
 ```
 
-Open the frontend at: 
+Open the frontend at:
 
 ```
 http://localhost:5173/
@@ -184,7 +199,7 @@ To create a wallet for Alice using the Miden WebClient, we specify the account t
 
 A wallet on Miden is simply an account with standardized code.
 
-In the example below we create a mutable public account for Alice. 
+In the example below we create a mutable public account for Alice.
 
 Our `src/webClient.ts` file should now look something like this:
 
@@ -197,28 +212,27 @@ import {
   NoteType,
 } from "@demox-labs/miden-sdk";
 
-const nodeEndpoint = "http://localhost:57291";
+const nodeEndpoint = "https://rpc.testnet.miden.io:443";
 
 export async function webClient(): Promise<void> {
   try {
     // 1. Create client
-    const client = new WebClient();
-    await client.create_client(nodeEndpoint);
+    const client = await WebClient.createClient(nodeEndpoint);
 
     // 2. Sync and log block
-    const state = await client.sync_state();
-    console.log("Latest block number:", state.block_num());
+    const state = await client.syncState();
+    console.log("Latest block number:", state.blockNum());
 
     // 3. Create Alice account (public, updatable)
     console.log("Creating account for Alice");
-    const aliceAccount = await client.new_wallet(
+    const aliceAccount = await client.newWallet(
       AccountStorageMode.public(), // account type
-      true,                        // mutability
+      true, // mutability
     );
-    const aliceIdHex = aliceAccount.id().to_string();
+    const aliceIdHex = aliceAccount.id().toString();
     console.log("Alice's account ID:", aliceIdHex);
 
-    await client.sync_state();
+    await client.syncState();
   } catch (error) {
     console.error("Error:", error);
     throw error;
@@ -237,20 +251,18 @@ Add this snippet to the end of the `webClient()` function:
 ```ts
 // 4. Create faucet
 console.log("Creating faucet...");
-const faucetAccount = await client.new_faucet(
-  AccountStorageMode.public(), // account type
-  false,                       // is fungible
-  "MID",                       // symbol
-  8,                           // decimals
-  BigInt(1_000_000)            // max supply
+const faucetAccount = await client.newFaucet(
+  AccountStorageMode.public(),
+  false,
+  "MID",
+  8,
+  BigInt(1_000_000),
 );
-const faucetIdHex = faucetAccount.id().to_string();
+const faucetIdHex = faucetAccount.id().toString();
 console.log("Faucet account ID:", faucetIdHex);
-
-await client.sync_state();
 ```
 
-*When tokens are minted from this faucet, each token batch is represented as a "note" (UTXO). You can think of a Miden Note as a cryptographic cashier's check that has certain spend conditions attached to it.*
+_When tokens are minted from this faucet, each token batch is represented as a "note" (UTXO). You can think of a Miden Note as a cryptographic cashier's check that has certain spend conditions attached to it._
 
 ## Summary
 
@@ -265,42 +277,42 @@ import {
   NoteType,
 } from "@demox-labs/miden-sdk";
 
-const nodeEndpoint = "http://localhost:57291";
+const nodeEndpoint = "https://rpc.testnet.miden.io:443";
 
 export async function webClient(): Promise<void> {
   try {
     // 1. Create client
-    const client = new WebClient();
-    await client.create_client(nodeEndpoint);
+    const client = await WebClient.createClient(nodeEndpoint);
 
     // 2. Sync and log block
-    const state = await client.sync_state();
-    console.log("Latest block number:", state.block_num());
+    const state = await client.syncState();
+    console.log("Latest block number:", state.blockNum());
 
     // 3. Create Alice account (public, updatable)
     console.log("Creating account for Alice");
-    const aliceAccount = await client.new_wallet(
+    const aliceAccount = await client.newWallet(
       AccountStorageMode.public(),
       true,
     );
-    const aliceIdHex = aliceAccount.id().to_string();
+    const aliceIdHex = aliceAccount.id().toString();
     console.log("Alice's account ID:", aliceIdHex);
 
     // 4. Create faucet
     console.log("Creating faucet...");
-    const faucetAccount = await client.new_faucet(
-      AccountStorageMode.public(), // account type
-      false,                       // is fungible
-      "MID",                       // symbol
-      8,                           // decimals
-      BigInt(1_000_000)            // max supply
+    const faucetAccount = await client.newFaucet(
+      AccountStorageMode.public(),
+      false,
+      "MID",
+      8,
+      BigInt(1_000_000),
     );
-    const faucetIdHex = faucetAccount.id().to_string();
+    const faucetIdHex = faucetAccount.id().toString();
     console.log("Faucet account ID:", faucetIdHex);
 
-    await client.sync_state();
+    await client.syncState();
+    console.log("Tokens sent.");
   } catch (error) {
-    console.error("Error", error);
+    console.error("Error:", error);
     throw error;
   }
 }
@@ -322,7 +334,7 @@ Faucet account ID: 0x2d7e506fb88dde200000a1386efec8
 
 In this section, we explained how to instantiate the Miden client, create a wallet, and deploy a faucet.
 
-In the next section we will cover how to mint tokens from the faucet, consume notes, and send tokens to other accounts. 
+In the next section we will cover how to mint tokens from the faucet, consume notes, and send tokens to other accounts.
 
 ### Running the example
 
