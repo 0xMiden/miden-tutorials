@@ -1,6 +1,6 @@
 # Writing a MidenVM Program In Rust
 
-*Using the Miden compiler to write programs in Rust and generate a proof of computation using the MidenVM CLI*
+_Using the Miden compiler to write programs in Rust and generate a proof of computation using the MidenVM CLI_
 
 ## Overview
 
@@ -16,33 +16,46 @@ In this guide, we will write a simple Rust program that checks whether an intege
 ## Limitations and Important Considerations
 
 Please note these current limitations of the Miden compiler:
+
 - **No Floating Point Support:** Only integer arithmetic is supported (e.g., `u32`, `u64`, etc.).
 - **No Standard Library:** Programs must be written with `#![no_std]`, limiting you to core library functionality.
 - **Entrypoint Constraints:** The `entrypoint` function can accept at most **16 inputs** on the stack and produces a single `u32` output.
 
 ## Step 1: Installing the Miden Compiler
 
-Clone the repository and install the compiler:
+Ensure you are using the nightly release of the rust toolchain:
+
+```bash
+rustup update nightly
+rustup default nightly
+```
+
+Clone the compiler repository:
+
 ```bash
 git clone https://github.com/0xpolygonmiden/compiler
 cd compiler
 git checkout next
 ```
 
-Then install the Miden compiler and cargo-miden extension:
+Then install the compiler and cargo-miden extension:
+
 ```bash
-cargo make build 
+cargo install --path tools/cargo-miden
+cargo install --path midenc --locked
 ```
 
 ## Step 2: Writing the Rust Program
 
-Outside of the compiler repository, create a new Miden project:
+In a new terminal outside of the compiler repository, create a new Miden project:
+
 ```bash
 cargo miden new is_prime
 cd is_prime
 ```
 
 Add the following Rust code to `is_prime/src/lib.rs`. This code checks whether a number is prime:
+
 ```rust
 #![no_std]
 
@@ -84,9 +97,10 @@ fn entrypoint(n: u32) -> bool {
 Add this code into your project's `src/lib.rs` file.
 
 Next, create an `is_prime/inputs.toml` file:
+
 ```toml
 [inputs]
-stack = [2147482583]
+stack = [29]
 ```
 
 This file sets the value that will be passed into our `entrypoint` function when the program runs.
@@ -94,16 +108,19 @@ This file sets the value that will be passed into our `entrypoint` function when
 ## Step 3: Running the Program in the Miden VM
 
 Compile your program with:
+
 ```bash
 cargo miden build --release
 ```
 
 Run your compiled Miden assembly program using:
+
 ```bash
 midenc run target/miden/release/is_prime.masp --inputs inputs.toml
 ```
 
 The output will look like this:
+
 ```
 Run program: target/miden/release/is_prime.masp
 -------------------------------------------------------------------------------
@@ -123,30 +140,27 @@ The program returns `1` if the integer passed to the `is_prime` function is prim
 
 ## Step 4: Generating a zk proof of the `is_prime` program execution
 
-First install the Miden CLI by cloning the Miden VM repository and checking out the `next` branch:
+First cloning the Miden VM repository and install the Miden VM CLI:
+
 ```bash
 git clone git@github.com:0xPolygonMiden/miden-vm.git
-cd miden-vm
-git checkout next
-```
-
-Build and install the Miden VM CLI:
-```
-cd miden
+cd miden-vm/miden
 cargo install --path . --features concurrent,executable
 ```
 
 After installation is complete, return to the `is_prime` directory.
 
 The current input file format for the Miden VM differs slightly from that of the compiler. This means we need to create an `is_prime.inputs` file at the root of the `is_prime` directory:
+
 ```json
 {
-    "operand_stack": ["2147482583"]
+  "operand_stack": ["29"]
 }
 ```
 
 Now, using the Miden VM CLI tool, we can prove our program by running the following:
-```
+
+```bash
 miden prove target/miden/release/is_prime.masp -i is_prime.inputs
 ```
 
@@ -162,11 +176,13 @@ Output: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 
 To verify the proof generated in the previous step, run the following:
-```
+
+```bash
 miden verify -p target/miden/release/is_prime.proof -i is_prime.inputs -x 79689b17ab6286cfde4651ef1f675cab19ad4efd9defd2c43001a06e7cbd8c40
 ```
 
 The output should look like this:
+
 ```
 ===============================================================================
 Verifying proof: target/miden/release/is_prime.proof
