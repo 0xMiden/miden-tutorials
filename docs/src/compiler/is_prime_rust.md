@@ -4,11 +4,11 @@ _Using the Miden compiler to write programs in Rust and generate a proof of comp
 
 ## Overview
 
-In this guide, we will write a simple Rust program that checks whether an integer is prime. We will compile the Rust program into a Miden package and run it in the Miden VM. We will also see how to use the Miden CLI to generate a STARK proof that the computation was performed correctly.
+In this guide, we will write a simple Rust program that checks whether an integer is prime. We will compile the Rust program into a Miden package and run it in the Miden VM. We will also cover how to use the Miden CLI to generate a STARK proof that the computation was performed correctly.
 
 ## What we'll cover
 
-- Writing basic programs in Rust using the Miden compiler.
+- Writing basic *pure* programs in Rust using the Miden compiler.
 - Running programs in the Miden VM.
 - Generating a proof of compuation for the `is_prime` program
 - Verifying the STARK proof of the `is_prime` program execution
