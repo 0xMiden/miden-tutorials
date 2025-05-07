@@ -108,11 +108,7 @@ end
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::new(
-        "https".to_string(),
-        "rpc.testnet.miden.io".to_string(),
-        Some(443),
-    );
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
@@ -400,11 +396,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::new(
-        "https".to_string(),
-        "rpc.testnet.miden.io".to_string(),
-        Some(443),
-    );
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 

@@ -91,11 +91,7 @@ use miden_objects::account::AccountIdVersion;
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::new(
-        "https".to_string(),
-        "rpc.testnet.miden.io".to_string(),
-        Some(443),
-    );
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
@@ -243,11 +239,7 @@ Your updated `main()` function in `src/main.rs` should look like this:
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::new(
-        "https".to_string(),
-        "rpc.testnet.miden.io".to_string(),
-        Some(443),
-    );
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
