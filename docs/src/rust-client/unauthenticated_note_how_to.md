@@ -6,9 +6,9 @@ _Using unauthenticated notes for optimistic note consumption_
 
 In this guide, we will explore how to leverage unauthenticated notes on Miden to settle transactions faster than the blocktime. Unauthenticated notes are essentially UTXOs that have not yet been fully committed into a block. This feature allows the notes to be created and consumed within the same block.
 
-We construct a chain of transactions using the unauthenticated notes method on the transaction builder. Unauthenticated notes are also referred to as "unauthenticated notes" or "erasable notes". We also demonstrate how a note can be serialized and deserialized, highlighting the ability to transfer notes between client instances for asset transfers that can be settled faster than the blocktime.
+We construct a chain of transactions using the unauthenticated notes method on the transaction builder. Unauthenticated notes are also referred to as "unauthenticated notes" or "erasable notes". We also demonstrate how a note can be serialized and deserialized, highlighting the ability to transfer notes between client instances for asset transfers that can be settled between parties faster than the blocktime.
 
-For example, our demo creates a circle of unauthenticated note transactions:
+For example, our demo creates a chain of unauthenticated note transactions:
 
 ```markdown
 Alice ➡ Bob ➡ Charlie ➡ Dave ➡ Eve ➡ Frank ➡ ...
