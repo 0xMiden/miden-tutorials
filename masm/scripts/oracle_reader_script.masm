@@ -1,0 +1,5 @@
+use.external_contract::oracle_reader
+
+begin
+    exec.oracle_reader::get_price
+end
