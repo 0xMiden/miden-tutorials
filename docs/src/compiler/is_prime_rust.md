@@ -30,19 +30,11 @@ rustup update nightly
 rustup default nightly
 ```
 
-Clone the compiler repository:
+Install the `midenc` compiler and `cargo-miden` extension:
 
 ```bash
-git clone https://github.com/0xpolygonmiden/compiler
-cd compiler
-git checkout next
-```
-
-Then install the compiler and cargo-miden extension:
-
-```bash
-cargo install --path tools/cargo-miden
-cargo install --path midenc --locked
+cargo install cargo-miden
+cargo install midenc --locked
 ```
 
 ## Step 2: Writing the Rust Program
@@ -143,15 +135,12 @@ The program returns `1` if the integer passed to the `is_prime` function is prim
 First cloning the Miden VM repository and install the Miden VM CLI:
 
 ```bash
-git clone git@github.com:0xPolygonMiden/miden-vm.git
-cd miden-vm/miden
-cargo install --path . --features concurrent,executable
+cargo install miden-vm --version 0.13.0 --features concurrent,executable
 ```
 
 After installation is complete, return to the `is_prime` directory.
 
 The current input file format for the Miden VM differs slightly from that of the compiler. This means we need to create an `is_prime.inputs` file at the root of the `is_prime` directory:
-
 ```json
 {
   "operand_stack": ["29"]
@@ -170,7 +159,7 @@ The output should look like this:
 ===============================================================================
 Prove program: target/miden/release/is_prime.masp
 -------------------------------------------------------------------------------
-Proving program with hash 79689b17ab6286cfde4651ef1f675cab19ad4efd9defd2c43001a06e7cbd8c40...
+Proving program with hash c6db9ccd205b2d5139d5a92869a2741a0a8982b8e269a36b7a16d173f467b0c8...
 Program proved in 85558 ms
 Output: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
@@ -178,7 +167,7 @@ Output: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 To verify the proof generated in the previous step, run the following:
 
 ```bash
-miden verify -p target/miden/release/is_prime.proof -i is_prime.inputs -x 79689b17ab6286cfde4651ef1f675cab19ad4efd9defd2c43001a06e7cbd8c40
+miden verify -p target/miden/release/is_prime.proof -i is_prime.inputs -x c6db9ccd205b2d5139d5a92869a2741a0a8982b8e269a36b7a16d173f467b0c8
 ```
 
 The output should look like this:
