@@ -18,7 +18,7 @@ In this guide, we will write a simple Rust program that checks whether an intege
 Please note these current limitations of the Miden compiler:
 
 - **No Floating Point Support:** Only integer arithmetic is supported (e.g., `u32`, `u64`, etc.).
-- **No Standard Library:** Programs must be written with `#![no_std]`, limiting you to core library functionality.
+- **No Standard Library:** Programs must be written with `#![no_std]`.
 - **Entrypoint Constraints:** The `entrypoint` function can accept at most **16 inputs** on the stack and produces a single `u32` output.
 
 ## Step 1: Installing the Miden Compiler
