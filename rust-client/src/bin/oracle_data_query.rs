@@ -18,6 +18,8 @@ use miden_client_tools::{
 };
 
 /// Import the oracle + its publishers and return the ForeignAccount list
+/// Due to Pragma's decentralized oracle architecture, we need to get the 
+/// list of all data publisher accounts to read price from via a nested FPI call 
 pub async fn get_oracle_foreign_accounts(
     client: &mut Client,
     oracle_account_id: AccountId,
@@ -71,8 +73,6 @@ pub async fn get_oracle_foreign_accounts(
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    delete_keystore_and_store(None).await;
-
     // -------------------------------------------------------------------------
     // Initialize Client 
     // -------------------------------------------------------------------------

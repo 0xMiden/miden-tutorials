@@ -1,6 +1,6 @@
 # Consuming On-Chain Price Data from the Pragma Oracle
 
-_Using the Pragma Oracle to get on chain price data_
+_Using the Pragma oracle to get on chain price data_
 
 ## Overview
 
@@ -69,6 +69,8 @@ use miden_client_tools::{
 };
 
 /// Import the oracle + its publishers and return the ForeignAccount list
+/// Due to Pragma's decentralized oracle architecture, we need to get the
+/// list of all data publisher accounts to read price from via a nested FPI call
 pub async fn get_oracle_foreign_accounts(
     client: &mut Client,
     oracle_account_id: AccountId,
@@ -122,8 +124,6 @@ pub async fn get_oracle_foreign_accounts(
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    delete_keystore_and_store(None).await;
-
     // -------------------------------------------------------------------------
     // Initialize Client
     // -------------------------------------------------------------------------
@@ -170,6 +170,8 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
+    // This only adds the account state to the client, but does not deploy the account
+    // To deploy an account, we must execute any arbitrary transaction against it
     client
         .add_account(&oracle_reader_contract.clone(), Some(seed), false)
         .await
@@ -268,11 +270,14 @@ Inside of the `masm/accounts/` directory, create the `oracle_reader.masm` file:
 ```masm
 use.miden::tx
 
+# Fetches the current price from the `get_median`
+# procedure from the Pragma oracle
 # => []
 export.get_price
     push.0.0.0.120195681
     # => [PAIR]
 
+    # This is the procedure root of the `get_median` procedure
     push.0xb86237a8c9cd35acfef457e47282cc4da43df676df410c988eab93095d8fb3b9
     # => [GET_MEDIAN_HASH, PAIR]
 
@@ -344,7 +349,7 @@ Stack state before step 8766:
 View transaction on MidenScan: https://testnet.midenscan.com/tx/0xc8951190564d5c3ac59fe99d8911f8c17f5b59ba542e2eb860413898902f3722
 ```
 
-As you can see, at the top of the stack is the price returned from the Pragma oracle.
+As you can see, at the top of the stack is the price returned from the Pragma oracle. The price is returned with 6 decimal places. Currently Pragma only publishes the `BTC/USD` price feed on testnet.
 
 ### Running the example
 
