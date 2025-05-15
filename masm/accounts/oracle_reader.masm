@@ -1,0 +1,24 @@
+use.miden::tx
+
+# Fetches the current price from the `get_median` 
+# procedure from the Pragma oracle
+# => []
+export.get_price
+    push.0.0.0.120195681
+    # => [PAIR]
+
+    # This is the procedure root of the `get_median` procedure
+    push.0xb86237a8c9cd35acfef457e47282cc4da43df676df410c988eab93095d8fb3b9
+    # => [GET_MEDIAN_HASH, PAIR]
+
+    push.599064613630720.5721796415433354752
+    # => [oracle_id_prefix, oracle_id_suffix, GET_MEDIAN_HASH, PAIR]
+
+    exec.tx::execute_foreign_procedure
+    # => [price]
+
+    debug.stack
+    # => [price]
+
+    dropw dropw
+end

@@ -13,6 +13,7 @@ export.get_count
     # => []
 end
 
+# => []
 export.increment_count
     push.0
     # => [index]

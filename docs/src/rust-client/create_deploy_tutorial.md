@@ -47,7 +47,7 @@ miden-client = { version = "0.8.1", features = ["testing", "concurrent", "tonic"
 miden-lib = { version = "0.8", default-features = false }
 miden-objects = { version = "0.8", default-features = false }
 miden-crypto = { version = "0.14.0", features = ["executable"] }
-miden-assembly = "0.13.0"
+miden-assembly = "0.14.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -91,11 +91,7 @@ use miden_objects::account::AccountIdVersion;
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::new(
-        "https".to_string(),
-        "rpc.testnet.miden.io".to_string(),
-        Some(443),
-    );
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
@@ -243,11 +239,7 @@ Your updated `main()` function in `src/main.rs` should look like this:
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::new(
-        "https".to_string(),
-        "rpc.testnet.miden.io".to_string(),
-        Some(443),
-    );
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
