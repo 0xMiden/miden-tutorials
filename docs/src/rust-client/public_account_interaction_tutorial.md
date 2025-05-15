@@ -36,7 +36,7 @@ miden-client = { version = "0.8.1", features = ["testing", "concurrent", "tonic"
 miden-lib = { version = "0.8", default-features = false }
 miden-objects = { version = "0.8", default-features = false }
 miden-crypto = { version = "0.14.0", features = ["executable"] }
-miden-assembly = "0.14.0"
+miden-assembly = "0.13.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -193,7 +193,7 @@ Add the following code snippet to the end of your `src/main.rs` function:
 println!("\n[STEP 1] Reading data from public state");
 
 // Define the Counter Contract account id from counter contract deploy
-let counter_contract_id = AccountId::from_hex("0x104002887c1187000000ba20f61387").unwrap();
+let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
 
 client
     .import_account_by_id(counter_contract_id)
