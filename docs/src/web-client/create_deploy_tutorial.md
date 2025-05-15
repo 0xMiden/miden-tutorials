@@ -1,41 +1,37 @@
 ## Creating Accounts and Deploying Faucets
 
-_Using the Miden WebClient in TypeScript to create accounts and deploy faucets with Next.js_
+_Using the Miden WebClient in TypeScript to create accounts and deploy faucets_
 
 ## Overview
 
-In this tutorial, we’ll build a simple Next.js application that interacts with Miden using the Miden WebClient. We’ll:
-
-1. Create a Miden account for _Alice_
-2. Deploy a fungible faucet
-3. (Later) Mint tokens from that faucet to fund Alice’s account and send tokens to other Miden accounts
+In this tutorial, we’ll build a simple Next.js application that interacts with Miden using the Miden WebClient. Our web application will create a Miden account for Alice and then deploy a fungible faucet. In the next section we will mint tokens from the faucet to fund her account, and then send the tokens from Alice's account to other Miden accounts.
 
 ## What we'll cover
 
-- Understanding public vs. private accounts & notes
+- Understanding the difference between public and private accounts & notes
 - Instantiating the Miden client
 - Creating new accounts (public or private)
 - Deploying a faucet to fund an account
 
 ## Prerequisites
 
-- Node v20 or greater
-- A terminal with npm or yarn
+- Node `v20` or greater
+- `pnpm`
 
 ## Public vs. private accounts & notes
 
 Before we dive into code, a quick refresher:
 
-- **Public accounts**: on‑chain, fully visible (code & state).
-- **Private accounts**: off‑chain state & logic, known only to the owner.
-- **Public notes**: UTXO‑style tokens, anyone can see.
-- **Private notes**: off‑chain UTXO, must share data out‑of‑band (e.g., email) to consume.
+- **Public accounts**: The account's data and code are stored on-chain and are openly visible, including its assets.
+- **Private accounts**: The account's state and logic are off-chain, only known to its owner.
+- **Public notes**: The note's state is visible to anyone - perfect for scenarios where transparency is desired.
+- **Private notes**: The note's state is stored off-chain, you will need to share the note data with the relevant parties (via email or Telegram) for them to be able to consume the note.
 
-> _Think of notes as “cryptographic cashier’s checks.” Private notes keep amounts and ownership hidden._
+Note: The term "account" can be used interchangeably with the term "smart contract" since account abstraction on Miden is handled natively.
 
----
+It is useful to think of notes on Miden as "cryptographic cashier's checks" that allow users to send tokens. If the note is private, the note transfer is only known to the sender and receiver.
 
-## Step 1: Initialize your Next.js project
+## Step 1: Initialize your Next.js project
 
 1. Create a new Next.js app with TypeScript:
 
@@ -54,9 +50,7 @@ Before we dive into code, a quick refresher:
    npm install @demox-labs/miden-sdk@0.8.2
    ```
 
----
-
-## Step 2: Instantiate the WebClient
+## Step 2: Instantiate the WebClient
 
 ### Create `lib/webClient.ts`
 
@@ -87,9 +81,7 @@ export async function webClient(): Promise<void> {
 
 > Since we will be handling proof generation in the browser, it will be slower than proof generation handled by the Rust client. Check out the tutorial on how to use delegated proving in the browser to speed up proof generation.
 
----
-
-## Step 3: Edit the `app/page.tsx` file:
+## Step 3: Edit the `app/page.tsx` file:
 
 Edit `app/page.tsx` to call `webClient()` on a button click:
 
@@ -124,9 +116,7 @@ export default function Home() {
 }
 ```
 
----
-
-## Step 4: Create a wallet for Alice
+## Step 4: Create a wallet for Alice
 
 Back in `lib/webClient.ts`, extend `webClient()`:
 
@@ -159,9 +149,7 @@ export async function webClient(): Promise<void> {
 }
 ```
 
----
-
-## Step 5: Deploy a fungible faucet
+## Step 5: Deploy a fungible faucet
 
 Append this to the end of `webClient()`:
 
@@ -182,8 +170,6 @@ console.log("Setup complete.");
 ```
 
 > Every batch minted is a “note”—think of it as a UTXO with spend conditions.
-
----
 
 ## Summary
 
@@ -230,8 +216,6 @@ export async function webClient(): Promise<void> {
 }
 ```
 
----
-
 ### Running the example
 
 ```bash
@@ -248,7 +232,3 @@ Alice ID: 0xd70b2072c6495d100000869a8bacf2
 Faucet ID: 0x2d7e506fb88dde200000a1386efec8
 Setup complete.
 ```
-
----
-
-Next up: **Minting tokens** from the faucet, **consuming notes**, and **sending tokens** to other accounts!
