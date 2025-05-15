@@ -8,7 +8,7 @@ In this guide, we will write a simple Rust program that checks whether an intege
 
 ## What we'll cover
 
-- Writing basic *pure* programs in Rust using the Miden compiler.
+- Writing basic _pure_ programs in Rust using the Miden compiler.
 - Running programs in the Miden VM.
 - Generating a proof of compuation for the `is_prime` program
 - Verifying the STARK proof of the `is_prime` program execution
@@ -141,6 +141,7 @@ cargo install miden-vm --version 0.13.0 --features concurrent,executable
 After installation is complete, return to the `is_prime` directory.
 
 The current input file format for the Miden VM differs slightly from that of the compiler. This means we need to create an `is_prime.inputs` file at the root of the `is_prime` directory:
+
 ```json
 {
   "operand_stack": ["29"]
