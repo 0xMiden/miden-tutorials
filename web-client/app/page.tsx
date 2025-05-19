@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import { webClient } from "../lib/webClient";
-
+import { libraryTest } from "../lib/libraryTest";
 export default function Home() {
   const [started, setStarted] = useState(false);
 
   const handleClick = async () => {
     setStarted(true);
-    await webClient();
+    await libraryTest();
     setStarted(false);
   };
 
