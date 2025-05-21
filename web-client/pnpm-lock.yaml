@@ -6,7 +6,7 @@ settings:
 
 dependencies:
   '@demox-labs/miden-sdk':
-    specifier: ^0.8.2
+    specifier: 0.8.4
     version: 0.8.4(chai@5.2.0)
   next:
     specifier: 15.3.0
