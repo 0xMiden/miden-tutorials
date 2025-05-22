@@ -111,8 +111,8 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
   const recipientAddresses = [
     "0x3477d1532b97101000006f79009dda",
-    "0x3477d1532b97101000006f79009dda",
-    "0x3477d1532b97101000006f79009dda",
+    "0x13eb7f06cc675f20000d28ad4256e9",
+    "0x3a2ff6a4b1628120000d8a3650894b",
   ];
 
   const script = client.compileNoteScript(P2ID_NOTE_SCRIPT);

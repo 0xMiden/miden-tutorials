@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { webClient } from "../lib/webClient";
-import { multiSendWithDelegatedProver } from "../lib/multiSend";
+import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
 
 export default function Home() {
   const [isStartingClient, setIsStartingClient] = useState(false);
