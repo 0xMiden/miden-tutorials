@@ -84,7 +84,7 @@ async fn main() -> Result<(), ClientError> {
         FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     let remote_tx_prover: RemoteTransactionProver =
-        RemoteTransactionProver::new("http://0.0.0.0:8082");
+        RemoteTransactionProver::new("https://tx-prover.testnet.miden.io");
     let tx_prover: Arc<dyn TransactionProver + 'static> = Arc::new(remote_tx_prover);
 
     let sync_summary = client.sync_state().await.unwrap();
