@@ -54,12 +54,15 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     NoteExecutionMode,
     NoteMetadata,
     FeltArray,
+    Felt,
     FungibleAsset,
     TransactionRequestBuilder,
     OutputNote,
   } = await import("@demox-labs/miden-sdk");
 
-  const client = await WebClient.createClient("https://rpc.testnet.miden.io:443");
+  const client = await WebClient.createClient(
+    "https://rpc.testnet.miden.io:443",
+  );
   const prover = TransactionProver.newRemoteProver("http://0.0.0.0:8082");
 
   console.log("Latest block:", (await client.syncState()).blockNum());
@@ -105,9 +108,15 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   );
   await client.syncState();
 
-  // ── build 5 P2ID notes (100 MID each) ─────────────────────────────────────────────
-  const recipients = Array(5).fill("0x599a54603f0cf9000000ed7a11e379");
+  // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
+  const recipientAddresses = [
+    "0x3477d1532b97101000006f79009dda",
+    "0x3477d1532b97101000006f79009dda",
+    "0x3477d1532b97101000006f79009dda",
+  ];
+
   const script = client.compileNoteScript(P2ID_NOTE_SCRIPT);
+  
   const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
   const metadata = new NoteMetadata(
     alice.id(),
@@ -116,36 +125,37 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     NoteExecutionHint.always(),
   );
 
-  const p2idNotes = recipients.map((addr) => {
-    const serial = Word.newFromU64s(
-      new BigUint64Array([
-        BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
-        BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
-        BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
-        BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
-      ]),
-    );
+  const p2idNotes = recipientAddresses.map((addr) => {
+    let serialNumber = Word.newFromFelts([
+      new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+      new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+      new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+      new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+    ]);
 
     const acct = AccountId.fromHex(addr);
     const inputs = new NoteInputs(
-      new FeltArray([acct.prefix(), acct.suffix()]),
+      new FeltArray([acct.suffix(), acct.prefix()]),
     );
 
-    return OutputNote.full(
-      new Note(assets, metadata, new NoteRecipient(serial, script, inputs)),
+    let note = new Note(
+      assets,
+      metadata,
+      new NoteRecipient(serialNumber, script, inputs),
     );
+
+    return OutputNote.full(note);
   });
 
-  // ── create all P2ID notes ───────────────────────────────────────────────────────────────
-  await client.submitTransaction(
-    await client.newTransaction(
-      alice.id(),
-      new TransactionRequestBuilder()
-        .withOwnOutputNotes(new OutputNotesArray(p2idNotes))
-        .build(),
-    ),
-    prover,
+  let transaction = await client.newTransaction(
+    alice.id(),
+    new TransactionRequestBuilder()
+      .withOwnOutputNotes(new OutputNotesArray(p2idNotes))
+      .build(),
   );
+
+  // ── create all P2ID notes ───────────────────────────────────────────────────────────────
+  await client.submitTransaction(transaction, prover);
 
   console.log("All notes created ✅");
 }

@@ -25,7 +25,7 @@ export default function Home() {
         <h1 className="text-4xl font-semibold mb-4">Miden Web App</h1>
         <p className="mb-6">Open your browser console to see WebClient logs.</p>
 
-        <div className="max-w-sm w-full bg-gray-800/40 border border-white-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
+        <div className="max-w-sm w-full bg-gray-800/20 border border-gray-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
           <button
             onClick={handleStartClient}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
