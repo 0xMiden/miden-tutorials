@@ -2,8 +2,6 @@
 
 _Using the Miden WebClient in TypeScript to create several P2ID notes in a single transaction_
 
----
-
 ## Overview
 
 In the previous sections we learned how to create accounts, deploy faucets, and mint tokens. In this tutorial we will:
@@ -14,15 +12,11 @@ In the previous sections we learned how to create accounts, deploy faucets, and 
 
 The entire flow is wrapped in a helper called `multiSendWithDelegatedProver()` that you can call from any browser page.
 
----
-
 ## What we’ll cover
 
 1. Setting‑up the WebClient and initializing a remote prover
 2. Building three P2ID notes worth 100 `MID` each
 3. Submitting the transaction _using delegated proving_
-
----
 
 ## Prerequisites
 
@@ -184,7 +178,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const client = await WebClient.createClient(
     "https://rpc.testnet.miden.io:443",
   );
-  const prover = TransactionProver.newRemoteProver("http://0.0.0.0:8082");
+  const prover = TransactionProver.newRemoteProver(
+    "https://tx-prover.testnet.miden.io",
+  );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
 }
