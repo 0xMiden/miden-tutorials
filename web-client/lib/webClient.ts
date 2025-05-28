@@ -36,7 +36,6 @@ export async function webClient(): Promise<void> {
   await client.syncState();
 
   // 4. Mint tokens to Alice
-  await client.fetchAndCacheAccountAuthByAccountId(faucet.id());
   await client.syncState();
 
   console.log("Minting tokens to Alice...");

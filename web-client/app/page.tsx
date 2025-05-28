@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { webClient } from "../lib/webClient";
 import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
+import {libraryTest} from "../lib/createLib";
 
 export default function Home() {
   const [isStartingClient, setIsStartingClient] = useState(false);
   const [isSendingNotes, setIsSendingNotes] = useState(false);
+  const [isCreatingLib, setIsCreateingLib] = useState(false);
 
   const handleStartClient = async () => {
     setIsStartingClient(true);
@@ -17,6 +19,13 @@ export default function Home() {
     setIsSendingNotes(true);
     await multiSendWithDelegatedProver();
     setIsSendingNotes(false);
+  };
+
+
+  const handleCreateLib = async () => {
+    setIsCreateingLib(true);
+    await libraryTest();
+    setIsCreateingLib(false);
   };
 
   return (
@@ -38,6 +47,13 @@ export default function Home() {
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isSendingNotes ? "Working..." : "Send 1 to N P2ID Notes"}
+          </button>
+
+          <button
+            onClick={handleCreateLib}
+            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
+          >
+            {isCreatingLib ? "Working..." : "Create Lib"}
           </button>
         </div>
       </div>

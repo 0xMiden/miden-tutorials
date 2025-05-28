@@ -63,18 +63,19 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const client = await WebClient.createClient(
     "https://rpc.testnet.miden.io:443",
   );
-  const prover = TransactionProver.newRemoteProver("https://tx-prover.testnet.miden.io");
+  const prover = TransactionProver.newRemoteProver(
+    "https://tx-prover.testnet.miden.io",
+  );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
 
   const alice = await client.newWallet(AccountStorageMode.public(), true);
-  const faucet = await client.newFaucet(
-    AccountStorageMode.public(),
-    false,
-    "MID",
-    8,
-    BigInt(1_000_000),
-  );
+
+  const faucetId = AccountId.fromHex("0x696631693bb85f20000e732cb23eb7");
+  await client.importAccountById(faucetId);
+  const faucet = await client.getAccount(faucetId);
+  if (!faucet) throw new Error(`Account ${faucetId} not found`);
+
   console.log("Alice:", alice.id().toString());
   console.log("Faucet:", faucet.id().toString());
 
@@ -116,7 +117,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   ];
 
   const script = client.compileNoteScript(P2ID_NOTE_SCRIPT);
-  
+
   const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
   const metadata = new NoteMetadata(
     alice.id(),
