@@ -4,7 +4,7 @@ _Using delegated proving to minimize transaction proving times on computationall
 
 ## Overview
 
-In this tutorial we will cover how to use delegated proving with the Miden Rust client to minimize the time it takes to generate a valid transaction proof.
+In this tutorial we will cover how to use delegated proving with the Miden Rust client to minimize the time it takes to generate a valid transaction proof. In the code below, we will create an account, mint tokens from a faucet, then send the tokens to another account using delegated proving.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ Before diving into our code example, let's clarify what in the world "delegated 
 
 Delegated proving is the process of outsourcing a part of the ZK proof generation of your transaction to a third party. For certain computationally constrained devices such as mobile phones and web browser environments, generating ZK proofs might take too long to ensure an acceptable user experience. Devices that do not have the computational resources to generate Miden proofs in under 1-2 seconds can use delegated proving to provide a more responsive user experience.
 
-_How does it work?_ When a user choses to use delegated proving, they send off a portion of the zk proof of their transaction to a dedicated server. This dedicated server generates the remainder of the ZK proof of the transaction and submits it to the network. Submitting a transaction with delegated proving is trustless, meaning if the delegated prover is malicious, the could not compromise the security of the account that is submitting a transaction to be processed by the delegated prover. The only downside of using delegated proving is that it reduces the privacy of the account that uses delegated proving, because the delegated prover would have knowledge of the transaction that is being proven.
+_How does it work?_ When a user choses to use delegated proving, they send off a portion of the zk proof of their transaction to a dedicated server. This dedicated server generates the remainder of the ZK proof of the transaction and submits it to the network. Submitting a transaction with delegated proving is trustless, meaning if the delegated prover is malicious, they could not compromise the security of the account that is submitting a transaction to be processed by the delegated prover. The only downside of using delegated proving is that it reduces the privacy of the account that uses delegated proving, because the delegated prover would have knowledge of the inputs to the transaction that is being proven. For example, it would not be advisable to use delegated proving in the case of our "How to Create a Custom Note" tutorial, since the note we create requires knowledge of a hash preimage to redeem the assets in the note. Using delegated proving would reveal the hash preimage to the server running the delegated proving service.
 
 Anyone can run their own delegated prover server. If you are building a product on Miden, it may make sense to run your own delegated prover server for your users. To run your own delegated proving server, follow the instructions here: https://crates.io/crates/miden-proving-service
 
@@ -49,29 +49,28 @@ serde_json = { version = "1.0", features = ["raw_value"] }
 tokio = { version = "1.40", features = ["rt-multi-thread", "net", "macros"] }
 rand_chacha = "0.9.0"
 miden-client-tools = "0.1.1"
-
 ```
 
 ## Step 2: Initialize the client and delegated prover endpoint and construct transactions
 
 Similarly to previous tutorials, we must instantiate the client.
-We construct a `RemoteTransactionProver` that points to our delegated-proving service running at http://0.0.0.0:8082.
+We construct a `RemoteTransactionProver` that points to our delegated-proving service running at https://tx-prover.testnet.miden.io.
 
 ```rust
 use std::sync::Arc;
 
+use miden_client::account::AccountId;
 use miden_client::crypto::FeltRng;
 use miden_client::{
-    ClientError, Felt, RemoteTransactionProver,
     asset::FungibleAsset,
     keystore::FilesystemKeyStore,
     note::NoteType,
     rpc::Endpoint,
     transaction::{OutputNote, TransactionProver, TransactionRequestBuilder},
+    ClientError, Felt, RemoteTransactionProver,
 };
 use miden_client_tools::{
-    create_basic_account, create_basic_faucet, create_exact_p2id_note, instantiate_client,
-    mint_from_faucet_for_account,
+    create_basic_account, create_exact_p2id_note, instantiate_client, mint_from_faucet_for_account,
 };
 
 #[tokio::main]
@@ -93,11 +92,16 @@ async fn main() -> Result<(), ClientError> {
     let (alice_account, _) = create_basic_account(&mut client, keystore.clone())
         .await
         .unwrap();
+
     let (bob_account, _) = create_basic_account(&mut client, keystore.clone())
         .await
         .unwrap();
 
-    let faucet = create_basic_faucet(&mut client, keystore).await.unwrap();
+    // import public faucet id
+    let faucet_id = AccountId::from_hex("0x696631693bb85f20000e732cb23eb7").unwrap();
+    client.import_account_by_id(faucet_id).await.unwrap();
+    let binding = client.get_account(faucet_id).await.unwrap().unwrap();
+    let faucet = binding.account();
 
     let _ = mint_from_faucet_for_account(&mut client, &alice_account, &faucet, 1000, None)
         .await
@@ -110,11 +114,11 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     println!(
-        "Alice Account balance: {:?}",
+        "Alice initial account balance: {:?}",
         account.account().vault().get_balance(faucet.id())
     );
 
-    // Creating 10 P2ID notes with 10 tokens each to send to Bob
+    // Creating 10 separate P2ID notes with 10 tokens each to send to Bob
     let send_amount = 10;
     let fungible_asset = FungibleAsset::new(faucet.id(), send_amount).unwrap();
     let mut p2id_notes = vec![];
@@ -157,7 +161,7 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     println!(
-        "Alice Account balance: {:?}",
+        "Alice final account balance: {:?}",
         account.account().vault().get_balance(faucet.id())
     );
 

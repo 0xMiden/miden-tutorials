@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use miden_client::account::AccountId;
 use miden_client::crypto::FeltRng;
 use miden_client::{
     asset::FungibleAsset,
@@ -10,8 +11,7 @@ use miden_client::{
     ClientError, Felt, RemoteTransactionProver,
 };
 use miden_client_tools::{
-    create_basic_account, create_basic_faucet, create_exact_p2id_note, instantiate_client,
-    mint_from_faucet_for_account,
+    create_basic_account, create_exact_p2id_note, instantiate_client, mint_from_faucet_for_account,
 };
 
 #[tokio::main]
@@ -38,7 +38,11 @@ async fn main() -> Result<(), ClientError> {
         .await
         .unwrap();
 
-    let faucet = create_basic_faucet(&mut client, keystore).await.unwrap();
+    // import public faucet id
+    let faucet_id = AccountId::from_hex("0x696631693bb85f20000e732cb23eb7").unwrap();
+    client.import_account_by_id(faucet_id).await.unwrap();
+    let binding = client.get_account(faucet_id).await.unwrap().unwrap();
+    let faucet = binding.account();
 
     let _ = mint_from_faucet_for_account(&mut client, &alice_account, &faucet, 1000, None)
         .await
@@ -51,11 +55,11 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     println!(
-        "Alice Account balance: {:?}",
+        "Alice initial account balance: {:?}",
         account.account().vault().get_balance(faucet.id())
     );
 
-    // Creating 10 P2ID notes with 10 tokens each to send to Bob
+    // Creating 10 separate P2ID notes with 10 tokens each to send to Bob
     let send_amount = 10;
     let fungible_asset = FungibleAsset::new(faucet.id(), send_amount).unwrap();
     let mut p2id_notes = vec![];
@@ -98,7 +102,7 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     println!(
-        "Alice Account balance: {:?}",
+        "Alice final account balance: {:?}",
         account.account().vault().get_balance(faucet.id())
     );
 
