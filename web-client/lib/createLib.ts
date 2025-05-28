@@ -23,31 +23,13 @@ export async function libraryTest(): Promise<void> {
     TransactionRequestBuilder,
   } = await import("@demox-labs/miden-sdk");
 
-  // const nodeEndpoint = "https://rpc.testnet.miden.io:443";
   const nodeEndpoint = "http://localhost:57291";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log((await client.syncState()).blockNum());
 
-  /*     const counterContractId = AccountId.fromHex(
-      "0x23bd188466567200000087a6ec70d3",
-    );
-    let account = await client.getAccount(counterContractId);
-  
-    console.log("HERE account: ", account);
-
-    if (!account) {
-      await client.importAccountById(counterContractId);
-      console.log("HERE");
-      await client.syncState();
-      account = await client.getAccount(counterContractId);
-      if (!account) {
-        throw new Error(`Account not found after import: ${counterContractId}`);
-      }
-    } */
-
   const accountCode = `
-      # use.miden::account
-      # use.std::sys
+      use.miden::account
+      use.std::sys
 
       # => []
       export.get_count
@@ -66,7 +48,7 @@ export async function libraryTest(): Promise<void> {
           push.0
           # => [index]
           
-          # exec.account::get_item
+          exec.account::get_item
           # => [count]
           
           push.1 add
@@ -78,18 +60,18 @@ export async function libraryTest(): Promise<void> {
           push.0
           # [index, count+1]
           
-          # exec.account::set_item
+          exec.account::set_item
           # => []
           
-          # push.1 exec.account::incr_nonce
+          push.1 exec.account::incr_nonce
           # => []
           
-          # exec.sys::truncate_stack
+          exec.sys::truncate_stack
           # => []
       end
-      `;
+    `;
 
-  let assembler = TransactionKernel.assembler().withDebugMode(true);
+  let assembler = TransactionKernel.assembler();
   let emptyStorageSlot = StorageSlot.emptyValue();
 
   let mappingAccountComponent = AccountComponent.compile(
@@ -115,24 +97,23 @@ export async function libraryTest(): Promise<void> {
     accountBuilderResult.seed,
     false,
   );
-  console.log(accountBuilderResult.account.id());
-
   let counterContract = accountBuilderResult.account;
+  console.log("counter contract id: ", counterContract.id().toString());
 
   let txScriptCode = `
-        use.external_contract::counter_contract
-        begin
-            call.counter_contract::increment_count
-        end
-        `;
+    use.external_contract::counter_contract
+    begin
+        call.counter_contract::increment_count
+    end
+    `;
+
+  const inputs = new TransactionScriptInputPairArray();
 
   let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
     assembler,
     "external_contract::counter_contract",
     accountCode,
   );
-
-  const inputs = new TransactionScriptInputPairArray();
 
   let txScript = TransactionScript.compile(
     txScriptCode,
@@ -145,16 +126,15 @@ export async function libraryTest(): Promise<void> {
     .build();
 
   let txResult = await client.newTransaction(
-    counterContract.id(),
+    accountBuilderResult.account.id(),
     txIncrementRequest,
   );
-  await client.submitTransaction(txResult);
 
+  await client.submitTransaction(txResult);
   await client.syncState();
 
   let counter = await client.getAccount(counterContract.id());
-
   let count = counter?.storage().getItem(0);
 
-  console.log("count: ", count);
+  console.log("count: ", count?.toHex());
 }
