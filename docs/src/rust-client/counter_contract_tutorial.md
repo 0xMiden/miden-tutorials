@@ -220,6 +220,7 @@ In essence, if a procedure performs a state change in the Miden smart contract, 
 This is a Miden assembly script that will call the `increment_count` procedure during the transaction.
 
 Inside of the `masm/scripts/` directory, create the `counter_script.masm` file:
+
 ```masm
 use.external_contract::counter_contract
 

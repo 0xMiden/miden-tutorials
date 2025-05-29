@@ -264,6 +264,7 @@ export async function deployCounterContract(): Promise<void> {
 ```
 
 To run the code above in our frontend, run the following command:
+
 ```
 pnpm run dev
 ```
@@ -271,6 +272,7 @@ pnpm run dev
 Open the browser console and click the button "Deploy Counter Contract".
 
 This is what you should see in the browser console:
+
 ```
 Current block number:  2168
 deployCounterContract.ts:101 Counter contract id:  0xab77ad2ac23ff0000000445bda9e10
@@ -296,7 +298,6 @@ deployCounterContract.ts:153 Count:  1
 6. Pushes `0` onto the stack, which is the index of the storage slot we want to write to.
 7. Calls `account::set_item` which saves the incremented count to storage at index `0`
 8. Calls `sys::truncate_stack` to truncate the stack to size 16.
-
 
 ```masm
 use.miden::account
