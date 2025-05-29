@@ -1,5 +1,5 @@
 // lib/webClient.ts
-export async function libraryTest(): Promise<void> {
+export async function deployCounterContract(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
@@ -7,26 +7,24 @@ export async function libraryTest(): Promise<void> {
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const {
-    WebClient,
-    AccountStorageMode,
-    AccountId,
-    TransactionKernel,
-    StorageSlot,
-    AccountComponent,
-    StorageMap,
-    AssemblerUtils,
-    NoteType,
-    AccountType,
     AccountBuilder,
+    AccountComponent,
+    AccountStorageMode,
+    AccountType,
+    AssemblerUtils,
+    StorageSlot,
+    TransactionKernel,
+    TransactionRequestBuilder,
     TransactionScript,
     TransactionScriptInputPairArray,
-    TransactionRequestBuilder,
+    WebClient,
   } = await import("@demox-labs/miden-sdk");
 
   const nodeEndpoint = "http://localhost:57291";
   const client = await WebClient.createClient(nodeEndpoint);
-  console.log((await client.syncState()).blockNum());
+  console.log("Current block number: ", (await client.syncState()).blockNum());
 
+  // Counter contract code in Miden Assembly
   const accountCode = `
       use.miden::account
       use.std::sys
@@ -71,13 +69,14 @@ export async function libraryTest(): Promise<void> {
       end
     `;
 
+  // Building the counter contract
   let assembler = TransactionKernel.assembler();
   let emptyStorageSlot = StorageSlot.emptyValue();
 
-  let mappingAccountComponent = AccountComponent.compile(
-    accountCode,
-    assembler,
-    [emptyStorageSlot],
+  let counterAccountComponent = AccountComponent.compile(
+    accountCode, // contract code
+    assembler, // assembler
+    [emptyStorageSlot], // storage data
   ).withSupportsAllTypes();
 
   const walletSeed = new Uint8Array(32);
@@ -89,52 +88,67 @@ export async function libraryTest(): Promise<void> {
     .anchor(anchorBlock)
     .accountType(AccountType.RegularAccountImmutableCode)
     .storageMode(AccountStorageMode.public())
-    .withComponent(mappingAccountComponent)
+    .withComponent(counterAccountComponent)
     .build();
 
+  // Importing the counter contract into the WebClient
   await client.newAccount(
-    accountBuilderResult.account,
-    accountBuilderResult.seed,
-    false,
+    accountBuilderResult.account, // account
+    accountBuilderResult.seed, // seed
+    false, // overwrite
   );
   let counterContract = accountBuilderResult.account;
-  console.log("counter contract id: ", counterContract.id().toString());
+  console.log("Counter contract id: ", counterContract.id().toString());
 
+  // Building the transaction script which will call the counter contract
   let txScriptCode = `
     use.external_contract::counter_contract
     begin
         call.counter_contract::increment_count
     end
-    `;
+  `;
 
+  // Empty inputs to the transaction script
   const inputs = new TransactionScriptInputPairArray();
 
+  // Creating the library to call the counter contract
   let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
-    assembler,
-    "external_contract::counter_contract",
-    accountCode,
+    assembler, // assembler
+    "external_contract::counter_contract", // library path to call the contract
+    accountCode, // account code of the contract
   );
 
+  // Creating the transaction script
   let txScript = TransactionScript.compile(
     txScriptCode,
     inputs,
     assembler.withLibrary(counterComponentLib),
   );
 
+  // Creating a transaction request with the transaction script
   let txIncrementRequest = new TransactionRequestBuilder()
     .withCustomScript(txScript)
     .build();
 
+  // Executing the transaction script against the counter contract
   let txResult = await client.newTransaction(
     accountBuilderResult.account.id(),
     txIncrementRequest,
   );
 
+  // Submitting the transaction result to the node
   await client.submitTransaction(txResult);
+
+  // Sync state
   await client.syncState();
 
+  // Logging the count of counter contract
   let counter = await client.getAccount(counterContract.id());
   let count = counter?.storage().getItem(0);
 
-  console.log("count: ", count?.toHex());
+  const counterValue = Number(
+    BigInt("0x" + count!.toHex().slice(-16).match(/../g)!.reverse().join("")),
+  );
+
+  console.log("Count: ", counterValue);
 }

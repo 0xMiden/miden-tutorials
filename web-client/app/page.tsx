@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { webClient } from "../lib/webClient";
 import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
-import {libraryTest} from "../lib/createLib";
+import {deployCounterContract} from "../lib/deployCounterContract";
 
 export default function Home() {
   const [isStartingClient, setIsStartingClient] = useState(false);
@@ -24,7 +24,7 @@ export default function Home() {
 
   const handleCreateLib = async () => {
     setIsCreateingLib(true);
-    await libraryTest();
+    await deployCounterContract();
     setIsCreateingLib(false);
   };
 
@@ -39,21 +39,21 @@ export default function Home() {
             onClick={handleStartClient}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isStartingClient ? "Working..." : "Start WebClient"}
+            {isStartingClient ? "Working..." : "Tutorial #1: Create, Mint, Consume Notes"}
           </button>
 
           <button
             onClick={handleSendNotes}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isSendingNotes ? "Working..." : "Send 1 to N P2ID Notes"}
+            {isSendingNotes ? "Working..." : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
           </button>
 
           <button
             onClick={handleCreateLib}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isCreatingLib ? "Working..." : "Create Lib"}
+            {isCreatingLib ? "Working..." : "Tutorial #3: Deploy Counter Contract"}
           </button>
         </div>
       </div>
