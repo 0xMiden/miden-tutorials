@@ -81,7 +81,6 @@ async fn main() -> Result<(), ClientError> {
         .with_own_output_notes(output_notes)
         .build()
         .unwrap();
-
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;

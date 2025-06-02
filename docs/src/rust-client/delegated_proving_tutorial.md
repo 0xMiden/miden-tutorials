@@ -40,17 +40,17 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.8.1", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.8", default-features = false }
-miden-objects = { version = "0.8", default-features = false }
-miden-crypto = { version = "0.14.0", features = ["executable"] }
+miden-client = { version = "0.9.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.9", default-features = false }
+miden-objects = { version = "0.9", default-features = false }
+miden-crypto = { version = "0.14.1", features = ["executable"] }
 miden-assembly = "0.14.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 tokio = { version = "1.40", features = ["rt-multi-thread", "net", "macros"] }
 rand_chacha = "0.9.0"
-miden-client-tools = "0.1.1"
+miden-client-tools = "0.2.0"
 ```
 
 ## Step 2: Initialize the client and delegated prover endpoint and construct transactions
@@ -142,7 +142,6 @@ async fn main() -> Result<(), ClientError> {
         .with_own_output_notes(output_notes)
         .build()
         .unwrap();
-
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;
