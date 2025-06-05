@@ -17,7 +17,7 @@ Using a script, we will invoke the increment function within the counter contrac
 
 ## Prerequisites
 
-This tutorial assumes you have a basic understanding of Miden assembly. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xpolygonmiden.github.io/examples/).
+This tutorial assumes you have a basic understanding of Miden assembly. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xmiden.github.io/examples/).
 
 ## Step 1: Initialize your repository
 

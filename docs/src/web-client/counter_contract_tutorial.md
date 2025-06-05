@@ -21,7 +21,7 @@ Using a script, we will invoke the increment function within the counter contrac
 - Familiarity with TypeScript
 - `pnpm`
 
-This tutorial assumes you have a basic understanding of Miden assembly. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xpolygonmiden.github.io/examples/).
+This tutorial assumes you have a basic understanding of Miden assembly. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xmiden.github.io/examples/).
 
 ## Step 1: Initialize your Next.js project
 
@@ -41,7 +41,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.8.4-next.3
+   pnpm i @demox-labs/miden-sdk@0.9.0
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
@@ -57,7 +57,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 ## Step 2: Edit the `app/page.tsx` file:
 
-Add the following code to the `app/page.tsx` file:
+Add the following code to the `app/page.tsx` file. This code defines the main page of our web application:
 
 ```tsx
 "use client";
