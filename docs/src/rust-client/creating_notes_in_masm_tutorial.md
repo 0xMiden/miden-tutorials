@@ -503,4 +503,4 @@ cargo run --release --bin note_creation_in_masm
 
 ### Continue learning
 
-Next tutorial: [How to Use Mappings in Miden Assembly](./mappings_in_masm_how_to.md)
+Next tutorial: [Delegated Proving](./delegated_proving_tutorial.md)

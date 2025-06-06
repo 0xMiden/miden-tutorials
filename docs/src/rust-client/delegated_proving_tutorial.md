@@ -197,4 +197,4 @@ cargo run --release --bin delegated_prover
 
 ### Continue learning
 
-Next tutorial: [Deploying a Counter Contract](counter_contract_tutorial.md)
+Next tutorial: [Consuming On-Chain Price Data from the Pragma Oracle](oracle_tutorial.md)
