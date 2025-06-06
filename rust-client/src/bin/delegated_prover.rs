@@ -39,7 +39,7 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     // import public faucet id
-    let faucet_id = AccountId::from_hex("0x696631693bb85f20000e732cb23eb7").unwrap();
+    let faucet_id = AccountId::from_hex("0x9526e379bc3ad4200000b201b1f0f3").unwrap();
     client.import_account_by_id(faucet_id).await.unwrap();
     let binding = client.get_account(faucet_id).await.unwrap().unwrap();
     let faucet = binding.account();
@@ -81,7 +81,6 @@ async fn main() -> Result<(), ClientError> {
         .with_own_output_notes(output_notes)
         .build()
         .unwrap();
-
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;

@@ -51,7 +51,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Reading data from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
+    let counter_contract_id = AccountId::from_hex("0xac6eeab35afb09000000ea9fae7722").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)

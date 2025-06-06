@@ -119,21 +119,10 @@ use tokio::time::{sleep, Duration};
 
 use miden_client::{
     account::{
-        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
-        AccountBuilder, AccountStorageMode, AccountType,
-    },
-    asset::{FungibleAsset, TokenSymbol},
-    auth::AuthSecretKey,
-    builder::ClientBuilder,
-    crypto::{FeltRng, SecretKey},
-    keystore::FilesystemKeyStore,
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt, Word,
+        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512}, Account, AccountBuilder, AccountId, AccountStorageMode, AccountType
+    }, asset::{FungibleAsset, TokenSymbol}, auth::AuthSecretKey, builder::ClientBuilder, crypto::{FeltRng, SecretKey}, keystore::FilesystemKeyStore, note::{
+        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata, NoteRecipient, NoteRelevance, NoteScript, NoteTag, NoteType
+    }, rpc::{Endpoint, TonicRpcClient}, store::InputNoteRecord, transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder}, Client, ClientError, Felt, Word
 };
 use miden_objects::Hasher;
 
@@ -188,22 +177,25 @@ async fn create_basic_faucet(
 }
 
 // Helper to wait until an account has the expected number of consumable notes
-async fn wait_for_notes(
+pub async fn wait_for_note(
     client: &mut Client,
-    account_id: &miden_client::account::Account,
-    expected: usize,
+    account_id: &Account,
+    expected: &Note,
 ) -> Result<(), ClientError> {
     loop {
         client.sync_state().await?;
-        let notes = client.get_consumable_notes(Some(account_id.id())).await?;
-        if notes.len() >= expected {
+
+        let notes: Vec<(InputNoteRecord, Vec<(AccountId, NoteRelevance)>)> =
+            client.get_consumable_notes(Some(account_id.id())).await?;
+
+        let found = notes.iter().any(|(rec, _)| rec.id() == expected.id());
+
+        if found {
+            println!("✅ note found {}", expected.id().to_hex());
             break;
         }
-        println!(
-            "{} consumable notes found for account {}. Waiting...",
-            notes.len(),
-            account_id.id().to_hex()
-        );
+
+        println!("Note {} not found. Waiting...", expected.id().to_hex());
         sleep(Duration::from_secs(3)).await;
     }
     Ok(())
@@ -249,15 +241,14 @@ async fn main() -> Result<(), ClientError> {
     let faucet_id = faucet.id();
     let amount: u64 = 100;
     let mint_amount = FungibleAsset::new(faucet_id, amount).unwrap();
-    let tx_request = TransactionRequestBuilder::mint_fungible_asset(
-        mint_amount,
-        alice_account.id(),
-        NoteType::Public,
-        client.rng(),
-    )
-    .unwrap()
-    .build()
-    .unwrap();
+    let tx_request = TransactionRequestBuilder::new()
+        .build_mint_fungible_asset(
+            mint_amount,
+            alice_account.id(),
+            NoteType::Public,
+            client.rng(),
+        )
+        .unwrap();
     let tx_exec = client.new_transaction(faucet.id(), tx_request).await?;
     client.submit_transaction(tx_exec.clone()).await?;
 
@@ -267,8 +258,7 @@ async fn main() -> Result<(), ClientError> {
         panic!("Expected OutputNote::Full");
     };
 
-    sleep(Duration::from_secs(3)).await;
-    wait_for_notes(&mut client, &alice_account, 1).await?;
+    wait_for_note(&mut client, &alice_account, &p2id_note).await?;
 
     let consume_request = TransactionRequestBuilder::new()
         .with_authenticated_input_notes([(p2id_note.id(), None)])
@@ -305,7 +295,7 @@ async fn main() -> Result<(), ClientError> {
     )?;
     let vault = NoteAssets::new(vec![mint_amount.into()])?;
     let custom_note = Note::new(vault, metadata, recipient);
-    println!("note hash: {:?}", custom_note.commitment());
+    println!("note hash: {:?}", custom_note.id().to_hex());
 
     let note_request = TransactionRequestBuilder::new()
         .with_own_output_notes(vec![OutputNote::Full(custom_note.clone())])
@@ -325,11 +315,11 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // STEP 4: Consume the Custom Note
     // -------------------------------------------------------------------------
-    wait_for_notes(&mut client, &bob_account, 1).await?;
     println!("\n[STEP 4] Bob consumes the Custom Note with Correct Secret");
+
     let secret = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let consume_custom_request = TransactionRequestBuilder::new()
-        .with_authenticated_input_notes([(custom_note.id(), Some(secret))])
+        .with_unauthenticated_input_notes([(custom_note, Some(secret))])
         .build()
         .unwrap();
     let tx_result = client
@@ -350,28 +340,29 @@ async fn main() -> Result<(), ClientError> {
 The output of our program will look something like this:
 
 ```
-Latest block: 17829
+Latest block: 8125
 
 [STEP 1] Creating new accounts
-Alice's account ID: "0x667909fa154e6d100000b61462a7ac"
-Bob's account ID: "0xc05d939c75628210000029f9172d7d"
+Alice's account ID: "0x19e6170ade3f631000009993151abd"
+Bob's account ID: "0xba73b0bb92f3501000006d14c97ed1"
 
 Deploying a new fungible faucet.
-Faucet account ID: "0x0065844c736713200000b88008ea44"
+Faucet account ID: "0x4e9b048e422f4c200000b270fbf53c"
 
 [STEP 2] Mint tokens with P2ID
-0 consumable notes found for account 0x667909fa154e6d100000b61462a7ac. Waiting...
+Note 0x2b581989b58d2256fb4d62955746d7bb5e100224498a2bc5ead4bed11beb1e23 not found. Waiting...
+Note 0x2b581989b58d2256fb4d62955746d7bb5e100224498a2bc5ead4bed11beb1e23 not found. Waiting...
+✅ note found 0x2b581989b58d2256fb4d62955746d7bb5e100224498a2bc5ead4bed11beb1e23
 
 [STEP 3] Create custom note
 digest: RpoDigest([14371582251229115050, 1386930022051078873, 17689831064175867466, 9632123050519021080])
-note hash: RpoDigest([11506510464714929313, 9338809316352932727, 13027456524296482454, 16157106531420254030])
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0xb3f2fb0f83c262ab64c48d8c3c37e802c88abd69c0a0774d92e84781691bbf4c
-0 consumable notes found for account 0xc05d939c75628210000029f9172d7d. Waiting...
+note hash: "0x92d53905c422989284af4ad96a5821ce54294c8dc5f4bf45d05c363f6b3fec9f"
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0xa5145ff24adc011bb4dd4da139b0d34402691d317cf0a4515337593d421a8f2f
 
 [STEP 4] Bob consumes the Custom Note with Correct Secret
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x63e3726201897f355c8322a7cf086738b3493daed42c145389acdf3618014d56
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x10e061aacf029aa2a9ec0457d7ff23130ff859ae75ea9754cbac3f64a4d56659
 
-account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 28574436536292128, suffix: 202860044895232 }): 100}), non_fungible: NonFungibleAssetDelta({}) }
+account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 5664125965390793760, suffix: 196198333234176 }): 100}), non_fungible: NonFungibleAssetDelta({}) }
 ```
 
 ## Conclusion

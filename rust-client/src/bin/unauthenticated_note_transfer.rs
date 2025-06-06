@@ -124,15 +124,15 @@ async fn main() -> Result<(), ClientError> {
     println!("Minting tokens for Alice...");
     let amount: u64 = 100;
     let fungible_asset_mint_amount = FungibleAsset::new(faucet_account.id(), amount).unwrap();
-    let transaction_request = TransactionRequestBuilder::mint_fungible_asset(
-        fungible_asset_mint_amount,
-        alice.id(),
-        NoteType::Public,
-        client.rng(),
-    )
-    .unwrap()
-    .build()
-    .unwrap();
+    let transaction_request = TransactionRequestBuilder::new()
+        .build_mint_fungible_asset(
+            fungible_asset_mint_amount,
+            alice.id(),
+            NoteType::Public,
+            client.rng(),
+        )
+        .unwrap();
+
     let tx_execution_result = client
         .new_transaction(faucet_account.id(), transaction_request)
         .await?;
@@ -211,14 +211,15 @@ async fn main() -> Result<(), ClientError> {
         let deserialized_p2id_note = Note::read_from_bytes(&serialized).unwrap();
 
         // Time consume note request building
-        let consume_note_request =
-            TransactionRequestBuilder::consume_notes(vec![deserialized_p2id_note.id()])
-                .with_unauthenticated_input_notes([(deserialized_p2id_note, None)])
-                .build()
-                .unwrap();
+        let consume_note_request = TransactionRequestBuilder::new()
+            .with_unauthenticated_input_notes([(deserialized_p2id_note, None)])
+            .build()
+            .unwrap();
+
         let tx_execution_result = client
             .new_transaction(accounts[i + 1].id(), consume_note_request)
             .await?;
+
         landed_blocks.push(tx_execution_result.block_num());
         client
             .submit_transaction(tx_execution_result.clone())

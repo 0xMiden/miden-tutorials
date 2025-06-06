@@ -4,21 +4,10 @@ use tokio::time::{sleep, Duration};
 
 use miden_client::{
     account::{
-        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
-        AccountBuilder, AccountStorageMode, AccountType,
-    },
-    asset::{FungibleAsset, TokenSymbol},
-    auth::AuthSecretKey,
-    builder::ClientBuilder,
-    crypto::{FeltRng, SecretKey},
-    keystore::FilesystemKeyStore,
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt, Word,
+        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512}, Account, AccountBuilder, AccountId, AccountStorageMode, AccountType
+    }, asset::{FungibleAsset, TokenSymbol}, auth::AuthSecretKey, builder::ClientBuilder, crypto::{FeltRng, SecretKey}, keystore::FilesystemKeyStore, note::{
+        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata, NoteRecipient, NoteRelevance, NoteScript, NoteTag, NoteType
+    }, rpc::{Endpoint, TonicRpcClient}, store::InputNoteRecord, transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder}, Client, ClientError, Felt, Word
 };
 use miden_objects::Hasher;
 
@@ -73,22 +62,25 @@ async fn create_basic_faucet(
 }
 
 // Helper to wait until an account has the expected number of consumable notes
-async fn wait_for_notes(
+pub async fn wait_for_note(
     client: &mut Client,
-    account_id: &miden_client::account::Account,
-    expected: usize,
+    account_id: &Account,
+    expected: &Note,
 ) -> Result<(), ClientError> {
     loop {
         client.sync_state().await?;
-        let notes = client.get_consumable_notes(Some(account_id.id())).await?;
-        if notes.len() >= expected {
+
+        let notes: Vec<(InputNoteRecord, Vec<(AccountId, NoteRelevance)>)> =
+            client.get_consumable_notes(Some(account_id.id())).await?;
+
+        let found = notes.iter().any(|(rec, _)| rec.id() == expected.id());
+
+        if found {
+            println!("✅ note found {}", expected.id().to_hex());
             break;
         }
-        println!(
-            "{} consumable notes found for account {}. Waiting...",
-            notes.len(),
-            account_id.id().to_hex()
-        );
+
+        println!("Note {} not found. Waiting...", expected.id().to_hex());
         sleep(Duration::from_secs(3)).await;
     }
     Ok(())
@@ -134,15 +126,14 @@ async fn main() -> Result<(), ClientError> {
     let faucet_id = faucet.id();
     let amount: u64 = 100;
     let mint_amount = FungibleAsset::new(faucet_id, amount).unwrap();
-    let tx_request = TransactionRequestBuilder::mint_fungible_asset(
-        mint_amount,
-        alice_account.id(),
-        NoteType::Public,
-        client.rng(),
-    )
-    .unwrap()
-    .build()
-    .unwrap();
+    let tx_request = TransactionRequestBuilder::new()
+        .build_mint_fungible_asset(
+            mint_amount,
+            alice_account.id(),
+            NoteType::Public,
+            client.rng(),
+        )
+        .unwrap();
     let tx_exec = client.new_transaction(faucet.id(), tx_request).await?;
     client.submit_transaction(tx_exec.clone()).await?;
 
@@ -152,8 +143,7 @@ async fn main() -> Result<(), ClientError> {
         panic!("Expected OutputNote::Full");
     };
 
-    sleep(Duration::from_secs(3)).await;
-    wait_for_notes(&mut client, &alice_account, 1).await?;
+    wait_for_note(&mut client, &alice_account, &p2id_note).await?;
 
     let consume_request = TransactionRequestBuilder::new()
         .with_authenticated_input_notes([(p2id_note.id(), None)])
@@ -190,7 +180,7 @@ async fn main() -> Result<(), ClientError> {
     )?;
     let vault = NoteAssets::new(vec![mint_amount.into()])?;
     let custom_note = Note::new(vault, metadata, recipient);
-    println!("note hash: {:?}", custom_note.commitment());
+    println!("note hash: {:?}", custom_note.id().to_hex());
 
     let note_request = TransactionRequestBuilder::new()
         .with_own_output_notes(vec![OutputNote::Full(custom_note.clone())])
@@ -210,11 +200,11 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // STEP 4: Consume the Custom Note
     // -------------------------------------------------------------------------
-    wait_for_notes(&mut client, &bob_account, 1).await?;
     println!("\n[STEP 4] Bob consumes the Custom Note with Correct Secret");
+    
     let secret = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let consume_custom_request = TransactionRequestBuilder::new()
-        .with_authenticated_input_notes([(custom_note.id(), Some(secret))])
+        .with_unauthenticated_input_notes([(custom_note, Some(secret))])
         .build()
         .unwrap();
     let tx_result = client

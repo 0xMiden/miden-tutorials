@@ -32,11 +32,11 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.8.1", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.8", default-features = false }
-miden-objects = { version = "0.8", default-features = false }
-miden-crypto = { version = "0.14.0", features = ["executable"] }
-miden-assembly = "0.13.0"
+miden-client = { version = "0.9.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.9", default-features = false }
+miden-objects = { version = "0.9", default-features = false }
+miden-crypto = { version = "0.14.1", features = ["executable"] }
+miden-assembly = "0.14.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -480,8 +480,8 @@ async fn main() -> Result<(), ClientError> {
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
         .with_custom_script(tx_script)
-        .unwrap()
-        .build();
+        .build()
+        .unwrap();
 
     // Execute the transaction locally
     let tx_result = client
