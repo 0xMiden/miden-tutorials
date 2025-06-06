@@ -470,24 +470,24 @@ cargo run --release
 The output will look something like this:
 
 ```
-Latest block: 18392
+Latest block: 8153
 
 [STEP 1] Creating new accounts
-Alice's account ID: "0xb23fa56edfb652100000354f9ad0f3"
-Bob's account ID: "0xe4b869133a460d100000e036fe951e"
+Alice's account ID: "0xf9919e334f7fa1100000d657ab75dc"
+Bob's account ID: "0xbd626b7bf785cd1000007d237250a1"
 
 Deploying a new fungible faucet.
-Faucet account ID: "0x0cc82fb7d6d5ba200000accff80c0c"
+Faucet account ID: "0x8ac342a8684e72200000ce59224c27"
 
 [STEP 2] Mint tokens with P2ID
-0 consumable notes found for account 0xb23fa56edfb652100000354f9ad0f3. Waiting...
+0 consumable notes found for account 0xf9919e334f7fa1100000d657ab75dc. Waiting...
 
 [STEP 3] Create iterative output note
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0x0c67c2de1b028bcb495f60f8ad81168f99cffeded00e293344dac6f45f702433
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0x6b47eab551fa1710587de34040e14070c8abd112e8f9725b5c10a022fe8809de
 
 [STEP 4] Bob consumes the note and creates a copy
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x717e3fc01da330e25acef2d302691f3a9593ea80bb4668d6fdb12ca35a137119
-Account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 921038590427118112, suffix: 190009219746816 }): 50}), non_fungible: NonFungibleAssetDelta({}) }
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x5aa732e7cc7e226e7b66b0692a2b688f4cf20a6d6938d5ef82e05efa4d397d65
+Account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 9998908888764543520, suffix: 226882222827264 }): 50}), non_fungible: NonFungibleAssetDelta({}) }
 ```
 
 ---
