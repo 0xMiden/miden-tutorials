@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@demox-labs/miden-sdk':
-    specifier: 0.8.4-next.3
-    version: 0.8.4-next.3(chai@5.2.0)
+    specifier: 0.9.0
+    version: 0.9.0(chai@5.2.0)
   next:
     specifier: 15.3.2
     version: 15.3.2(react-dom@19.1.0)(react@19.1.0)
@@ -53,8 +53,8 @@ packages:
       '@jridgewell/trace-mapping': 0.3.25
     dev: true
 
-  /@demox-labs/miden-sdk@0.8.4-next.3(chai@5.2.0):
-    resolution: {integrity: sha512-nlqDTzEzBCwXBNZGh8sviHkq5r5x9RO1LwoMxkjCfltLAuhOVR2pPwXXnQqmv0fVYcZAuVwb1TqSaWhv5Vx2XQ==}
+  /@demox-labs/miden-sdk@0.9.0(chai@5.2.0):
+    resolution: {integrity: sha512-vjaqHWmKxLiiI3GdTYGzBwRAymDGUWaa9mFBZZrdAjJWByCwpY7zz1CQMgi+ESnDGUX253j5Wkvj726L2P+ecA==}
     dependencies:
       chai-as-promised: 8.0.1(chai@5.2.0)
       dexie: 4.0.11

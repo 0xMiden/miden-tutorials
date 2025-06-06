@@ -20,7 +20,7 @@ export async function deployCounterContract(): Promise<void> {
     WebClient,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "http://localhost:57291";
+  const nodeEndpoint = "https://testnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
