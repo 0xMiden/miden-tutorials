@@ -70,8 +70,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   console.log("Latest block:", (await client.syncState()).blockNum());
 
   const alice = await client.newWallet(AccountStorageMode.public(), true);
+  await client.importAccount(alice);
 
-  const faucetId = AccountId.fromHex("0x696631693bb85f20000e732cb23eb7");
+  const faucetId = AccountId.fromHex("0x9526e379bc3ad4200000b201b1f0f3");
   await client.importAccountById(faucetId);
   const faucet = await client.getAccount(faucetId);
   if (!faucet) throw new Error(`Account ${faucetId} not found`);
