@@ -17,7 +17,7 @@ We will use a script to call the `read_price` function in our "price reader" sma
 
 This tutorial assumes you have a basic understanding of Miden assembly, have completed the previous tutorials on using the Rust client, and have completed the tutorial on foreign procedure invocation.
 
-To quickly get up to speed with Miden assembly (MASM), please play around with running Miden programs in the [Miden playground](https://0xpolygonmiden.github.io/examples/).
+To quickly get up to speed with Miden assembly (MASM), please play around with running Miden programs in the [Miden playground](https://0xmiden.github.io/examples/).
 
 ## Step 1: Initialize your repository
 

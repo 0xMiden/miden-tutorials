@@ -16,6 +16,7 @@ In this tutorial, we’ll build a simple Next.js application that interacts with
 ## Prerequisites
 
 - Node `v20` or greater
+- Familiarity with TypeScript
 - `pnpm`
 
 ## Public vs. private accounts & notes
@@ -42,19 +43,37 @@ It is useful to think of notes on Miden as "cryptographic cashier's checks" that
    Hit enter for all terminal prompts.
 
 2. Change into the project directory:
+
    ```bash
    cd miden-web-app
    ```
+
 3. Install the Miden WebClient SDK:
    ```bash
-   npm install @demox-labs/miden-sdk@0.8.2
+   pnpm install @demox-labs/miden-sdk@0.8.2
    ```
+
+**NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
+
+`package.json`
+
+```json
+  "scripts": {
+    "dev": "next dev",
+    ...
+  }
+```
 
 ## Step 2: Instantiate the WebClient
 
 ### Create `lib/webClient.ts`
 
 In the project root, create a folder `lib/` and inside it `webClient.ts`:
+
+```bash
+mkdir -p lib
+touch lib/webClient.ts
+```
 
 ```ts
 // lib/webClient.ts
