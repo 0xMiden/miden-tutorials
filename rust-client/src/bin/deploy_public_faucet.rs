@@ -28,6 +28,8 @@ async fn main() -> Result<(), ClientError> {
         .await
         .unwrap();
 
+    println!("account id: {:?}", alice_account.id().to_hex());
+
     let _ = mint_from_faucet_for_account(&mut client, &alice_account, &faucet, 1, None)
         .await
         .unwrap();
