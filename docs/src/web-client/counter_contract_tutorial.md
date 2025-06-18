@@ -39,7 +39,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.9.0
+   pnpm i @demox-labs/miden-sdk@0.9.2
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
