@@ -328,7 +328,7 @@ async fn main() -> Result<(), ClientError> {
 
 ### Running the example
 
-To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xPolygonMiden/miden-tutorials/) repository and run this command:
+To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run this command:
 
 ```bash
 cd rust-client
@@ -336,3 +336,7 @@ cargo run --release --bin mapping_example
 ```
 
 This example shows how the script calls the procedure in the account, which then updates the mapping stored within the account. The mapping update is verified by reading the mapping’s key-value pair after the transaction completes.
+
+### Continue learning
+
+Next tutorial: [How to Create Notes in Miden Assembly](creating_notes_in_masm_tutorial.md)

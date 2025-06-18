@@ -677,7 +677,7 @@ count reader contract storage: Ok(RpoDigest([0, 0, 0, 2]))
 
 ### Running the example
 
-To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xPolygonMiden/miden-tutorials/) repository and run this command:
+To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run this command:
 
 ```bash
 cd rust-client
@@ -686,4 +686,4 @@ cargo run --release --bin counter_contract_fpi
 
 ### Continue learning
 
-Next tutorial: [How to Use Unauthenticated Notes](unauthenticated_note_how_to.md)
+Next tutorial: [How to Create Notes with Custom Logic](custom_note_how_to.md)
