@@ -1,5 +1,5 @@
-// lib/webClient.ts
-export async function webClient(): Promise<void> {
+// lib/createMintConsume.ts
+export async function createMintConsume(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;

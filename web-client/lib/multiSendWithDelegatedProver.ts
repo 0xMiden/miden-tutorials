@@ -1,11 +1,14 @@
-// ────────────────────────────────── P2ID NOTE SCRIPT ──────────────────────────────────
+/**
+ * P2ID (Pay to ID) Note Script for Miden Network
+ * Enables creating notes that can be received by specific account IDs
+ */
 const P2ID_NOTE_SCRIPT = `
 use.miden::account
 use.miden::note
 use.miden::contracts::wallets::basic->wallet
 
-const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS=0x0002c000
-const.ERR_P2ID_TARGET_ACCT_MISMATCH=0x0002c001
+const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID note expects exactly 2 note inputs"
+const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 
 proc.add_note_assets_to_account
     push.0 exec.note::get_assets
@@ -33,8 +36,14 @@ begin
 end
 `;
 
-// ───────────────────────── multiSendWithDelegatedProver ─────────────────────────
+/**
+ * Demonstrates multi-send functionality using a delegated prover on the Miden Network
+ * Creates multiple P2ID (Pay to ID) notes for different recipients
+ *
+ * @throws {Error} If the function cannot be executed in a browser environment
+ */
 export async function multiSendWithDelegatedProver(): Promise<void> {
+  // Ensure this runs only in a browser context
   if (typeof window === "undefined") return console.warn("Run in browser");
 
   const {
@@ -69,16 +78,20 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   console.log("Latest block:", (await client.syncState()).blockNum());
 
+  // ── Creating new account ──────────────────────────────────────────────────────
+  console.log("Creating account for Alice…");
   const alice = await client.newWallet(AccountStorageMode.public(), true);
-  await client.importAccount(alice);
+  console.log("Alice accout ID:", alice.id().toString());
 
-  const faucetId = AccountId.fromHex("0x9526e379bc3ad4200000b201b1f0f3");
-  await client.importAccountById(faucetId);
-  const faucet = await client.getAccount(faucetId);
-  if (!faucet) throw new Error(`Account ${faucetId} not found`);
-
-  console.log("Alice:", alice.id().toString());
-  console.log("Faucet:", faucet.id().toString());
+  // ── Creating new faucet ──────────────────────────────────────────────────────
+  const faucet = await client.newFaucet(
+    AccountStorageMode.public(),
+    false,
+    "MID",
+    8,
+    BigInt(1_000_000),
+  );
+  console.log("Faucet ID:", faucet.id().toString());
 
   // ── mint 10 000 MID to Alice ──────────────────────────────────────────────────────
   await client.submitTransaction(
@@ -93,7 +106,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     ),
     prover,
   );
-  await new Promise((r) => setTimeout(r, 10_000));
+
+  console.log("waiting for settlement");
+  await new Promise((r) => setTimeout(r, 7_000));
   await client.syncState();
 
   // ── consume the freshly minted notes ──────────────────────────────────────────────
@@ -112,9 +127,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
   const recipientAddresses = [
-    "0x3477d1532b97101000006f79009dda",
-    "0x13eb7f06cc675f20000d28ad4256e9",
-    "0x3a2ff6a4b1628120000d8a3650894b",
+    "0xbf1db1694c83841000008cefd4fce0",
+    "0xee1a75244282c32000010a29bed5f4",
+    "0x67dc56bd0cbe629000006f36d81029",
   ];
 
   const script = client.compileNoteScript(P2ID_NOTE_SCRIPT);
@@ -149,6 +164,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     return OutputNote.full(note);
   });
 
+  // ── create all P2ID notes ───────────────────────────────────────────────────────────────
   let transaction = await client.newTransaction(
     alice.id(),
     new TransactionRequestBuilder()
@@ -156,7 +172,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
       .build(),
   );
 
-  // ── create all P2ID notes ───────────────────────────────────────────────────────────────
+  // ── submit tx ───────────────────────────────────────────────────────────────
   await client.submitTransaction(transaction, prover);
 
   console.log("All notes created ✅");

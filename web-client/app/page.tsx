@@ -1,30 +1,29 @@
 "use client";
 import { useState } from "react";
-import { webClient } from "../lib/webClient";
+import { createMintConsume } from "../lib/createMintConsume";
 import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
-import {deployCounterContract} from "../lib/deployCounterContract";
+import { incrementCounterContract } from "../lib/incrementCounterContract";
 
 export default function Home() {
   const [isStartingClient, setIsStartingClient] = useState(false);
   const [isSendingNotes, setIsSendingNotes] = useState(false);
   const [isCreatingLib, setIsCreateingLib] = useState(false);
 
-  const handleStartClient = async () => {
+  const handleCreateMintConsume = async () => {
     setIsStartingClient(true);
-    await webClient();
+    await createMintConsume();
     setIsStartingClient(false);
   };
 
-  const handleSendNotes = async () => {
+  const handleMultiSendNotes = async () => {
     setIsSendingNotes(true);
     await multiSendWithDelegatedProver();
     setIsSendingNotes(false);
   };
 
-
-  const handleCreateLib = async () => {
+  const handleIncrementCounterContract = async () => {
     setIsCreateingLib(true);
-    await deployCounterContract();
+    await incrementCounterContract();
     setIsCreateingLib(false);
   };
 
@@ -36,24 +35,24 @@ export default function Home() {
 
         <div className="max-w-sm w-full bg-gray-800/20 border border-gray-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
           <button
-            onClick={handleStartClient}
+            onClick={handleCreateMintConsume}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isStartingClient ? "Working..." : "Tutorial #1: Create, Mint, Consume Notes"}
           </button>
 
           <button
-            onClick={handleSendNotes}
+            onClick={handleMultiSendNotes}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isSendingNotes ? "Working..." : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
           </button>
 
           <button
-            onClick={handleCreateLib}
+            onClick={handleIncrementCounterContract}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isCreatingLib ? "Working..." : "Tutorial #3: Deploy Counter Contract"}
+            {isCreatingLib ? "Working..." : "Tutorial #3: Increment Counter Contract"}
           </button>
         </div>
       </div>

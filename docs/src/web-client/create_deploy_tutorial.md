@@ -72,18 +72,19 @@ In the project root, create a folder `lib/` and inside it `webClient.ts`:
 
 ```bash
 mkdir -p lib
-touch lib/webClient.ts
+touch lib/createMintConsume.ts
 ```
 
 ```ts
-// lib/webClient.ts
-export async function webClient(): Promise<void> {
+// lib/createMintConsume.ts
+export async function createMintConsume(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
   }
 
-  const { WebClient, AccountStorageMode } = await import(
+  // dynamic import → only in the browser, so WASM is loaded client‑side
+  const { WebClient, AccountStorageMode, AccountId, NoteType } = await import(
     "@demox-labs/miden-sdk"
   );
 
@@ -107,7 +108,7 @@ Edit `app/page.tsx` to call `webClient()` on a button click:
 ```tsx
 "use client";
 import { useState } from "react";
-import { webClient } from "../lib/webClient";
+import { createMintConsume } from "../lib/createMintConsume";
 
 export default function Home() {
   const [started, setStarted] = useState(false);

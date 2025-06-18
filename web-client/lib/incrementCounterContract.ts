@@ -1,5 +1,5 @@
-// lib/webClient.ts
-export async function deployCounterContract(): Promise<void> {
+// lib/incrementCounterContract.ts
+export async function incrementCounterContract(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
@@ -7,7 +7,7 @@ export async function deployCounterContract(): Promise<void> {
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const {
-    AccountBuilder,
+    AccountId,
     AccountComponent,
     AccountStorageMode,
     AccountType,
@@ -79,27 +79,20 @@ export async function deployCounterContract(): Promise<void> {
     [emptyStorageSlot], // storage data
   ).withSupportsAllTypes();
 
-  const walletSeed = new Uint8Array(32);
-  crypto.getRandomValues(walletSeed);
+  
+  const counterContractId = AccountId.fromHex("0x5fd8e3b9f4227200000581c6032f81");
+  let counterContractAccount = await client.getAccount(counterContractId);
 
-  let anchorBlock = await client.getLatestEpochBlock();
-
-  let accountBuilderResult = new AccountBuilder(walletSeed)
-    .anchor(anchorBlock)
-    .accountType(AccountType.RegularAccountImmutableCode)
-    .storageMode(AccountStorageMode.public())
-    .withComponent(counterAccountComponent)
-    .build();
-
-  // Importing the counter contract into the WebClient
-  await client.newAccount(
-    accountBuilderResult.account, // account
-    accountBuilderResult.seed, // seed
-    false, // overwrite
-  );
-  let counterContract = accountBuilderResult.account;
-  console.log("Counter contract id: ", counterContract.id().toString());
-
+  if (!counterContractAccount) {
+    await client.importAccountById(counterContractId);
+    await client.syncState();
+    counterContractAccount = await client.getAccount(counterContractId);
+    if (!counterContractAccount) {
+      throw new Error(`Account not found after import: ${counterContractId}`);
+    }
+  }
+  
+  
   // Building the transaction script which will call the counter contract
   let txScriptCode = `
     use.external_contract::counter_contract
@@ -132,7 +125,7 @@ export async function deployCounterContract(): Promise<void> {
 
   // Executing the transaction script against the counter contract
   let txResult = await client.newTransaction(
-    accountBuilderResult.account.id(),
+    counterContractAccount.id(),
     txIncrementRequest,
   );
 
@@ -143,7 +136,7 @@ export async function deployCounterContract(): Promise<void> {
   await client.syncState();
 
   // Logging the count of counter contract
-  let counter = await client.getAccount(counterContract.id());
+  let counter = await client.getAccount(counterContractAccount.id());
   let count = counter?.storage().getItem(0);
 
   const counterValue = Number(

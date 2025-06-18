@@ -115,13 +115,17 @@ touch lib/multiSendWithDelegatedProver.ts
 ```
 
 ```ts
+/**
+ * P2ID (Pay to ID) Note Script for Miden Network
+ * Enables creating notes that can be received by specific account IDs
+ */
 const P2ID_NOTE_SCRIPT = `
 use.miden::account
 use.miden::note
 use.miden::contracts::wallets::basic->wallet
 
-const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS=0x0002c000
-const.ERR_P2ID_TARGET_ACCT_MISMATCH=0x0002c001
+const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID note expects exactly 2 note inputs"
+const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 
 proc.add_note_assets_to_account
     push.0 exec.note::get_assets
@@ -150,6 +154,7 @@ end
 `;
 
 export async function multiSendWithDelegatedProver(): Promise<void> {
+  // Ensure this runs only in a browser context
   if (typeof window === "undefined") return console.warn("Run in browser");
 
   const {
@@ -183,6 +188,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
+
 }
 ```
 
@@ -191,7 +197,12 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 Add the code snippet below to the `multiSendWithDelegatedProver` function. This code creates a wallet and faucet, mints tokens from the faucet for the wallet, and then consumes the minted tokens.
 
 ```ts
+// ── Creating new account ──────────────────────────────────────────────────────
+console.log("Creating account for Alice…");
 const alice = await client.newWallet(AccountStorageMode.public(), true);
+console.log("Alice accout ID:", alice.id().toString());
+
+// ── Creating new faucet ──────────────────────────────────────────────────────
 const faucet = await client.newFaucet(
   AccountStorageMode.public(),
   false,
@@ -199,8 +210,7 @@ const faucet = await client.newFaucet(
   8,
   BigInt(1_000_000),
 );
-console.log("Alice:", alice.id().toString());
-console.log("Faucet:", faucet.id().toString());
+console.log("Faucet ID:", faucet.id().toString());
 
 // ── mint 10 000 MID to Alice ──────────────────────────────────────────────────────
 await client.submitTransaction(
@@ -215,7 +225,9 @@ await client.submitTransaction(
   ),
   prover,
 );
-await new Promise((r) => setTimeout(r, 10_000));
+
+console.log("waiting for settlement");
+await new Promise((r) => setTimeout(r, 7_000));
 await client.syncState();
 
 // ── consume the freshly minted notes ──────────────────────────────────────────────
@@ -238,11 +250,11 @@ await client.syncState();
 Add the following code to the `multiSendWithDelegatedProver` function. This code defines three recipient addresses, builds three P2ID notes with 100 `MID` each, and then creates all three notes in the same transaction.
 
 ```ts
-// ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
+  // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
 const recipientAddresses = [
-  "0x3477d1532b97101000006f79009dda",
-  "0x13eb7f06cc675f20000d28ad4256e9",
-  "0x3a2ff6a4b1628120000d8a3650894b",
+  "0xbf1db1694c83841000008cefd4fce0",
+  "0xee1a75244282c32000010a29bed5f4",
+  "0x67dc56bd0cbe629000006f36d81029",
 ];
 
 const script = client.compileNoteScript(P2ID_NOTE_SCRIPT);
@@ -256,7 +268,6 @@ const metadata = new NoteMetadata(
 );
 
 const p2idNotes = recipientAddresses.map((addr) => {
-  // The note serial number should be a randomly generated number
   let serialNumber = Word.newFromFelts([
     new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
     new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
@@ -265,7 +276,9 @@ const p2idNotes = recipientAddresses.map((addr) => {
   ]);
 
   const acct = AccountId.fromHex(addr);
-  const inputs = new NoteInputs(new FeltArray([acct.suffix(), acct.prefix()]));
+  const inputs = new NoteInputs(
+    new FeltArray([acct.suffix(), acct.prefix()]),
+  );
 
   let note = new Note(
     assets,
@@ -276,6 +289,7 @@ const p2idNotes = recipientAddresses.map((addr) => {
   return OutputNote.full(note);
 });
 
+// ── create all P2ID notes ───────────────────────────────────────────────────────────────
 let transaction = await client.newTransaction(
   alice.id(),
   new TransactionRequestBuilder()
@@ -283,7 +297,7 @@ let transaction = await client.newTransaction(
     .build(),
 );
 
-// ── create all P2ID notes ───────────────────────────────────────────────────────────────
+// ── submit tx ───────────────────────────────────────────────────────────────
 await client.submitTransaction(transaction, prover);
 
 console.log("All notes created ✅");
