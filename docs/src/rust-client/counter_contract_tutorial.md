@@ -17,7 +17,7 @@ Using a script, we will invoke the increment function within the counter contrac
 
 ## Prerequisites
 
-This tutorial assumes you have a basic understanding of Miden assembly. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xpolygonmiden.github.io/examples/).
+This tutorial assumes you have a basic understanding of Miden assembly. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xMiden.github.io/examples/).
 
 ## Step 1: Initialize your repository
 
@@ -31,9 +31,9 @@ cd miden-counter-contract
 Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
-miden-client = { version = "0.9.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.9", default-features = false }
-miden-objects = { version = "0.9", default-features = false }
+miden-client = { version = "0.9.2", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.9.4", default-features = false }
+miden-objects = { version = "0.9.4", default-features = false }
 miden-crypto = { version = "0.14.1", features = ["executable"] }
 miden-assembly = "0.14.0"
 rand = { version = "0.9" }
@@ -579,7 +579,7 @@ To increment the count of the counter contract all you need is to know the accou
 
 ### Running the example
 
-To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xPolygonMiden/miden-tutorials/) repository and run this command:
+To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run this command:
 
 ```bash
 cd rust-client

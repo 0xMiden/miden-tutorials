@@ -32,9 +32,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.9.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.9", default-features = false }
-miden-objects = { version = "0.9", default-features = false }
+miden-client = { version = "0.9.2", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.9.4", default-features = false }
+miden-objects = { version = "0.9.4", default-features = false }
 miden-crypto = { version = "0.14.1", features = ["executable"] }
 miden-assembly = "0.14.0"
 rand = { version = "0.9" }
@@ -566,7 +566,7 @@ counter contract storage: Ok(RpoDigest([0, 0, 0, 2]))
 
 ### Running the example
 
-To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xPolygonMiden/miden-tutorials/) repository and run this command:
+To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run this command:
 
 ```bash
 cd rust-client
