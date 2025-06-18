@@ -127,15 +127,14 @@ async fn main() -> Result<(), ClientError> {
     let fungible_asset = FungibleAsset::new(faucet_account.id(), amount).unwrap();
 
     for i in 1..=5 {
-        let transaction_request = TransactionRequestBuilder::mint_fungible_asset(
-            fungible_asset,
-            alice_account.id(),
-            NoteType::Public,
-            client.rng(),
-        )
-        .unwrap()
-        .build()
-        .unwrap();
+        let transaction_request = TransactionRequestBuilder::new()
+            .build_mint_fungible_asset(
+                fungible_asset,
+                alice_account.id(),
+                NoteType::Public,
+                client.rng(),
+            )
+            .unwrap();
 
         println!("tx request built");
 
@@ -167,8 +166,8 @@ async fn main() -> Result<(), ClientError> {
 
         if list_of_note_ids.len() == 5 {
             println!("Found 5 consumable notes for Alice. Consuming them now...");
-            let transaction_request = TransactionRequestBuilder::consume_notes(list_of_note_ids)
-                .build()
+            let transaction_request = TransactionRequestBuilder::new()
+                .build_consume_notes(list_of_note_ids)
                 .unwrap();
             let tx_execution_result = client
                 .new_transaction(alice_account.id(), transaction_request)
@@ -259,15 +258,14 @@ async fn main() -> Result<(), ClientError> {
         alice_account.id(),
         target_account_id,
     );
-    let transaction_request = TransactionRequestBuilder::pay_to_id(
-        payment_transaction,
-        None,             // recall_height
-        NoteType::Public, // note type
-        client.rng(),     // rng
-    )
-    .unwrap()
-    .build()
-    .unwrap();
+    let transaction_request = TransactionRequestBuilder::new()
+        .build_pay_to_id(
+            payment_transaction,
+            None,             // recall_height
+            NoteType::Public, // note type
+            client.rng(),     // rng
+        )
+        .unwrap();
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;

@@ -2,7 +2,10 @@ use rand::RngCore;
 use std::{fs, path::Path};
 
 use miden_client::{
-    account::{AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot, component::AccountComponent},
+    account::{
+        component::AccountComponent, AccountBuilder, AccountId, AccountStorageMode, AccountType,
+        StorageSlot,
+    },
     rpc::{
         domain::account::{AccountStorageRequirements, StorageMapKey},
         Endpoint,
@@ -13,17 +16,15 @@ use miden_client::{
     Client, ClientError, Felt, Word, ZERO,
 };
 
-use miden_client_tools::{
-    instantiate_client, create_library, delete_keystore_and_store,
-};
+use miden_client_tools::{create_library, instantiate_client};
 
 /// Import the oracle + its publishers and return the ForeignAccount list
-/// Due to Pragma's decentralized oracle architecture, we need to get the 
-/// list of all data publisher accounts to read price from via a nested FPI call 
+/// Due to Pragma's decentralized oracle architecture, we need to get the
+/// list of all data publisher accounts to read price from via a nested FPI call
 pub async fn get_oracle_foreign_accounts(
     client: &mut Client,
     oracle_account_id: AccountId,
-    trading_pair: u64
+    trading_pair: u64,
 ) -> Result<Vec<ForeignAccount>, ClientError> {
     client.import_account_by_id(oracle_account_id).await?;
 
@@ -74,7 +75,7 @@ pub async fn get_oracle_foreign_accounts(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
-    // Initialize Client 
+    // Initialize Client
     // -------------------------------------------------------------------------
     let endpoint = Endpoint::testnet();
     let mut client = instantiate_client(endpoint, None).await.unwrap();
@@ -86,9 +87,14 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     let oracle_account_id = AccountId::from_hex("0x4f67e78643022e00000220d8997e33").unwrap();
     let btc_usd_pair_id = 120195681;
-    let foreign_accounts: Vec<ForeignAccount> = get_oracle_foreign_accounts(&mut client, oracle_account_id, btc_usd_pair_id).await?;
+    let foreign_accounts: Vec<ForeignAccount> =
+        get_oracle_foreign_accounts(&mut client, oracle_account_id, btc_usd_pair_id).await?;
 
-    println!("Oracle accountId prefix: {:?} suffix: {:?}", oracle_account_id.prefix(), oracle_account_id.suffix());
+    println!(
+        "Oracle accountId prefix: {:?} suffix: {:?}",
+        oracle_account_id.prefix(),
+        oracle_account_id.suffix()
+    );
 
     // -------------------------------------------------------------------------
     // Create Oracle Reader contract
@@ -132,12 +138,7 @@ async fn main() -> Result<(), ClientError> {
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let library_path = "external_contract::oracle_reader";
-    let account_component_lib = create_library(
-        contract_code,
-        library_path,
-        
-    )
-    .unwrap();
+    let account_component_lib = create_library(contract_code, library_path).unwrap();
 
     let tx_script = TransactionScript::compile(
         script_code,

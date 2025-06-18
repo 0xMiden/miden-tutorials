@@ -473,7 +473,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Building counter contract from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
+    let counter_contract_id = AccountId::from_hex("0xac6eeab35afb09000000ea9fae7722").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)
@@ -677,7 +677,7 @@ count reader contract storage: Ok(RpoDigest([0, 0, 0, 2]))
 
 ### Running the example
 
-To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xPolygonMiden/miden-tutorials/) repository and run this command:
+To run the full example, navigate to the `rust-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run this command:
 
 ```bash
 cd rust-client
@@ -686,4 +686,4 @@ cargo run --release --bin counter_contract_fpi
 
 ### Continue learning
 
-Next tutorial: [How to Use Unauthenticated Notes](unauthenticated_note_how_to.md)
+Next tutorial: [How to Create Notes with Custom Logic](custom_note_how_to.md)
