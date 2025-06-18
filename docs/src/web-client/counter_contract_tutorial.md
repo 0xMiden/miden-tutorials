@@ -1,19 +1,17 @@
-# Deploying a Counter Contract
+# Incrementing the Count of the Counter Contract
 
-_Using the Miden client in TypeScript to deploy and interact with a custom smart contract on Miden_
+_Using the Miden client in TypeScript to interact with a custom smart contract on Miden_
 
 ## Overview
 
-In this tutorial, we will deploy a simple counter smart contract that maintains a count, deploy it to the Miden testnet, and interact with it by incrementing the count, all from the Miden WebClient.
+In this tutorial, we will interact with a counter contract already deployed on chain by incrementing the count using the Miden WebClient.
 
-Using a script, we will invoke the increment function within the counter contract to update the count. This tutorial provides a foundational understanding of developing and deploying custom smart contracts on Miden.
+Using a script, we will invoke the increment function within the counter contract to update the count. This tutorial provides a foundational understanding of interacting with custom smart contracts on Miden.
 
 ## What we'll cover
 
-- Deploying a custom smart contract on Miden
-- Getting up to speed with the basics of Miden assembly
-- Calling procedures in an account
-- Pure vs state changing procedures
+- Interacting with a custom smart contract on Miden
+- Calling procedures in an account from a script
 
 ## Prerequisites
 
@@ -97,14 +95,14 @@ export default function Home() {
 
 ## Step 3 — Create and Deploy the Counter Contract
 
-Create the file `lib/deployCounterContract.ts` and add the following code. This snippet defines the P2ID note script, implements the function `multiSendWithDelegatedProver`, and initializes the WebClient along with the delegated prover endpoint.
+Create the file `lib/incrementCounterContract.ts` and add the following code.
 
 ```
 mkdir -p lib
-touch lib/deployCounterContract.ts
+touch lib/incrementCounterContract.ts
 ```
 
-Copy and paste the following code into the `lib/deployCounterContract.ts` file:
+Copy and paste the following code into the `lib/incrementCounterContract.ts` file:
 
 ```ts
 // lib/incrementCounterContract.ts
@@ -253,13 +251,13 @@ To run the code above in our frontend, run the following command:
 pnpm run dev
 ```
 
-Open the browser console and click the button "Deploy Counter Contract".
+Open the browser console and click the button "Increment Counter Contract".
 
 This is what you should see in the browser console:
 
 ```
 Current block number:  2168
-deployCounterContract.ts:153 Count:  3
+incrementCounterContract.ts:153 Count:  3
 ```
 
 ## Miden Assembly Counter Contract Explainer
