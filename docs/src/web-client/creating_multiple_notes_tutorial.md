@@ -301,10 +301,10 @@ await client.submitTransaction(transaction, prover);
 console.log("All notes created ✅");
 ```
 
-
 ## Summary
 
 Your `lib/multiSendWithDelegatedProver.ts` file sould now look like this:
+
 ```ts
 /**
  * P2ID (Pay to ID) Note Script for Miden Network
@@ -480,8 +480,6 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   console.log("All notes created ✅");
 }
 ```
-
-
 
 ### Running the example
 

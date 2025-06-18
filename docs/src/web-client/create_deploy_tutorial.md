@@ -134,7 +134,6 @@ export default function Home() {
               ? "Working..."
               : "Tutorial #1: Create, Mint, Consume Notes"}
           </button>
-
         </div>
       </div>
     </main>
