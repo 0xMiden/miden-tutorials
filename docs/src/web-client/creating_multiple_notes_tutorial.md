@@ -76,13 +76,12 @@ import { useState } from "react";
 import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
 
 export default function Home() {
-  const [isStartingClient, setIsStartingClient] = useState(false);
-  const [isSendingNotes, setIsSendingNotes] = useState(false);
+  const [isMultiSendNotes, setIsMultiSendNotes] = useState(false);
 
-  const handleSendNotes = async () => {
-    setIsSendingNotes(true);
+  const handleMultiSendNotes = async () => {
+    setIsMultiSendNotes(true);
     await multiSendWithDelegatedProver();
-    setIsSendingNotes(false);
+    setIsMultiSendNotes(false);
   };
 
   return (
@@ -93,10 +92,12 @@ export default function Home() {
 
         <div className="max-w-sm w-full bg-gray-800/20 border border-gray-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
           <button
-            onClick={handleSendNotes}
+            onClick={handleMultiSendNotes}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isSendingNotes ? "Working..." : "Send 1 to N P2ID Notes"}
+            {isMultiSendNotes
+              ? "Working..."
+              : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
           </button>
         </div>
       </div>
@@ -188,7 +189,6 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
-
 }
 ```
 
@@ -250,7 +250,7 @@ await client.syncState();
 Add the following code to the `multiSendWithDelegatedProver` function. This code defines three recipient addresses, builds three P2ID notes with 100 `MID` each, and then creates all three notes in the same transaction.
 
 ```ts
-  // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
+// ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
 const recipientAddresses = [
   "0xbf1db1694c83841000008cefd4fce0",
   "0xee1a75244282c32000010a29bed5f4",
@@ -276,9 +276,7 @@ const p2idNotes = recipientAddresses.map((addr) => {
   ]);
 
   const acct = AccountId.fromHex(addr);
-  const inputs = new NoteInputs(
-    new FeltArray([acct.suffix(), acct.prefix()]),
-  );
+  const inputs = new NoteInputs(new FeltArray([acct.suffix(), acct.prefix()]));
 
   let note = new Note(
     assets,

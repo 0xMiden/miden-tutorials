@@ -8,9 +8,6 @@ export async function incrementCounterContract(): Promise<void> {
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const {
     AccountId,
-    AccountComponent,
-    AccountStorageMode,
-    AccountType,
     AssemblerUtils,
     StorageSlot,
     TransactionKernel,
@@ -25,7 +22,7 @@ export async function incrementCounterContract(): Promise<void> {
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
   // Counter contract code in Miden Assembly
-  const accountCode = `
+  const counterContractCode = `
       use.miden::account
       use.std::sys
 
@@ -73,14 +70,9 @@ export async function incrementCounterContract(): Promise<void> {
   let assembler = TransactionKernel.assembler();
   let emptyStorageSlot = StorageSlot.emptyValue();
 
-  let counterAccountComponent = AccountComponent.compile(
-    accountCode, // contract code
-    assembler, // assembler
-    [emptyStorageSlot], // storage data
-  ).withSupportsAllTypes();
-
-  
-  const counterContractId = AccountId.fromHex("0x5fd8e3b9f4227200000581c6032f81");
+  const counterContractId = AccountId.fromHex(
+    "0xb32d619dfe9e2f0000010ecb441d3f",
+  );
   let counterContractAccount = await client.getAccount(counterContractId);
 
   if (!counterContractAccount) {
@@ -91,8 +83,7 @@ export async function incrementCounterContract(): Promise<void> {
       throw new Error(`Account not found after import: ${counterContractId}`);
     }
   }
-  
-  
+
   // Building the transaction script which will call the counter contract
   let txScriptCode = `
     use.external_contract::counter_contract
@@ -108,7 +99,7 @@ export async function incrementCounterContract(): Promise<void> {
   let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
     assembler, // assembler
     "external_contract::counter_contract", // library path to call the contract
-    accountCode, // account code of the contract
+    counterContractCode, // account code of the contract
   );
 
   // Creating the transaction script

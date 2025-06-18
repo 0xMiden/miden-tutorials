@@ -5,26 +5,26 @@ import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProve
 import { incrementCounterContract } from "../lib/incrementCounterContract";
 
 export default function Home() {
-  const [isStartingClient, setIsStartingClient] = useState(false);
-  const [isSendingNotes, setIsSendingNotes] = useState(false);
-  const [isCreatingLib, setIsCreateingLib] = useState(false);
+  const [isCreatingNotes, setIsCreatingNotes] = useState(false);
+  const [isMultiSendNotes, setIsMultiSendNotes] = useState(false);
+  const [isIncrementCounter, setIsIncrementCounter] = useState(false);
 
   const handleCreateMintConsume = async () => {
-    setIsStartingClient(true);
+    setIsCreatingNotes(true);
     await createMintConsume();
-    setIsStartingClient(false);
+    setIsCreatingNotes(false);
   };
 
   const handleMultiSendNotes = async () => {
-    setIsSendingNotes(true);
+    setIsMultiSendNotes(true);
     await multiSendWithDelegatedProver();
-    setIsSendingNotes(false);
+    setIsMultiSendNotes(false);
   };
 
   const handleIncrementCounterContract = async () => {
-    setIsCreateingLib(true);
+    setIsIncrementCounter(true);
     await incrementCounterContract();
-    setIsCreateingLib(false);
+    setIsIncrementCounter(false);
   };
 
   return (
@@ -38,21 +38,27 @@ export default function Home() {
             onClick={handleCreateMintConsume}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isStartingClient ? "Working..." : "Tutorial #1: Create, Mint, Consume Notes"}
+            {isCreatingNotes
+              ? "Working..."
+              : "Tutorial #1: Create, Mint, Consume Notes"}
           </button>
 
           <button
             onClick={handleMultiSendNotes}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isSendingNotes ? "Working..." : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
+            {isMultiSendNotes
+              ? "Working..."
+              : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
           </button>
 
           <button
             onClick={handleIncrementCounterContract}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isCreatingLib ? "Working..." : "Tutorial #3: Increment Counter Contract"}
+            {isIncrementCounter
+              ? "Working..."
+              : "Tutorial #3: Increment Counter Contract"}
           </button>
         </div>
       </div>

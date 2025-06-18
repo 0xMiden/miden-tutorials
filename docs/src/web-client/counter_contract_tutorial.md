@@ -62,15 +62,15 @@ Add the following code to the `app/page.tsx` file. This code defines the main pa
 ```tsx
 "use client";
 import { useState } from "react";
-import { deployCounterContract } from "../lib/deployCounterContract";
+import { incrementCounterContract } from "../lib/incrementCounterContract";
 
 export default function Home() {
-  const [isCreatingLib, setIsCreateingLib] = useState(false);
+  const [isIncrementCounter, setIsIncrementCounter] = useState(false);
 
-  const handleCreateLib = async () => {
-    setIsCreateingLib(true);
-    await deployCounterContract();
-    setIsCreateingLib(false);
+  const handleIncrementCounterContract = async () => {
+    setIsIncrementCounter(true);
+    await incrementCounterContract();
+    setIsIncrementCounter(false);
   };
 
   return (
@@ -81,12 +81,12 @@ export default function Home() {
 
         <div className="max-w-sm w-full bg-gray-800/20 border border-gray-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
           <button
-            onClick={handleCreateLib}
+            onClick={handleIncrementCounterContract}
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
-            {isCreatingLib
+            {isIncrementCounter
               ? "Working..."
-              : "Tutorial #3: Deploy Counter Contract"}
+              : "Tutorial #3: Increment Counter Contract"}
           </button>
         </div>
       </div>
@@ -107,8 +107,8 @@ touch lib/deployCounterContract.ts
 Copy and paste the following code into the `lib/deployCounterContract.ts` file:
 
 ```ts
-// lib/webClient.ts
-export async function deployCounterContract(): Promise<void> {
+// lib/incrementCounterContract.ts
+export async function incrementCounterContract(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
@@ -116,10 +116,7 @@ export async function deployCounterContract(): Promise<void> {
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const {
-    AccountBuilder,
-    AccountComponent,
-    AccountStorageMode,
-    AccountType,
+    AccountId,
     AssemblerUtils,
     StorageSlot,
     TransactionKernel,
@@ -129,12 +126,12 @@ export async function deployCounterContract(): Promise<void> {
     WebClient,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "http://localhost:57291";
+  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
   // Counter contract code in Miden Assembly
-  const accountCode = `
+  const counterContractCode = `
       use.miden::account
       use.std::sys
 
@@ -182,32 +179,19 @@ export async function deployCounterContract(): Promise<void> {
   let assembler = TransactionKernel.assembler();
   let emptyStorageSlot = StorageSlot.emptyValue();
 
-  let counterAccountComponent = AccountComponent.compile(
-    accountCode, // contract code
-    assembler, // assembler
-    [emptyStorageSlot], // storage data
-  ).withSupportsAllTypes();
-
-  const walletSeed = new Uint8Array(32);
-  crypto.getRandomValues(walletSeed);
-
-  let anchorBlock = await client.getLatestEpochBlock();
-
-  let accountBuilderResult = new AccountBuilder(walletSeed)
-    .anchor(anchorBlock)
-    .accountType(AccountType.RegularAccountImmutableCode)
-    .storageMode(AccountStorageMode.public())
-    .withComponent(counterAccountComponent)
-    .build();
-
-  // Importing the counter contract into the WebClient
-  await client.newAccount(
-    accountBuilderResult.account, // account
-    accountBuilderResult.seed, // seed
-    false, // overwrite
+  const counterContractId = AccountId.fromHex(
+    "0xb32d619dfe9e2f0000010ecb441d3f",
   );
-  let counterContract = accountBuilderResult.account;
-  console.log("Counter contract id: ", counterContract.id().toString());
+  let counterContractAccount = await client.getAccount(counterContractId);
+
+  if (!counterContractAccount) {
+    await client.importAccountById(counterContractId);
+    await client.syncState();
+    counterContractAccount = await client.getAccount(counterContractId);
+    if (!counterContractAccount) {
+      throw new Error(`Account not found after import: ${counterContractId}`);
+    }
+  }
 
   // Building the transaction script which will call the counter contract
   let txScriptCode = `
@@ -224,7 +208,7 @@ export async function deployCounterContract(): Promise<void> {
   let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
     assembler, // assembler
     "external_contract::counter_contract", // library path to call the contract
-    accountCode, // account code of the contract
+    counterContractCode, // account code of the contract
   );
 
   // Creating the transaction script
@@ -241,7 +225,7 @@ export async function deployCounterContract(): Promise<void> {
 
   // Executing the transaction script against the counter contract
   let txResult = await client.newTransaction(
-    accountBuilderResult.account.id(),
+    counterContractAccount.id(),
     txIncrementRequest,
   );
 
@@ -252,7 +236,7 @@ export async function deployCounterContract(): Promise<void> {
   await client.syncState();
 
   // Logging the count of counter contract
-  let counter = await client.getAccount(counterContract.id());
+  let counter = await client.getAccount(counterContractAccount.id());
   let count = counter?.storage().getItem(0);
 
   const counterValue = Number(
@@ -275,8 +259,7 @@ This is what you should see in the browser console:
 
 ```
 Current block number:  2168
-deployCounterContract.ts:101 Counter contract id:  0xab77ad2ac23ff0000000445bda9e10
-deployCounterContract.ts:153 Count:  1
+deployCounterContract.ts:153 Count:  3
 ```
 
 ## Miden Assembly Counter Contract Explainer

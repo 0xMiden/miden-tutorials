@@ -115,7 +115,7 @@ export default function Home() {
 
   const handleClick = async () => {
     setStarted(true);
-    await webClient();
+    await createMintConsume();
     setStarted(false);
   };
 
@@ -138,11 +138,11 @@ export default function Home() {
 
 ## Step 4: Create a wallet for Alice
 
-Back in `lib/webClient.ts`, extend `webClient()`:
+Back in `lib/createMintConsume.ts`, extend `createMintConsume()`:
 
 ```ts
-// lib/webClient.ts
-export async function webClient(): Promise<void> {
+// lib/createMintConsume.ts
+export async function createMintConsume(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
@@ -193,11 +193,11 @@ console.log("Setup complete.");
 
 ## Summary
 
-Your final `lib/webClient.ts` should look like:
+Your final `lib/createMintConsume.ts` should look like:
 
 ```ts
-// lib/webClient.ts
-export async function webClient(): Promise<void> {
+// lib/createMintConsume.ts
+export async function createMintConsume(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;

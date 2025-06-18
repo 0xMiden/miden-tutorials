@@ -18,7 +18,7 @@ To mint notes with tokens from the faucet we created, Alice can use the WebClien
 
 Below is an example of a transaction request minting tokens from the faucet for Alice.
 
-Add this snippet to the end of the `webClient` function in the `src/webClient.ts` file that we created in the previous chapter:
+Add this snippet to the end of the `createMintConsume` function in the `lib/createMintConsume.ts` file that we created in the previous chapter:
 
 ```ts
 // 4. Mint tokens to Alice
@@ -64,7 +64,7 @@ Now that we know how to identify notes ready to consume, let's consume the notes
 
 The following code snippet identifies and consumes notes in a single transaction.
 
-Add this snippet to the end of the `webClient` function in the `src/webClient.ts` file:
+Add this snippet to the end of the `webClient` function in the `lib/createMintConsume.ts` file:
 
 ```ts
 // 5. Fetch minted notes
@@ -119,11 +119,11 @@ await client.submitTransaction(txResult_3);
 
 ## Summary
 
-Your `src/webClient.ts` function should now look like this:
+Your `lib/createMintConsume.ts` function should now look like this:
 
 ```ts
-// lib/webClient.ts
-export async function webClient(): Promise<void> {
+// lib/createMintConsume.ts
+export async function createMintConsume(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
@@ -214,7 +214,7 @@ export async function webClient(): Promise<void> {
 }
 ```
 
-Let's run the `src/webClient.ts` function again. Reload the page and click "Start WebClient".
+Let's run the `lib/createMintConsume.ts` function again. Reload the page and click "Start WebClient".
 
 The output will look like this:
 
@@ -249,7 +249,7 @@ The Miden webclient stores account and note data in the browser. To clear the ac
 
 ### Running the example
 
-To run a full working example navigate to the `web-client` directory in the [miden-tutorials](https://github.com/0xPolygonMiden/miden-tutorials/) repository and run the web application example:
+To run a full working example navigate to the `web-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run the web application example:
 
 ```bash
 cd web-client
