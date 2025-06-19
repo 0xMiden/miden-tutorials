@@ -1,6 +1,6 @@
 # Incrementing the Count of the Counter Contract
 
-_Using the Miden client in TypeScript to interact with a custom smart contract on Miden_
+_Using the Miden WebClient to interact with a custom smart contract_
 
 ## Overview
 
