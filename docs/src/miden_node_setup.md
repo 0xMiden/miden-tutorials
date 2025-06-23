@@ -14,7 +14,7 @@ There are two ways to connect to a Miden node:
 Next, install the miden-node crate using this command:
 
 ```bash
-cargo install miden-node --version 0.8.0
+cargo install miden-node --locked --version 0.9.2
 ```
 
 ### Step 2: Initializing the node
@@ -22,12 +22,12 @@ cargo install miden-node --version 0.8.0
 To start the node, we first need to generate the genesis file. Create the genesis file using this command:
 
 ```bash
-miden-node store dump-genesis > genesis.toml
-mkdir -p data accounts
+mkdir data
+mkdir accounts
+
 miden-node bundled bootstrap \
   --data-directory data \
-  --accounts-directory accounts \
-  --config genesis.toml
+  --accounts-directory .
 ```
 
 Expected output:
