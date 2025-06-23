@@ -68,13 +68,15 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Building the counter contract
   let assembler = TransactionKernel.assembler();
-  let emptyStorageSlot = StorageSlot.emptyValue();
 
+  // Counter contract account id on testnet
   const counterContractId = AccountId.fromHex(
     "0xb32d619dfe9e2f0000010ecb441d3f",
   );
-  let counterContractAccount = await client.getAccount(counterContractId);
 
+  // Reading the public state of the counter contract from testnet,
+  // and importing it into the WebClient
+  let counterContractAccount = await client.getAccount(counterContractId);
   if (!counterContractAccount) {
     await client.importAccountById(counterContractId);
     await client.syncState();
@@ -128,8 +130,12 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Logging the count of counter contract
   let counter = await client.getAccount(counterContractAccount.id());
+
+  // Here we get the first Word from storage of the counter contract
+  // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
   let count = counter?.storage().getItem(0);
 
+  // Converting the Word represented as a hex to a single integer value
   const counterValue = Number(
     BigInt("0x" + count!.toHex().slice(-16).match(/../g)!.reverse().join("")),
   );
