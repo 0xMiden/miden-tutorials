@@ -17,7 +17,7 @@ use miden_client::{
     transaction::{OutputNote, PaymentTransactionData, TransactionRequestBuilder},
     ClientError, Felt,
 };
-use miden_objects::account::AccountIdVersion;
+use miden_objects::account::{AccountIdVersion, NetworkId};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
@@ -73,7 +73,7 @@ async fn main() -> Result<(), ClientError> {
         .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
         .unwrap();
 
-    println!("Alice's account ID: {:?}", alice_account.id().to_hex());
+    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
 
     //------------------------------------------------------------
     // STEP 2: Deploy a fungible faucet
@@ -112,7 +112,7 @@ async fn main() -> Result<(), ClientError> {
         .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
         .unwrap();
 
-    println!("Faucet account ID: {:?}", faucet_account.id().to_hex());
+    println!("Faucet account ID: {:?}", faucet_account.id().to_bech32(NetworkId::Testnet));
 
     // Resync to show newly deployed faucet
     client.sync_state().await?;

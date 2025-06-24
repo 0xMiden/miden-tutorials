@@ -15,6 +15,7 @@ use miden_client::{
 use miden_objects::{
     account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
 };
+use miden_objects::account::NetworkId;
 
 fn create_library(
     assembler: Assembler,
@@ -94,7 +95,7 @@ async fn main() -> Result<(), ClientError> {
         "counter_contract commitment: {:?}",
         counter_contract.commitment()
     );
-    println!("counter_contract id: {:?}", counter_contract.id().to_hex());
+    println!("counter_contract id: {:?}", counter_contract.id().to_bech32(NetworkId::Testnet));
     println!("counter_contract storage: {:?}", counter_contract.storage());
 
     client

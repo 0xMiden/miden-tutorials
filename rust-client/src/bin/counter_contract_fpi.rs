@@ -16,7 +16,7 @@ use miden_client::{
     ClientError, Felt,
 };
 use miden_objects::{
-    account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
+    account::{AccountComponent, NetworkId}, assembly::{Assembler, DefaultSourceManager},
 };
 
 fn create_library(
@@ -97,7 +97,7 @@ async fn main() -> Result<(), ClientError> {
         "count_reader hash: {:?}",
         count_reader_contract.commitment()
     );
-    println!("contract id: {:?}", count_reader_contract.id().to_hex());
+    println!("contract id: {:?}", count_reader_contract.id().to_bech32(NetworkId::Testnet));
 
     client
         .add_account(
@@ -114,7 +114,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Building counter contract from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let counter_contract_id = AccountId::from_hex("0xac6eeab35afb09000000ea9fae7722").unwrap();
+    let (_, counter_contract_id) = AccountId::from_bech32("mtst1qz4a33pfjn49qqqqq090u4g55upcas8t").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)

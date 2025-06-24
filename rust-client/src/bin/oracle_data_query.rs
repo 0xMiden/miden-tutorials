@@ -85,7 +85,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // Get all foreign accounts for oracle data
     // -------------------------------------------------------------------------
-    let oracle_account_id = AccountId::from_hex("0x4f67e78643022e00000220d8997e33").unwrap();
+    let (_, oracle_account_id) = AccountId::from_bech32("mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99").unwrap();
     let btc_usd_pair_id = 120195681;
     let foreign_accounts: Vec<ForeignAccount> =
         get_oracle_foreign_accounts(&mut client, oracle_account_id, btc_usd_pair_id).await?;

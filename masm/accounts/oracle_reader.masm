@@ -11,7 +11,7 @@ export.get_price
     push.0xb86237a8c9cd35acfef457e47282cc4da43df676df410c988eab93095d8fb3b9
     # => [GET_MEDIAN_HASH, PAIR]
 
-    push.599064613630720.5721796415433354752
+    push.939716883672832.2172042075194638080
     # => [oracle_id_prefix, oracle_id_suffix, GET_MEDIAN_HASH, PAIR]
 
     exec.tx::execute_foreign_procedure

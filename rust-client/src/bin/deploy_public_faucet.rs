@@ -3,7 +3,7 @@ use miden_client_tools::{
     create_basic_account, create_basic_faucet, delete_keystore_and_store, instantiate_client,
     mint_from_faucet_for_account,
 };
-
+use miden_objects::account::NetworkId;
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     delete_keystore_and_store(None).await;
@@ -21,7 +21,7 @@ async fn main() -> Result<(), ClientError> {
     let faucet = create_basic_faucet(&mut client, keystore.clone())
         .await
         .unwrap();
-    println!("faucetId: {:?}", faucet.id().to_hex());
+    println!("faucetId: {:?}", faucet.id().to_bech32(NetworkId::Testnet));
 
     // mint to publish faucet on chain
     let (alice_account, _) = create_basic_account(&mut client, keystore.clone())

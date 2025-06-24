@@ -168,7 +168,7 @@ async fn main() -> Result<(), ClientError> {
         "count_reader hash: {:?}",
         count_reader_contract.commitment()
     );
-    println!("contract id: {:?}", count_reader_contract.id().to_hex());
+    println!("contract id: {:?}", count_reader_contract.id().to_bech32(NetworkId::Testnet));
 
     client
         .add_account(
@@ -456,7 +456,7 @@ async fn main() -> Result<(), ClientError> {
         "count_reader hash: {:?}",
         count_reader_contract.commitment()
     );
-    println!("contract id: {:?}", count_reader_contract.id().to_hex());
+    println!("contract id: {:?}", count_reader_contract.id().to_bech32(NetworkId::Testnet));
 
     client
         .add_account(

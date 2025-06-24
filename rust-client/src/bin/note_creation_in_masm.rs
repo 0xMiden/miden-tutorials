@@ -21,6 +21,8 @@ use miden_client::{
     Client, ClientError, Felt,
 };
 
+use miden_objects::account::NetworkId;
+
 // Helper to create a basic account
 async fn create_basic_account(
     client: &mut Client,
@@ -84,7 +86,7 @@ async fn wait_for_notes(
         println!(
             "{} consumable notes found for account {}. Waiting...",
             notes.len(),
-            account_id.id().to_hex()
+            account_id.id().to_bech32(NetworkId::Testnet)
         );
         sleep(Duration::from_secs(3)).await;
     }
@@ -115,13 +117,13 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Alice's account ID: {:?}", alice_account.id().to_hex());
+    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Bob's account ID: {:?}", bob_account.id().to_hex());
+    println!("Bob's account ID: {:?}", bob_account.id().to_bech32(NetworkId::Testnet));
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore.clone()).await?;
-    println!("Faucet account ID: {:?}", faucet.id().to_hex());
+    println!("Faucet account ID: {:?}", faucet.id().to_bech32(NetworkId::Testnet));
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------

@@ -10,7 +10,7 @@ use miden_client::{
     }, rpc::{Endpoint, TonicRpcClient}, store::InputNoteRecord, transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder}, Client, ClientError, Felt, Word
 };
 use miden_objects::Hasher;
-
+use miden_objects::account::NetworkId;
 // Helper to create a basic account
 async fn create_basic_account(
     client: &mut Client,
@@ -110,13 +110,13 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Alice's account ID: {:?}", alice_account.id().to_hex());
+    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Bob's account ID: {:?}", bob_account.id().to_hex());
+    println!("Bob's account ID: {:?}", bob_account.id().to_bech32(NetworkId::Testnet));
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore).await?;
-    println!("Faucet account ID: {:?}", faucet.id().to_hex());
+    println!("Faucet account ID: {:?}", faucet.id().to_bech32(NetworkId::Testnet));
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
