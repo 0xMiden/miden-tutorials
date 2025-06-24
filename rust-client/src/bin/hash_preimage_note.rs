@@ -4,13 +4,25 @@ use tokio::time::{sleep, Duration};
 
 use miden_client::{
     account::{
-        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512}, Account, AccountBuilder, AccountId, AccountStorageMode, AccountType
-    }, asset::{FungibleAsset, TokenSymbol}, auth::AuthSecretKey, builder::ClientBuilder, crypto::{FeltRng, SecretKey}, keystore::FilesystemKeyStore, note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata, NoteRecipient, NoteRelevance, NoteScript, NoteTag, NoteType
-    }, rpc::{Endpoint, TonicRpcClient}, store::InputNoteRecord, transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder}, Client, ClientError, Felt, Word
+        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
+        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType,
+    },
+    asset::{FungibleAsset, TokenSymbol},
+    auth::AuthSecretKey,
+    builder::ClientBuilder,
+    crypto::{FeltRng, SecretKey},
+    keystore::FilesystemKeyStore,
+    note::{
+        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
+        NoteRecipient, NoteRelevance, NoteScript, NoteTag, NoteType,
+    },
+    rpc::{Endpoint, TonicRpcClient},
+    store::InputNoteRecord,
+    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
+    Client, ClientError, Felt, Word,
 };
-use miden_objects::Hasher;
 use miden_objects::account::NetworkId;
+use miden_objects::Hasher;
 // Helper to create a basic account
 async fn create_basic_account(
     client: &mut Client,
@@ -110,13 +122,22 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Alice's account ID: {:?}",
+        alice_account.id().to_bech32(NetworkId::Testnet)
+    );
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Bob's account ID: {:?}", bob_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Bob's account ID: {:?}",
+        bob_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore).await?;
-    println!("Faucet account ID: {:?}", faucet.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Faucet account ID: {:?}",
+        faucet.id().to_bech32(NetworkId::Testnet)
+    );
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -201,7 +222,7 @@ async fn main() -> Result<(), ClientError> {
     // STEP 4: Consume the Custom Note
     // -------------------------------------------------------------------------
     println!("\n[STEP 4] Bob consumes the Custom Note with Correct Secret");
-    
+
     let secret = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let consume_custom_request = TransactionRequestBuilder::new()
         .with_unauthenticated_input_notes([(custom_note, Some(secret))])

@@ -117,13 +117,22 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Alice's account ID: {:?}",
+        alice_account.id().to_bech32(NetworkId::Testnet)
+    );
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Bob's account ID: {:?}", bob_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Bob's account ID: {:?}",
+        bob_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore.clone()).await?;
-    println!("Faucet account ID: {:?}", faucet.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Faucet account ID: {:?}",
+        faucet.id().to_bech32(NetworkId::Testnet)
+    );
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------

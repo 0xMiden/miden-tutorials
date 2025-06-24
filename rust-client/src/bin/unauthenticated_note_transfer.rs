@@ -73,7 +73,10 @@ async fn main() -> Result<(), ClientError> {
     client
         .add_account(&faucet_account, Some(seed), false)
         .await?;
-    println!("Faucet account ID: {}", faucet_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Faucet account ID: {}",
+        faucet_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     // Add the key pair to the keystore
     keystore
@@ -105,7 +108,11 @@ async fn main() -> Result<(), ClientError> {
 
         let (account, seed) = builder.build().unwrap();
         accounts.push(account.clone());
-        println!("account id {:?}: {}", i, account.id().to_bech32(NetworkId::Testnet));
+        println!(
+            "account id {:?}: {}",
+            i,
+            account.id().to_bech32(NetworkId::Testnet)
+        );
         client.add_account(&account, Some(seed), true).await?;
 
         // Add the key pair to the keystore
@@ -169,7 +176,10 @@ async fn main() -> Result<(), ClientError> {
         let loop_start = Instant::now();
         println!("\nunauthenticated tx {:?}", i + 1);
         println!("sender: {}", accounts[i].id().to_bech32(NetworkId::Testnet));
-        println!("target: {}", accounts[i + 1].id().to_bech32(NetworkId::Testnet));
+        println!(
+            "target: {}",
+            accounts[i + 1].id().to_bech32(NetworkId::Testnet)
+        );
 
         // Time the creation of the p2id note
         let send_amount = 20;
@@ -252,7 +262,11 @@ async fn main() -> Result<(), ClientError> {
             .vault()
             .get_balance(faucet_account.id())
             .unwrap();
-        println!("Account: {} balance: {}", account.id().to_bech32(NetworkId::Testnet), balance);
+        println!(
+            "Account: {} balance: {}",
+            account.id().to_bech32(NetworkId::Testnet),
+            balance
+        );
     }
 
     Ok(())
