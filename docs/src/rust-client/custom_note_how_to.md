@@ -280,7 +280,7 @@ async fn main() -> Result<(), ClientError> {
     println!("digest: {:?}", digest);
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../masm/notes/hash_preimage_note.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("./masm/notes/hash_preimage_note.masm")).unwrap();
     let serial_num = client.rng().draw_word();
     let note_script = NoteScript::compile(code, assembler).unwrap();
     let note_inputs = NoteInputs::new(digest.to_vec()).unwrap();
@@ -340,29 +340,29 @@ async fn main() -> Result<(), ClientError> {
 The output of our program will look something like this:
 
 ```
-Latest block: 8125
+Latest block: 226943
 
 [STEP 1] Creating new accounts
-Alice's account ID: "0x19e6170ade3f631000009993151abd"
-Bob's account ID: "0xba73b0bb92f3501000006d14c97ed1"
+Alice's account ID: "mtst1qqufkq3xr0rr5yqqqwgrc20ctythccy6"
+Bob's account ID: "mtst1qz76c9fvhvms2yqqqvvw8tf6m5h86y2h"
 
 Deploying a new fungible faucet.
-Faucet account ID: "0x4e9b048e422f4c200000b270fbf53c"
+Faucet account ID: "mtst1qpwsgjstpwvykgqqqwwzgz3u5vwuuywe"
 
 [STEP 2] Mint tokens with P2ID
-Note 0x2b581989b58d2256fb4d62955746d7bb5e100224498a2bc5ead4bed11beb1e23 not found. Waiting...
-Note 0x2b581989b58d2256fb4d62955746d7bb5e100224498a2bc5ead4bed11beb1e23 not found. Waiting...
-✅ note found 0x2b581989b58d2256fb4d62955746d7bb5e100224498a2bc5ead4bed11beb1e23
+Note 0x88d8c4a50c0e6342e58026b051fb6038867de21d3bd3963aec67fd6c45861faf not found. Waiting...
+Note 0x88d8c4a50c0e6342e58026b051fb6038867de21d3bd3963aec67fd6c45861faf not found. Waiting...
+✅ note found 0x88d8c4a50c0e6342e58026b051fb6038867de21d3bd3963aec67fd6c45861faf
 
 [STEP 3] Create custom note
 digest: RpoDigest([14371582251229115050, 1386930022051078873, 17689831064175867466, 9632123050519021080])
-note hash: "0x92d53905c422989284af4ad96a5821ce54294c8dc5f4bf45d05c363f6b3fec9f"
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0xa5145ff24adc011bb4dd4da139b0d34402691d317cf0a4515337593d421a8f2f
+note hash: "0x14c66143377223e090e5b4da0d1e5ce6c6521622ad5b92161a704a25c915769b"
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0xffbee228a2c6283efe958c6b3cd31af88018c029221b413b0f23fcfacb2cb611
 
 [STEP 4] Bob consumes the Custom Note with Correct Secret
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x10e061aacf029aa2a9ec0457d7ff23130ff859ae75ea9754cbac3f64a4d56659
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xe6c8bb7b469e03dcacd8f1f400011a781e96ad4266ede11af8e711379e85b929
 
-account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 5664125965390793760, suffix: 196198333234176 }): 100}), non_fungible: NonFungibleAssetDelta({}) }
+account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 6702563556733766432, suffix: 1016103534633728 }): 100}), non_fungible: NonFungibleAssetDelta({}) }
 ```
 
 ## Conclusion

@@ -65,7 +65,7 @@ use miden_client::{
     ClientError, Felt,
 };
 use miden_objects::{
-    account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
+    account::{AccountComponent, NetworkId}, assembly::Assembler, assembly::DefaultSourceManager,
 };
 
 fn create_library(
@@ -281,7 +281,10 @@ println!(
     "counter_contract commitment: {:?}",
     counter_contract.commitment()
 );
-println!("counter_contract id: {:?}", counter_contract.id().to_bech32(NetworkId::Testnet));
+println!(
+    "counter_contract id: {:?}",
+    counter_contract.id().to_bech32(NetworkId::Testnet)
+);
 println!("counter_contract storage: {:?}", counter_contract.storage());
 
 client
@@ -300,8 +303,8 @@ After the program executes, you should see the counter contract hash and contrac
 
 ```
 [STEP 1] Creating counter contract.
-counter_contract commitment: RpoDigest([6587363368733640299, 11199715422963228789, 4814068623617580858, 15157748550464046635])
-counter_contract id: "0x2add95df402ee300000027e1a3a003"
+counter_contract commitment: RpoDigest([10854804595308759734, 11034759279878416408, 15662010127375823242, 9560626040625797366])
+counter_contract id: "mtst1qpj0g3ke67tg5qqqqd2z4ffm9g8ezpf6"
 counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0])] }
 ```
 
@@ -389,7 +392,7 @@ use miden_client::{
     ClientError, Felt,
 };
 use miden_objects::{
-    account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
+    account::{AccountComponent, NetworkId}, assembly::Assembler, assembly::DefaultSourceManager,
 };
 
 fn create_library(
@@ -430,7 +433,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating counter contract.");
 
     // Load the MASM file for the counter contract
-    let counter_path = Path::new("../masm/accounts/counter.masm");
+    let counter_path = Path::new("./masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -470,7 +473,10 @@ async fn main() -> Result<(), ClientError> {
         "counter_contract commitment: {:?}",
         counter_contract.commitment()
     );
-    println!("counter_contract id: {:?}", counter_contract.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "counter_contract id: {:?}",
+        counter_contract.id().to_bech32(NetworkId::Testnet)
+    );
     println!("counter_contract storage: {:?}", counter_contract.storage());
 
     client
@@ -484,7 +490,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Counter Contract With Script");
 
     // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("../masm/scripts/counter_script.masm");
+    let script_path = Path::new("./masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -539,15 +545,15 @@ async fn main() -> Result<(), ClientError> {
 The output of our program will look something like this:
 
 ```
-Latest block: 17590
+Latest block: 226717
 
 [STEP 1] Creating counter contract.
-counter_contract commitment: RpoDigest([13776863454932774952, 12657157213885349180, 12375803873150830068, 3663360040638123847])
-counter_contract id: "0xf11260152acd580000008bc429ccfe"
+counter_contract commitment: RpoDigest([10854804595308759734, 11034759279878416408, 15662010127375823242, 9560626040625797366])
+counter_contract id: "mtst1qpj0g3ke67tg5qqqqd2z4ffm9g8ezpf6"
 counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0])] }
 
 [STEP 2] Call Counter Contract With Script
-Stack state before step 2505:
+Stack state before step 2502:
 ├──  0: 1
 ├──  1: 0
 ├──  2: 0
@@ -569,7 +575,7 @@ Stack state before step 2505:
 ├── 18: 0
 └── 19: 0
 
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0x927fce258ee32df230edd2f56bc75d83ba844c9fd9a5e117f9bbaf0a30d3cd28
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0x645b89ebf39c7baa2a4264854f793736b7370d65ecf5f1a23c0169fda6a6a395
 counter contract storage: Ok(RpoDigest([0, 0, 0, 1]))
 ```
 

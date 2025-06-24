@@ -311,22 +311,22 @@ async fn main() -> Result<(), ClientError> {
 The output of our program will look something like this:
 
 ```
-Latest block: 17854
+Latest block: 227040
 
 [STEP 1] Deploying a new fungible faucet.
-Faucet account ID: 0x7a3c3e3e03fe43200000449196ce1f
+Faucet account ID: mtst1qqvhzywfzy4xugqqq0yqj28jxy3kr5hy
 
 [STEP 2] Creating new accounts
-account id 0: 0x44d89b438d298e1000003636aa7a58
-account id 1: 0xf275e0bcd03fd110000002b1cd6b60
-account id 2: 0xf18208694c7926100000d1946f306e
-account id 3: 0xc028077080d628100000f47f698791
-account id 4: 0x16c973d5b5cb96100000674ca476f9
-account id 5: 0x53ce6afddd744f100000b5d39c64bd
-account id 6: 0x3b8ed3bfa7c9f9100000dfd8a12b9c
-account id 7: 0x94117096753d06100000470857d9d2
-account id 8: 0xa8dd5dc6d59e89100000e620b17531
-account id 9: 0x3d0bdd225de2be1000004ffa75a2c1
+account id 0: mtst1qrdwf5hv6wnqzyqqq06hyfvqryn2nam3
+account id 1: mtst1qz7lwv4wh27xyyqqq026adcyc54ueccz
+account id 2: mtst1qzzmpa7f3tcnkyqqqdgj4dan2q8r0s6c
+account id 3: mtst1qrdclj0zp3v7qyqqqdn92ad87cl0rctl
+account id 4: mtst1qre79420whvn2yqqq0udf4z8d5c3xwfj
+account id 5: mtst1qpmfryrdjfwazyqqqdslm7gdhur80xhk
+account id 6: mtst1qr0n4cxfddn2wyqqqv2vsc9mnqh0dtyj
+account id 7: mtst1qrfmw4297mchwyqqqdfzq8dl2uu89uhq
+account id 8: mtst1qpevlxpnuetesyqqqdwmsgd4zua84nda
+account id 9: mtst1qre7lqnwt03zwyqqqvjdlj2w6yc87u4w
 
 [STEP 3] Mint tokens
 Minting tokens for Alice...
@@ -334,71 +334,71 @@ Minting tokens for Alice...
 [STEP 4] Create unauthenticated note tx chain
 
 unauthenticated tx 1
-sender: 0x44d89b438d298e1000003636aa7a58
-target: 0xf275e0bcd03fd110000002b1cd6b60
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x2eb9c92e928595a55c8d98027cb8f434dcaef15a6ce9478518ba8083f80d7928
-Total time for loop iteration 0: 3.126228875s
+sender: mtst1qrdwf5hv6wnqzyqqq06hyfvqryn2nam3
+target: mtst1qz7lwv4wh27xyyqqq026adcyc54ueccz
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x31f48117c645c5b4ccff78ef356bad764798d4f207925e492ebbae1b86ef4f55
+Total time for loop iteration 0: 1.952243542s
 
 unauthenticated tx 2
-sender: 0xf275e0bcd03fd110000002b1cd6b60
-target: 0xf18208694c7926100000d1946f306e
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x8e780ab4715d1473e7babcf05bef6550b9bbaca8dc9460cee3dd3e25bd1f097d
-Total time for loop iteration 1: 2.969214834s
+sender: mtst1qz7lwv4wh27xyyqqq026adcyc54ueccz
+target: mtst1qzzmpa7f3tcnkyqqqdgj4dan2q8r0s6c
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x45b4c62c6e8e79a1c7200d1c84dc6304a88debd37b20b069dd739498827354c1
+Total time for loop iteration 1: 2.091625458s
 
 unauthenticated tx 3
-sender: 0xf18208694c7926100000d1946f306e
-target: 0xc028077080d628100000f47f698791
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xdccd832ed22c9cd9054559d7746b5fe4cc9e78da50638e4a30973f4f0ea74e63
-Total time for loop iteration 2: 2.967574333s
+sender: mtst1qzzmpa7f3tcnkyqqqdgj4dan2q8r0s6c
+target: mtst1qrdclj0zp3v7qyqqqdn92ad87cl0rctl
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xb2241e10df8f6f891b910975a3b4f4fd47657c47de164138300d683cfca5dd61
+Total time for loop iteration 2: 1.846021291s
 
 unauthenticated tx 4
-sender: 0xc028077080d628100000f47f698791
-target: 0x16c973d5b5cb96100000674ca476f9
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xc8fe1dd90b9008861e4ea3583195edadefbb9443f657ae296dfba0bf4ac56519
-Total time for loop iteration 3: 2.86498225s
+sender: mtst1qrdclj0zp3v7qyqqqdn92ad87cl0rctl
+target: mtst1qre79420whvn2yqqq0udf4z8d5c3xwfj
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xd3ea6fa1da6c317f055ac4b069388d93b88d526039e01531879e75598e0f8cff
+Total time for loop iteration 3: 1.877627958s
 
 unauthenticated tx 5
-sender: 0x16c973d5b5cb96100000674ca476f9
-target: 0x53ce6afddd744f100000b5d39c64bd
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xaf4450834db4397de1832ea826c1fcecdf7fee0d8498110f857761e5f4c05bb6
-Total time for loop iteration 4: 2.879300125s
+sender: mtst1qre79420whvn2yqqq0udf4z8d5c3xwfj
+target: mtst1qpmfryrdjfwazyqqqdslm7gdhur80xhk
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x6098638ec0ff7331432c037331ee7372977abe20af5c56315985fd314e21548d
+Total time for loop iteration 4: 1.884586875s
 
 unauthenticated tx 6
-sender: 0x53ce6afddd744f100000b5d39c64bd
-target: 0x3b8ed3bfa7c9f9100000dfd8a12b9c
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xb5f3b92272ffde9a5e9634fe8e5ef9d0dc2dc6e1695f09685f5a80f143fef421
-Total time for loop iteration 5: 2.829184834s
+sender: mtst1qpmfryrdjfwazyqqqdslm7gdhur80xhk
+target: mtst1qr0n4cxfddn2wyqqqv2vsc9mnqh0dtyj
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x8258292e49e0cfdd96603450c2de6738afecb1e7482ede0fb68ea375e884e1d8
+Total time for loop iteration 5: 1.886505875s
 
 unauthenticated tx 7
-sender: 0x3b8ed3bfa7c9f9100000dfd8a12b9c
-target: 0x94117096753d06100000470857d9d2
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xed5eaba98132dd7bce4421da72cac330758ca41bd8818edb07526f7b662d8827
-Total time for loop iteration 6: 2.897448917s
+sender: mtst1qr0n4cxfddn2wyqqqv2vsc9mnqh0dtyj
+target: mtst1qrfmw4297mchwyqqqdfzq8dl2uu89uhq
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x9e0f84e00a9393bf6e5f224d55ccdf8bd0ef32ee20c3299e2dfccf1771001dfd
+Total time for loop iteration 6: 2.095149458s
 
 unauthenticated tx 8
-sender: 0x94117096753d06100000470857d9d2
-target: 0xa8dd5dc6d59e89100000e620b17531
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xdd9cc26dbdbb542ef835780f9881708b9867190c353810ebce501955c5dad139
-Total time for loop iteration 7: 2.864668333s
+sender: mtst1qrfmw4297mchwyqqqdfzq8dl2uu89uhq
+target: mtst1qpevlxpnuetesyqqqdwmsgd4zua84nda
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xa9db6445dfaa44ccf9dd52bf4cd8d9057946571ccb5299a7a56c59faf2ed2093
+Total time for loop iteration 7: 1.935587291s
 
 unauthenticated tx 9
-sender: 0xa8dd5dc6d59e89100000e620b17531
-target: 0x3d0bdd225de2be1000004ffa75a2c1
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xdd6e35b59032c0a22ce1e8f27c43ee7935ec1c2077ff1c37444ded09b879c330
-Total time for loop iteration 8: 3.070943167s
+sender: mtst1qpevlxpnuetesyqqqdwmsgd4zua84nda
+target: mtst1qre7lqnwt03zwyqqqvjdlj2w6yc87u4w
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xba4bb4ae3c7aaf949cdd3be8c9ea52169f958e7dca8e9d4541fd5ac939393e41
+Total time for loop iteration 8: 1.964682833s
 
-Total execution time for unauthenticated note txs: 26.46999025s
-blocks: [BlockNumber(17859), BlockNumber(17859), BlockNumber(17859), BlockNumber(17859), BlockNumber(17859), BlockNumber(17859), BlockNumber(17859), BlockNumber(17859), BlockNumber(17859)]
-Account: 0x44d89b438d298e1000003636aa7a58 balance: 80
-Account: 0xf275e0bcd03fd110000002b1cd6b60 balance: 0
-Account: 0xf18208694c7926100000d1946f306e balance: 0
-Account: 0xc028077080d628100000f47f698791 balance: 0
-Account: 0x16c973d5b5cb96100000674ca476f9 balance: 0
-Account: 0x53ce6afddd744f100000b5d39c64bd balance: 0
-Account: 0x3b8ed3bfa7c9f9100000dfd8a12b9c balance: 0
-Account: 0x94117096753d06100000470857d9d2 balance: 0
-Account: 0xa8dd5dc6d59e89100000e620b17531 balance: 0
-Account: 0x3d0bdd225de2be1000004ffa75a2c1 balance: 20
+Total execution time for unauthenticated note txs: 17.534611542s
+blocks: [BlockNumber(227047), BlockNumber(227047), BlockNumber(227047), BlockNumber(227047), BlockNumber(227047), BlockNumber(227047), BlockNumber(227047), BlockNumber(227047), BlockNumber(227047)]
+Account: mtst1qrdwf5hv6wnqzyqqq06hyfvqryn2nam3 balance: 80
+Account: mtst1qz7lwv4wh27xyyqqq026adcyc54ueccz balance: 0
+Account: mtst1qzzmpa7f3tcnkyqqqdgj4dan2q8r0s6c balance: 0
+Account: mtst1qrdclj0zp3v7qyqqqdn92ad87cl0rctl balance: 0
+Account: mtst1qre79420whvn2yqqq0udf4z8d5c3xwfj balance: 0
+Account: mtst1qpmfryrdjfwazyqqqdslm7gdhur80xhk balance: 0
+Account: mtst1qr0n4cxfddn2wyqqqv2vsc9mnqh0dtyj balance: 0
+Account: mtst1qrfmw4297mchwyqqqdfzq8dl2uu89uhq balance: 0
+Account: mtst1qpevlxpnuetesyqqqdwmsgd4zua84nda balance: 0
+Account: mtst1qre7lqnwt03zwyqqqvjdlj2w6yc87u4w balance: 20
 ```
 
 ## Conclusion

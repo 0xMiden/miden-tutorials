@@ -198,7 +198,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Deploy a smart contract with a mapping");
 
     // Load the MASM file for the counter contract
-    let file_path = Path::new("../masm/accounts/mapping_example_contract.masm");
+    let file_path = Path::new("./masm/accounts/mapping_example_contract.masm");
     let account_code = fs::read_to_string(file_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -248,7 +248,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Mapping Contract With Script");
 
     let script_code =
-        fs::read_to_string(Path::new("../masm/scripts/mapping_example_script.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/scripts/mapping_example_script.masm")).unwrap();
 
     // Create the library from the account source code using the helper function.
     let account_component_lib = create_library(

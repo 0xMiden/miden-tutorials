@@ -371,7 +371,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 3] Create iterative output note");
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../masm/notes/iterative_output_note.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("./masm/notes/iterative_output_note.masm")).unwrap();
     let rng = client.rng();
     let serial_num = rng.draw_word();
 
@@ -470,24 +470,25 @@ cargo run --release
 The output will look something like this:
 
 ```
-Latest block: 8153
+Latest block: 226933
 
 [STEP 1] Creating new accounts
-Alice's account ID: "0xf9919e334f7fa1100000d657ab75dc"
-Bob's account ID: "0xbd626b7bf785cd1000007d237250a1"
+Alice's account ID: "mtst1qpljtarjtawzcyqqqdcqu53adytw09yw"
+Bob's account ID: "mtst1qzaynsxth84vsyqqq0emse6ygcax3j59"
 
 Deploying a new fungible faucet.
-Faucet account ID: "0x8ac342a8684e72200000ce59224c27"
+Faucet account ID: "mtst1qpqpq6z8vrqvugqqqwjdnajgvurs9zgl"
 
 [STEP 2] Mint tokens with P2ID
-0 consumable notes found for account 0xf9919e334f7fa1100000d657ab75dc. Waiting...
+0 consumable notes found for account mtst1qpljtarjtawzcyqqqdcqu53adytw09yw. Waiting...
+0 consumable notes found for account mtst1qpljtarjtawzcyqqqdcqu53adytw09yw. Waiting...
 
 [STEP 3] Create iterative output note
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0x6b47eab551fa1710587de34040e14070c8abd112e8f9725b5c10a022fe8809de
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0x335061a434ccccbf9619052bdeacbc71b6e755b24f0ead0c3741a3b0954c78af
 
 [STEP 4] Bob consumes the note and creates a copy
-Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0x5aa732e7cc7e226e7b66b0692a2b688f4cf20a6d6938d5ef82e05efa4d397d65
-Account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(AccountIdV0 { prefix: 9998908888764543520, suffix: 226882222827264 }): 50}), non_fungible: NonFungibleAssetDelta({}) }
+Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/0xa39acf2bb965b4669b91bf564e8aa2987a9fc86ee350cd159ad5db1054cb67ab
+Account delta: AccountVaultDelta { fungible: FungibleAssetDelta({V0(Accoun
 ```
 
 ---

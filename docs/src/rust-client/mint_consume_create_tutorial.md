@@ -258,7 +258,7 @@ use miden_client::{
     transaction::{OutputNote, PaymentTransactionData, TransactionRequestBuilder},
     ClientError, Felt,
 };
-use miden_objects::account::AccountIdVersion;
+use miden_objects::account::{AccountIdVersion, NetworkId};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
@@ -314,7 +314,10 @@ async fn main() -> Result<(), ClientError> {
         .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
         .unwrap();
 
-    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Alice's account ID: {:?}",
+        alice_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     //------------------------------------------------------------
     // STEP 2: Deploy a fungible faucet
@@ -353,7 +356,10 @@ async fn main() -> Result<(), ClientError> {
         .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
         .unwrap();
 
-    println!("Faucet account ID: {:?}", faucet_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Faucet account ID: {:?}",
+        faucet_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     // Resync to show newly deployed faucet
     client.sync_state().await?;
@@ -499,15 +505,14 @@ async fn main() -> Result<(), ClientError> {
         alice_account.id(),
         target_account_id,
     );
-    let transaction_request = TransactionRequestBuilder::pay_to_id(
-        payment_transaction,
-        None,             // recall_height
-        NoteType::Public, // note type
-        client.rng(),     // rng
-    )
-    .unwrap()
-    .build()
-    .unwrap();
+    let transaction_request = TransactionRequestBuilder::new()
+        .build_pay_to_id(
+            payment_transaction,
+            None,             // recall_height
+            NoteType::Public, // note type
+            client.rng(),     // rng
+        )
+        .unwrap();
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;
@@ -532,13 +537,13 @@ cargo run --release
 The output will look like this:
 
 ```
-Latest block: 17795
+Latest block: 226896
 
 [STEP 1] Creating a new account for Alice
-Alice's account ID: "0xebc34ec1637352100000cb8699d5c0"
+Alice's account ID: "mtst1qp9czj052w3hvyqqqdtxmkh4myt45x2h"
 
 [STEP 2] Deploying a new fungible faucet.
-Faucet account ID: "0xd0736ee6005c0e200000d6f081f0ef"
+Faucet account ID: "mtst1qrn8x36uckhhvgqqqdze8g6t7ggyufq0"
 
 [STEP 3] Minting 5 notes of 100 tokens each for Alice.
 tx request built
@@ -554,7 +559,8 @@ Minted note #5 of 100 tokens for Alice.
 All 5 notes minted for Alice successfully!
 
 [STEP 4] Alice will now consume all of her notes to consolidate them.
-Currently, Alice has 3 consumable notes. Waiting...
+Currently, Alice has 2 consumable notes. Waiting...
+Currently, Alice has 4 consumable notes. Waiting...
 Found 5 consumable notes for Alice. Consuming them now...
 All of Alice's notes consumed successfully.
 

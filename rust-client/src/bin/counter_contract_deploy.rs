@@ -12,9 +12,10 @@ use miden_client::{
     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
     ClientError, Felt,
 };
-use miden_objects::account::NetworkId;
 use miden_objects::{
-    account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
+    account::{AccountComponent, NetworkId},
+    assembly::Assembler,
+    assembly::DefaultSourceManager,
 };
 
 fn create_library(

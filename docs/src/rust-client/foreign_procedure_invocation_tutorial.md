@@ -103,8 +103,6 @@ end
 ### Step 3: Set up your `src/main.rs` file:
 
 ```rust
-
-
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
@@ -128,7 +126,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating count reader contract.");
 
     // Load the MASM file for the counter contract
-    let count_reader_path = Path::new("../masm/accounts/count_reader.masm");
+    let count_reader_path = Path::new("./masm/accounts/count_reader.masm");
     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -192,11 +190,11 @@ cargo run --release
 The output of our program will look something like this:
 
 ```
-Latest block: 17916
+Latest block: 226976
 
 [STEP 1] Creating count reader contract.
-count_reader hash: RpoDigest([17106452548071357259, 1177663122773866223, 12129142941281960455, 8269441041947541276])
-contract id: "0x4e79c8d2334239000000197081e311"
+count_reader hash: RpoDigest([15888177100833057221, 15548657445961063290, 5580812380698193124, 9604096693288041818])
+contract id: "mtst1qp3ca3adt34euqqqqwt488x34qnnd495"
 ```
 
 ## Step 4: Build and read the state of the counter contract deployed on testnet
@@ -205,12 +203,13 @@ Add this snippet to the end of your file in the `main()` function that we create
 
 ```rust
 // -------------------------------------------------------------------------
-// STEP 2: Import & Get State of the Counter Contract
+// STEP 2: Build & Get State of the Counter Contract
 // -------------------------------------------------------------------------
-println!("\n[STEP 2] Importing counter contract from public state");
+println!("\n[STEP 2] Building counter contract from public state");
 
 // Define the Counter Contract account id from counter contract deploy
-let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
+let (_, counter_contract_id) =
+    AccountId::from_bech32("mtst1qz4a33pfjn49qqqqq090u4g55upcas8t").unwrap();
 
 client
     .import_account_by_id(counter_contract_id)
@@ -230,7 +229,6 @@ let counter_contract = if let Some(account_record) = counter_contract_details {
 } else {
     panic!("Counter contract not found!");
 };
-
 ```
 
 This step uses the logic we explained in the [Public Account Interaction Tutorial](./public_account_interaction_tutorial.md) to read the state of the Counter contract and import it to the client locally.
@@ -245,7 +243,7 @@ Add this snippet to the end of your file in the `main()` function:
 // -------------------------------------------------------------------------
 println!("\n[STEP 3] Call counter contract with FPI from count copy contract");
 
-let counter_contract_path = Path::new("../masm/accounts/counter.masm");
+let counter_contract_path = Path::new("./masm/accounts/counter.masm");
 let counter_contract_code = fs::read_to_string(counter_contract_path).unwrap();
 
 let counter_contract_component =
@@ -277,7 +275,7 @@ println!("counter id prefix: {:?}", counter_contract.id().prefix());
 println!("suffix: {:?}", counter_contract.id().suffix());
 
 // Build the script that calls the count_copy_contract
-let script_path = Path::new("../masm/scripts/reader_script.masm");
+let script_path = Path::new("./masm/scripts/reader_script.masm");
 let script_code_original = fs::read_to_string(script_path).unwrap();
 let script_code = script_code_original
     .replace("{get_count_proc_hash}", &get_count_hash)
@@ -375,7 +373,8 @@ use miden_client::{
     ClientError, Felt,
 };
 use miden_objects::{
-    account::AccountComponent, assembly::Assembler, assembly::DefaultSourceManager,
+    account::{AccountComponent, NetworkId},
+    assembly::{Assembler, DefaultSourceManager},
 };
 
 fn create_library(
@@ -416,7 +415,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating count reader contract.");
 
     // Load the MASM file for the counter contract
-    let count_reader_path = Path::new("../masm/accounts/count_reader.masm");
+    let count_reader_path = Path::new("./masm/accounts/count_reader.masm");
     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -456,7 +455,10 @@ async fn main() -> Result<(), ClientError> {
         "count_reader hash: {:?}",
         count_reader_contract.commitment()
     );
-    println!("contract id: {:?}", count_reader_contract.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "contract id: {:?}",
+        count_reader_contract.id().to_bech32(NetworkId::Testnet)
+    );
 
     client
         .add_account(
@@ -473,7 +475,8 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Building counter contract from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let counter_contract_id = AccountId::from_hex("0xac6eeab35afb09000000ea9fae7722").unwrap();
+    let (_, counter_contract_id) =
+        AccountId::from_bech32("mtst1qz4a33pfjn49qqqqq090u4g55upcas8t").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)
@@ -499,7 +502,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Call counter contract with FPI from count copy contract");
 
-    let counter_contract_path = Path::new("../masm/accounts/counter.masm");
+    let counter_contract_path = Path::new("./masm/accounts/counter.masm");
     let counter_contract_code = fs::read_to_string(counter_contract_path).unwrap();
 
     let counter_contract_component =
@@ -531,7 +534,7 @@ async fn main() -> Result<(), ClientError> {
     println!("suffix: {:?}", counter_contract.id().suffix());
 
     // Build the script that calls the count_copy_contract
-    let script_path = Path::new("../masm/scripts/reader_script.masm");
+    let script_path = Path::new("./masm/scripts/reader_script.masm");
     let script_code_original = fs::read_to_string(script_path).unwrap();
     let script_code = script_code_original
         .replace("{get_count_proc_hash}", &get_count_hash)

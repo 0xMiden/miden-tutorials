@@ -100,7 +100,7 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     // import public faucet id
-    let faucet_id = AccountId::from_hex("0x9526e379bc3ad4200000b201b1f0f3").unwrap();
+    let (_, faucet_id) = AccountId::from_bech32("mtst1qrwx85wg0uyrqgqqqwty0s5xkujvszff").unwrap();
     client.import_account_by_id(faucet_id).await.unwrap();
     let binding = client.get_account(faucet_id).await.unwrap().unwrap();
     let faucet = binding.account();
@@ -179,11 +179,9 @@ cargo run --release
 The output will look like this:
 
 ```
-Latest block: 751265
-0 consumable notes found for account 0x33959f3ba0998010000ba4a311179b. Waiting...
-0 consumable notes found for account 0x33959f3ba0998010000ba4a311179b. Waiting...
-Alice Account balance: Ok(1000)
-Alice Account balance: Ok(900)
+Latest block: 226954
+Alice initial account balance: Ok(1000)
+Alice final account balance: Ok(900)
 ```
 
 ### Running the example
