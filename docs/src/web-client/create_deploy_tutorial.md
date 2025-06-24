@@ -66,9 +66,9 @@ It is useful to think of notes on Miden as "cryptographic cashier's checks" that
 
 ## Step 2: Instantiate the WebClient
 
-### Create `lib/webClient.ts`
+### Create `lib/createMintConsume.ts`
 
-In the project root, create a folder `lib/` and inside it `webClient.ts`:
+In the project root, create a folder `lib/` and inside it `createMintConsume.ts`:
 
 ```bash
 mkdir -p lib
