@@ -1,3 +1,5 @@
+use std::future;
+
 use miden_client::{keystore::FilesystemKeyStore, rpc::Endpoint, ClientError};
 use miden_client_tools::{
     create_basic_account, create_basic_faucet, delete_keystore_and_store, instantiate_client,
@@ -33,6 +35,12 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     println!("deployed");
+
+    let account = client.get_account(faucet.id()).await.unwrap().unwrap();
+    println!(
+        "counter contract storage: {:?}",
+        account.account().storage().get_item(2)
+    );
 
     Ok(())
 }

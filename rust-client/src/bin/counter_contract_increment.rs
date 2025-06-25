@@ -11,7 +11,10 @@ use miden_client::{
     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
     ClientError,
 };
-use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
+use miden_objects::{
+    account::NetworkId,
+    assembly::{Assembler, DefaultSourceManager},
+};
 
 fn create_library(
     assembler: Assembler,
@@ -53,6 +56,13 @@ async fn main() -> Result<(), ClientError> {
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_id) =
         AccountId::from_bech32("mtst1qz4a33pfjn49qqqqq090u4g55upcas8t").unwrap();
+
+    let counter_contract_id = AccountId::from_hex("0xb32d619dfe9e2f0000010ecb441d3f").unwrap();
+
+    println!(
+        "counter_id bech32: {:?}",
+        counter_contract_id.to_bech32(NetworkId::Testnet)
+    );
 
     client
         .import_account_by_id(counter_contract_id)
