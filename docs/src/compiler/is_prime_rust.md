@@ -42,7 +42,7 @@ cargo install midenc --locked
 In a new terminal outside of the compiler repository, create a new Miden project:
 
 ```bash
-cargo miden new is_prime
+cargo miden new --program is_prime
 cd is_prime
 ```
 
@@ -114,18 +114,19 @@ midenc run target/miden/release/is_prime.masp --inputs inputs.toml
 The output will look like this:
 
 ```
+===============================================================================
 Run program: target/miden/release/is_prime.masp
 -------------------------------------------------------------------------------
-Executed program with hash 0x79689b17ab6286cfde4651ef1f675cab19ad4efd9defd2c43001a06e7cbd8c40 in 2 seconds
+Executed program with hash 0x6c5173a2d77d294bbdccf3332092aeee9dc4ad431a0aa25842ef704044565681 in 0 seconds
 Output: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-VM cycles: 2039234 extended to 2097152 steps (2% padding).
-├── Stack rows: 1668454
-├── Range checker rows: 61329
-└── Chiplets rows: 2039234
-    ├── Hash chiplet rows: 1792040
-    ├── Bitwise chiplet rows: 247192
-    ├── Memory chiplet rows: 1
-    └── Kernel ROM rows: 0
+VM cycles: 805 extended to 1024 steps (21% padding).
+├── Stack rows: 597
+├── Range checker rows: 83
+└── Chiplets rows: 805
+├── Hash chiplet rows: 728
+├── Bitwise chiplet rows: 72
+├── Memory chiplet rows: 4
+└── Kernel ROM rows: 0
 ```
 
 The program returns `1` if the integer passed to the `is_prime` function is prime and `0` if it is not.
@@ -135,7 +136,7 @@ The program returns `1` if the integer passed to the `is_prime` function is prim
 First cloning the Miden VM repository and install the Miden VM CLI:
 
 ```bash
-cargo install miden-vm --version 0.13.0 --features concurrent,executable
+cargo install miden-vm --version 0.14.0 --features concurrent,executable
 ```
 
 After installation is complete, return to the `is_prime` directory.
@@ -160,15 +161,15 @@ The output should look like this:
 ===============================================================================
 Prove program: target/miden/release/is_prime.masp
 -------------------------------------------------------------------------------
-Proving program with hash c6db9ccd205b2d5139d5a92869a2741a0a8982b8e269a36b7a16d173f467b0c8...
-Program proved in 85558 ms
+Proving program with hash 6c5173a2d77d294bbdccf3332092aeee9dc4ad431a0aa25842ef704044565681...
+Program proved in 35 ms
 Output: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ```
 
 To verify the proof generated in the previous step, run the following:
 
 ```bash
-miden verify -p target/miden/release/is_prime.proof -i is_prime.inputs -x c6db9ccd205b2d5139d5a92869a2741a0a8982b8e269a36b7a16d173f467b0c8
+miden verify -p target/miden/release/is_prime.proof -i is_prime.inputs -x 6c5173a2d77d294bbdccf3332092aeee9dc4ad431a0aa25842ef704044565681
 ```
 
 The output should look like this:
@@ -177,7 +178,7 @@ The output should look like this:
 ===============================================================================
 Verifying proof: target/miden/release/is_prime.proof
 -------------------------------------------------------------------------------
-Verification complete in 5 ms
+Verification complete in 3 ms
 ```
 
 ## Conclusion

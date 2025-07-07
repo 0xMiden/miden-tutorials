@@ -23,22 +23,18 @@ Alice ➡ Bob ➡ Charlie ➡ Dave ➡ Eve ➡ Frank ➡ ...
 ## Step-by-step process
 
 1. **Client Initialization:**
-
    - Set up an RPC client to connect with the Miden testnet.
    - Initialize a random coin generator and a store for persisting account data.
 
 2. **Deploying a Fungible Faucet:**
-
    - Use a random seed to deploy a fungible faucet.
    - Configure the faucet parameters (symbol, decimals, and max supply) and add it to the client.
 
 3. **Creating Wallet Accounts:**
-
    - Build multiple wallet accounts using a secure key generation process.
    - Add these accounts to the client, making them ready for transactions.
 
 4. **Minting and Transacting with Unauthenticated Notes:**
-
    - Mint tokens for one of the accounts (Alice) from the deployed faucet.
    - Create a note representing the minted tokens.
    - Build and submit a transaction that uses the unauthenticated note via the "unauthenticated" method.
