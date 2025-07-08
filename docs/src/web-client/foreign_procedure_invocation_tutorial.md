@@ -425,19 +425,37 @@ This is what you should see in the browser console:
 Current block number:  2168
 
 [STEP 1] Creating count reader contract.
-Count reader contract ID: 0x...
+Count reader contract ID: 0x90128b4e27f34500000720bedaa49b
 
 [STEP 2] Building counter contract from public state
-Account storage slot 0: 0x...
+Account storage slot 0: 0x0000000000000000000000000000000000000000000000001200000000000000
 
 [STEP 3] Call counter contract with FPI from count reader contract
-get count hash: 0x...
-counter id prefix: ...
-suffix: ...
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0x...
-counter contract storage: 0x...
-count reader contract storage: 0x...
-Count copied via Foreign Procedure Invocation: 3
+fpiScript
+    use.external_contract::count_reader_contract
+    use.std::sys
+
+    begin
+        push.0x92495ca54d519eb5e4ba22350f837904d3895e48d74d8079450f19574bb84cb6
+        # => [GET_COUNT_HASH]
+
+        push.297741160627968
+        # => [account_id_suffix, GET_COUNT_HASH]
+
+        push.12911083037950619392
+        # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
+
+        call.count_reader_contract::copy_count
+        # => []
+
+        exec.sys::truncate_stack
+        # => []
+
+    end
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0xffff3dc5454154d1ccf64c1ad170bdef2df471c714f6fe6ab542d060396b559f
+counter contract storage: 0x0000000000000000000000000000000000000000000000001200000000000000
+count reader contract storage: 0x0000000000000000000000000000000000000000000000001200000000000000
+Count copied via Foreign Procedure Invocation: 18
 
 Foreign Procedure Invocation Transaction completed!
 ```
@@ -481,7 +499,7 @@ The stack state before calling [`tx::execute_foreign_procedure`](../../masm/acco
 # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
 ```
 
-After calling the [`get_count`](../../masm/accounts/counter.masm:137) procedure in the counter contract, we call [`debug.stack`](../../masm/accounts/count_reader.masm:54) and then save the count of the counter contract to index 0 in storage.
+After calling the [`get_count`](../../masm/accounts/counter.masm:137) procedure in the counter contract, we save the count of the counter contract to index 0 in storage.
 
 ## Understanding the Transaction Script
 
