@@ -52,7 +52,7 @@ Anyone can run their own delegated prover server. If you are building a product 
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm install @demox-labs/miden-sdk@0.9.2
+   pnpm install @demox-labs/miden-sdk@0.9.4
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:

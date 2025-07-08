@@ -121,6 +121,8 @@ async fn main() -> Result<(), ClientError> {
     let (_, counter_contract_id) =
         AccountId::from_bech32("mtst1qz4a33pfjn49qqqqq090u4g55upcas8t").unwrap();
 
+    println!("counter contract id: {:?}", counter_contract_id.to_hex());
+
     client
         .import_account_by_id(counter_contract_id)
         .await
