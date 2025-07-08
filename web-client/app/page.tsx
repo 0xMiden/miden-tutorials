@@ -75,7 +75,7 @@ export default function Home() {
           >
             {isForeignProcedureInvocation
               ? "Working..."
-              : "Tutorial #4: FPI"}
+              : "Tutorial #4: Foreign Procedure Invocation"}
           </button>
         </div>
       </div>

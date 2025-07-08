@@ -34,9 +34,6 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // -------------------------------------------------------------------------
   console.log("\n[STEP 1] Creating count reader contract.");
 
-  // Prepare assembler (debug mode = true)
-  let assembler = TransactionKernel.assembler().withDebugMode(true);
-
   // Count reader contract code in Miden Assembly (exactly from count_reader.masm)
   const countReaderCode = `
     use.miden::account
@@ -65,18 +62,17 @@ export async function foreignProcedureInvocation(): Promise<void> {
     end
   `;
 
-  let map = new StorageMap();
+  // Prepare assembler (debug mode = true)
+  let assembler = TransactionKernel.assembler().withDebugMode(true);
 
   let countReaderComponent = AccountComponent.compile(
     countReaderCode,
     assembler,
-    [StorageSlot.map(map)],
+    [StorageSlot.emptyValue()],
   ).withSupportsAllTypes();
 
   const seed = new Uint8Array(32);
   crypto.getRandomValues(seed);
-
-  console.log("HERE");
 
   let anchor = await client.getLatestEpochBlock();
 
@@ -86,8 +82,6 @@ export async function foreignProcedureInvocation(): Promise<void> {
     .storageMode(AccountStorageMode.public())
     .withComponent(countReaderComponent)
     .build();
-
-  console.log("HERE2");
 
   // Create the count reader contract account (using available WebClient API)
   console.log("Creating count reader contract account...");
@@ -122,8 +116,10 @@ export async function foreignProcedureInvocation(): Promise<void> {
       throw new Error(`Account not found after import: ${counterContractId}`);
     }
   }
-
-  console.log("Account details:", counterContractAccount.storage().getItem(0));
+  console.log(
+    "Account storage slot 0:",
+    counterContractAccount.storage().getItem(0)?.toHex(),
+  );
 
   // -------------------------------------------------------------------------
   // STEP 3: Call the Counter Contract via Foreign Procedure Invocation (FPI)
@@ -186,30 +182,27 @@ export async function foreignProcedureInvocation(): Promise<void> {
 
   let getCountProcHash = counterContractComponent.getProcedureHash("get_count");
 
-  console.log("get count hash:", getCountProcHash);
-  console.log("counter id prefix:", counterContractAccount.id().prefix());
-  console.log("suffix:", counterContractAccount.id().suffix());
-
   // Build the script that calls the count reader contract (exactly from reader_script.masm with replacements)
   let fpiScriptCode = `
     use.external_contract::count_reader_contract
     use.std::sys
 
     begin
-        # => []
         push.${getCountProcHash}
-
         # => [GET_COUNT_HASH]
+
         push.${counterContractAccount.id().suffix()}
+        # => [account_id_suffix, GET_COUNT_HASH]
 
-        # => [account_id_suffix]
         push.${counterContractAccount.id().prefix()}
+        # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
 
-        # => []
-        push.111 debug.stack drop
         call.count_reader_contract::copy_count
+        # => []
 
         exec.sys::truncate_stack
+        # => []
+
     end
   `;
 
@@ -246,20 +239,22 @@ export async function foreignProcedureInvocation(): Promise<void> {
     .withForeignAccounts([foreignAccount])
     .build();
 
+  console.log("HERE");
+
   // Execute the transaction locally on the count reader contract (following Rust pattern)
   let txResult = await client.newTransaction(
     countReaderContract.account.id(),
     txRequest,
   );
 
+  console.log("HERE1");
   console.log(
     "View transaction on MidenScan: https://testnet.midenscan.com/tx/" +
-      txResult.executedTransaction().id(),
+      txResult.executedTransaction().id().toHex(),
   );
 
   // Submit transaction to the network
   await client.submitTransaction(txResult);
-
   await client.syncState();
 
   // Retrieve updated contract data to see the results (following Rust pattern)
@@ -268,7 +263,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   );
   console.log(
     "counter contract storage:",
-    updatedCounterContract?.storage().getItem(0),
+    updatedCounterContract?.storage().getItem(0)?.toHex(),
   );
 
   let updatedCountReaderContract = await client.getAccount(
@@ -276,7 +271,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   );
   console.log(
     "count reader contract storage:",
-    updatedCountReaderContract?.storage().getItem(0),
+    updatedCountReaderContract?.storage().getItem(0)?.toHex(),
   );
 
   // Log the count value copied via FPI
@@ -296,11 +291,5 @@ export async function foreignProcedureInvocation(): Promise<void> {
     console.log("Count copied via Foreign Procedure Invocation:", countValue);
   }
 
-  console.log("\nForeign Procedure Invocation completed!");
-  console.log(
-    "The count reader contract successfully called the counter contract's get_count procedure",
-  );
-  console.log(
-    "using Foreign Procedure Invocation and stored the result in its own storage.",
-  );
+  console.log("\nForeign Procedure Invocation Transaction completed!");
 }
