@@ -50,7 +50,7 @@ It is useful to think of notes on Miden as "cryptographic cashier's checks" that
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm install @demox-labs/miden-sdk@0.9.2
+   pnpm install @demox-labs/miden-sdk@0.9.4
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
