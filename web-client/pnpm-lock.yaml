@@ -50,7 +50,7 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@demox-labs/miden-sdk@0.9.3':
+  '@demox-labs/miden-sdk@0.9.4':
     resolution: {integrity: sha512-JE9m8roL41gaT5LaabKFbZ/reQN82oddXF7mk8imrxQ2k0mE921i/XIxX+bezm1Qz8cgkMFnJWpozo6PkRMo1A==}
 
   '@emnapi/runtime@1.4.3':
@@ -746,7 +746,7 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.8
       '@jridgewell/trace-mapping': 0.3.25
 
-  '@demox-labs/miden-sdk@0.9.3(chai@5.2.0)':
+  '@demox-labs/miden-sdk@0.9.4(chai@5.2.0)':
     dependencies:
       chai-as-promised: 8.0.1(chai@5.2.0)
       dexie: 4.0.11

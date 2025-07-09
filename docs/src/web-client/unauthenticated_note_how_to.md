@@ -70,7 +70,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm install @demox-labs/miden-sdk@0.9.3
+   pnpm install @demox-labs/miden-sdk@0.9.4
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
@@ -115,7 +115,7 @@ export default function Home() {
           >
             {isTransferring
               ? "Working..."
-              : "Tutorial #5: Unauthenticated Note Transfer"}
+              : "Tutorial #4: Unauthenticated Note Transfer"}
           </button>
         </div>
       </div>
@@ -408,24 +408,16 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
   await client.syncState();
 
   console.log("\n[FINAL BALANCES]");
-  const aliceBalance =
-    (await client.getAccount(alice.id()))
-      ?.vault()
-      .getAssets()
-      .filter((asset) => asset.faucetId().toString() === faucet.id().toString())
-      .reduce((sum, asset) => sum + Number(asset.amount()), 0) || 0;
+  const aliceBalance = (await client.getAccount(alice.id()))
+    ?.vault()
+    .getBalance(faucet.id());
 
   console.log(`Alice balance: ${aliceBalance} MID`);
 
   for (let i = 0; i < wallets.length; i++) {
-    const walletBalance =
-      (await client.getAccount(wallets[i].id()))
-        ?.vault()
-        .getAssets()
-        .filter(
-          (asset) => asset.faucetId().toString() === faucet.id().toString(),
-        )
-        .reduce((sum, asset) => sum + Number(asset.amount()), 0) || 0;
+    const walletBalance = (await client.getAccount(wallets[i].id()))
+      ?.vault()
+      .getBalance(faucet.id());
 
     console.log(`Wallet ${i + 1} balance: ${walletBalance} MID`);
   }
@@ -469,7 +461,7 @@ pnpm install
 pnpm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser, click the **"Tutorial #5: Unauthenticated Note Transfer"** button, and check the browser console for detailed logs.
+Open [http://localhost:3000](http://localhost:3000) in your browser, click the **"Tutorial #4: Unauthenticated Note Transfer"** button, and check the browser console for detailed logs.
 
 ### Expected Output
 
