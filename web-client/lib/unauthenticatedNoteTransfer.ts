@@ -118,11 +118,11 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
     prover,
   );
 
-  console.log("waiting for settlement");
+  console.log("Waiting for settlement");
   await new Promise((r) => setTimeout(r, 7_000));
   await client.syncState();
 
-  // ── consume the freshly minted note ──────────────────────────────────────────────
+  // ── Consume the freshly minted note ──────────────────────────────────────────────
   const noteIds = (await client.getConsumableNotes(alice.id())).map((rec) =>
     rec.inputNoteRecord().id().toString(),
   );
