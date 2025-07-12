@@ -10,7 +10,7 @@ In this guide, we will write a simple Rust program that checks whether an intege
 
 - Writing basic _pure_ programs in Rust using the Miden compiler.
 - Running programs in the Miden VM.
-- Generating a proof of compuation for the `is_prime` program
+- Generating a proof of computation for the `is_prime` program
 - Verifying the STARK proof of the `is_prime` program execution
 
 ## Limitations and Important Considerations
