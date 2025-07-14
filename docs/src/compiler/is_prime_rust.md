@@ -10,7 +10,7 @@ In this guide, we will write a simple Rust program that checks whether an intege
 
 - Writing basic _pure_ programs in Rust using the Miden compiler.
 - Running programs in the Miden VM.
-- Generating a proof of compuation for the `is_prime` program
+- Generating a proof of computation for the `is_prime` program
 - Verifying the STARK proof of the `is_prime` program execution
 
 ## Limitations and Important Considerations
@@ -35,6 +35,12 @@ Install the `midenc` compiler and `cargo-miden` extension:
 ```bash
 cargo install cargo-miden
 cargo install midenc --locked
+```
+
+If you encounter issues with the `cargo-miden` installation, you can specify a specific nightly version that is known to work with the Miden compiler.
+
+```bash
+cargo +nightly-2025-03-20 install cargo-miden
 ```
 
 ## Step 2: Writing the Rust Program
@@ -136,7 +142,7 @@ The program returns `1` if the integer passed to the `is_prime` function is prim
 First cloning the Miden VM repository and install the Miden VM CLI:
 
 ```bash
-cargo install miden-vm --version 0.14.0 --features concurrent,executable
+cargo install miden-vm --version 0.16.2 --features concurrent,executable
 ```
 
 After installation is complete, return to the `is_prime` directory.
