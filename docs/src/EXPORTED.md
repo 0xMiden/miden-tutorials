@@ -21,3 +21,4 @@
     - [Mint, Consume, and Create Notes](./web-client/mint_consume_create_tutorial.md)
     - [Creating Multiple Notes in a Single Transaction](./web-client/creating_multiple_notes_tutorial.md)
     - [Incrementing the Count of the Counter Contract](./web-client/counter_contract_tutorial.md)
+    - [How to Use Unauthenticated Notes](./web-client/unauthenticated_note_how_to.md)
