@@ -3,12 +3,14 @@ import { useState } from "react";
 import { createMintConsume } from "../lib/createMintConsume";
 import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
 import { incrementCounterContract } from "../lib/incrementCounterContract";
+import { unauthenticatedNoteTransfer } from "../lib/unauthenticatedNoteTransfer";
 import { foreignProcedureInvocation } from "../lib/foreignProcedureInvocation";
 
 export default function Home() {
   const [isCreatingNotes, setIsCreatingNotes] = useState(false);
   const [isMultiSendNotes, setIsMultiSendNotes] = useState(false);
   const [isIncrementCounter, setIsIncrementCounter] = useState(false);
+  const [isUnauthenticatedNoteTransfer, setIsUnauthenticatedNoteTransfer] = useState(false);
   const [isForeignProcedureInvocation, setIsForeignProcedureInvocation] = useState(false);
 
   const handleCreateMintConsume = async () => {
@@ -27,6 +29,12 @@ export default function Home() {
     setIsIncrementCounter(true);
     await incrementCounterContract();
     setIsIncrementCounter(false);
+  };
+
+  const handleUnauthenticatedNoteTransfer = async () => {
+    setIsUnauthenticatedNoteTransfer(true);
+    await unauthenticatedNoteTransfer();
+    setIsUnauthenticatedNoteTransfer(false);
   };
 
   const handleForeignProcedureInvocation = async () => {
@@ -67,6 +75,15 @@ export default function Home() {
             {isIncrementCounter
               ? "Working..."
               : "Tutorial #3: Increment Counter Contract"}
+          </button>
+
+          <button
+            onClick={handleUnauthenticatedNoteTransfer}
+            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
+          >
+            {isUnauthenticatedNoteTransfer
+              ? "Working..."
+              : "Tutorial #4: Unauthenticated Note Transfer"}
           </button>
 
           <button
