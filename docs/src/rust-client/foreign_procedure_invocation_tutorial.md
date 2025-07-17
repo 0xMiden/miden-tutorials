@@ -6,7 +6,7 @@ _Using foreign procedure invocation to craft read-only cross-contract calls in t
 
 In previous tutorials we deployed a public counter contract and incremented the count from a different client instance.
 
-In this tutorial we will cover the basics of "foreign procedure invocation" (FPI) in the Miden VM. To demonstrate FPI, we will build a "Count Copy" smart contract that reads the count from our previously deployed counter contract and copies the count to its own local storage.
+In this tutorial we will cover the basics of "foreign procedure invocation" (FPI) in the Miden VM. To demonstrate FPI, we will build a "count copy" smart contract that reads the count from our previously deployed counter contract and copies the count to its own local storage.
 
 Foreign procedure invocation (FPI) is a powerful tool for building smart contracts in the Miden VM. FPI allows one smart contract to call "read-only" procedures in other smart contracts.
 
@@ -16,7 +16,7 @@ FPI is useful for developing smart contracts that extend the functionality of ex
 
 ## What We Will Build
 
-![Count Copy FPI diagram](../assets/count_copy_fpi_diagram.png)
+![count copy FPI diagram](../assets/count_copy_fpi_diagram.png)
 
 The diagram above depicts the "count copy" smart contract using foreign procedure invocation to read the count state of the counter contract. After reading the state via FPI, the "count copy" smart contract writes the value returned from the counter contract to storage.
 
@@ -25,7 +25,7 @@ In this tutorial we will create the count copy smart contract that reads the cou
 ## What we'll cover
 
 - Foreign Procedure Invocation (FPI)
-- Building a "Count Copy" Smart Contract
+- Building a "count copy" Smart Contract
 
 ## Prerequisites
 
