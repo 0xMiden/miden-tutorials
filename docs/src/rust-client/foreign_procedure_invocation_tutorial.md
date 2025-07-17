@@ -20,8 +20,6 @@ FPI is useful for developing smart contracts that extend the functionality of ex
 
 The diagram above depicts the "count copy" smart contract using foreign procedure invocation to read the count state of the counter contract. After reading the state via FPI, the "count copy" smart contract writes the value returned from the counter contract to storage.
 
-In this tutorial we will create the count copy smart contract that reads the count from the counter contract and then execute a transaction which uses FPI to update the state of the count copy smart contract.
-
 ## What we'll cover
 
 - Foreign Procedure Invocation (FPI)
