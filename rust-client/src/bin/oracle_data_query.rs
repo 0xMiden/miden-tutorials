@@ -119,7 +119,6 @@ async fn main() -> Result<(), ClientError> {
     let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
     let (oracle_reader_contract, seed) = AccountBuilder::new(seed)
-        .anchor((&anchor_block).try_into().unwrap())
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(contract_component.clone())
@@ -149,8 +148,8 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     let tx_increment_request = TransactionRequestBuilder::new()
-        .with_foreign_accounts(foreign_accounts)
-        .with_custom_script(tx_script)
+        .foreign_accounts(foreign_accounts)
+        .custom_script(tx_script)
         .build()
         .unwrap();
 

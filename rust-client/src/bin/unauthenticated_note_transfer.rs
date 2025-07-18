@@ -27,8 +27,8 @@ async fn main() -> Result<(), ClientError> {
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
     let mut client = ClientBuilder::new()
-        .with_rpc(rpc_api)
-        .with_filesystem_keystore("./keystore")
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
         .in_debug_mode(true)
         .build()
         .await?;
@@ -61,7 +61,6 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -100,7 +99,6 @@ async fn main() -> Result<(), ClientError> {
         client.rng().fill_bytes(&mut init_seed);
         let key_pair = SecretKey::with_rng(client.rng());
         let builder = AccountBuilder::new(init_seed)
-            .anchor((&anchor_block).try_into().unwrap())
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
             .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -156,7 +154,7 @@ async fn main() -> Result<(), ClientError> {
         };
 
     let transaction_request = TransactionRequestBuilder::new()
-        .with_unauthenticated_input_notes([(p2id_note, None)])
+        .unauthenticated_input_notes([(p2id_note, None)])
         .build()
         .unwrap();
     let tx_execution_result = client
@@ -207,7 +205,7 @@ async fn main() -> Result<(), ClientError> {
 
         // Time transaction request building
         let transaction_request = TransactionRequestBuilder::new()
-            .with_own_output_notes(vec![output_note])
+            .own_output_notes(vec![output_note])
             .build()
             .unwrap();
         let tx_execution_result = client
@@ -222,7 +220,7 @@ async fn main() -> Result<(), ClientError> {
 
         // Time consume note request building
         let consume_note_request = TransactionRequestBuilder::new()
-            .with_unauthenticated_input_notes([(deserialized_p2id_note, None)])
+            .unauthenticated_input_notes([(deserialized_p2id_note, None)])
             .build()
             .unwrap();
 

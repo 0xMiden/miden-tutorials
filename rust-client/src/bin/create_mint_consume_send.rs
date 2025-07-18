@@ -14,7 +14,7 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     note::{create_p2id_note, NoteType},
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, PaymentTransactionData, TransactionRequestBuilder},
+    transaction::{OutputNote, TransactionRequestBuilder},
     ClientError, Felt,
 };
 use miden_objects::account::{AccountIdVersion, NetworkId};
@@ -27,8 +27,8 @@ async fn main() -> Result<(), ClientError> {
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
     let mut client = ClientBuilder::new()
-        .with_rpc(rpc_api)
-        .with_filesystem_keystore("./keystore")
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
         .in_debug_mode(true)
         .build()
         .await?;
@@ -55,7 +55,6 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -97,7 +96,6 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -231,7 +229,7 @@ async fn main() -> Result<(), ClientError> {
     // Specifying output notes and creating a tx request to create them
     let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
     let transaction_request = TransactionRequestBuilder::new()
-        .with_own_output_notes(output_notes)
+        .own_output_notes(output_notes)
         .build()
         .unwrap();
 

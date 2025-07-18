@@ -96,8 +96,8 @@ async fn main() -> Result<(), ClientError> {
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
     let mut client = ClientBuilder::new()
-        .with_rpc(rpc_api)
-        .with_filesystem_keystore("./keystore")
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
         .in_debug_mode(true)
         .build()
         .await?;
@@ -155,7 +155,7 @@ let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
 // Build the account
 let builder = AccountBuilder::new(init_seed)
-    .anchor((&anchor_block).try_into().unwrap())
+    
     .account_type(AccountType::RegularAccountUpdatableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -204,7 +204,7 @@ let key_pair = SecretKey::with_rng(client.rng());
 
 // Build the account
 let builder = AccountBuilder::new(init_seed)
-    .anchor((&anchor_block).try_into().unwrap())
+    
     .account_type(AccountType::FungibleFaucet)
     .storage_mode(AccountStorageMode::Public)
     .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -244,8 +244,8 @@ async fn main() -> Result<(), ClientError> {
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
     let mut client = ClientBuilder::new()
-        .with_rpc(rpc_api)
-        .with_filesystem_keystore("./keystore")
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
         .in_debug_mode(true)
         .build()
         .await?;
@@ -272,7 +272,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
+        
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -311,7 +311,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
+        
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))

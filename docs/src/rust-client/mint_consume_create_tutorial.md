@@ -130,7 +130,7 @@ For the sake of the example, the first four P2ID transfers are handled in a sing
 
 To output multiple notes in a single transaction we need to create a list of our expected output notes. The expected output notes are the notes that we expect to create in our transaction request.
 
-In the snippet below, we create an empty vector to store five P2ID output notes, loop over five iterations `(using 0..=4)` to create five unique dummy account IDs, build a P2ID note for each one, and push each note onto the vector. Finally, we build a transaction request using `.with_own_output_notes()`—passing in all five notes—and submit it to the node.
+In the snippet below, we create an empty vector to store five P2ID output notes, loop over five iterations `(using 0..=4)` to create five unique dummy account IDs, build a P2ID note for each one, and push each note onto the vector. Finally, we build a transaction request using `.own_output_notes()`—passing in all five notes—and submit it to the node.
 
 Add this snippet to the end of your file in the `main()` function:
 
@@ -175,7 +175,7 @@ for _ in 1..=4 {
 // Specifying output notes and creating a tx request to create them
 let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
 let transaction_request = TransactionRequestBuilder::new()
-    .with_own_output_notes(output_notes)
+    .own_output_notes(output_notes)
     .build()
     .unwrap();
 
@@ -268,8 +268,8 @@ async fn main() -> Result<(), ClientError> {
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
     let mut client = ClientBuilder::new()
-        .with_rpc(rpc_api)
-        .with_filesystem_keystore("./keystore")
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
         .in_debug_mode(true)
         .build()
         .await?;
@@ -296,7 +296,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
+        
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -338,7 +338,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        .anchor((&anchor_block).try_into().unwrap())
+        
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -472,7 +472,7 @@ async fn main() -> Result<(), ClientError> {
     // Specifying output notes and creating a tx request to create them
     let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
     let transaction_request = TransactionRequestBuilder::new()
-        .with_own_output_notes(output_notes)
+        .own_output_notes(output_notes)
         .build()
         .unwrap();
 

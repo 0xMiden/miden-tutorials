@@ -139,7 +139,7 @@ async fn main() -> Result<(), ClientError> {
     // Specifying output notes and creating a tx request to create them
     let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
     let transaction_request = TransactionRequestBuilder::new()
-        .with_own_output_notes(output_notes)
+        .own_output_notes(output_notes)
         .build()
         .unwrap();
     let tx_execution_result = client
