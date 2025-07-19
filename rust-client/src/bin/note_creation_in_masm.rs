@@ -22,6 +22,7 @@ use miden_client::{
 };
 
 use miden_objects::account::NetworkId;
+use miden_objects::note::NoteDetails;
 
 // Helper to create a basic account
 async fn create_basic_account(
@@ -31,7 +32,6 @@ async fn create_basic_account(
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
     let key_pair = SecretKey::with_rng(client.rng());
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
@@ -248,7 +248,10 @@ async fn main() -> Result<(), ClientError> {
 
     let consume_custom_req = TransactionRequestBuilder::new()
         .unauthenticated_input_notes([(custom_note, None)])
-        .expected_future_notes(vec![output_note])
+        .expected_future_notes(vec![(
+            NoteDetails::from(output_note.clone()),
+            output_note.metadata().tag(),
+        )])
         .build()
         .unwrap();
     let tx_result = client

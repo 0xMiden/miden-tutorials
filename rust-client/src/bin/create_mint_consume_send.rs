@@ -14,7 +14,7 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     note::{create_p2id_note, NoteType},
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionRequestBuilder},
+    transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
     ClientError, Felt,
 };
 use miden_objects::account::{AccountIdVersion, NetworkId};
@@ -50,14 +50,11 @@ async fn main() -> Result<(), ClientError> {
 
     let key_pair = SecretKey::with_rng(client.rng());
 
-    // Anchor block
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     // Build the account
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicWallet);
 
     let (alice_account, seed) = builder.build().unwrap();
@@ -98,7 +95,7 @@ async fn main() -> Result<(), ClientError> {
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
 
     let (faucet_account, seed) = builder.build().unwrap();
@@ -257,15 +254,15 @@ async fn main() -> Result<(), ClientError> {
     let send_amount = 50;
     let fungible_asset = FungibleAsset::new(faucet_account.id(), send_amount).unwrap();
 
-    let payment_transaction = PaymentTransactionData::new(
+    let payment_transaction = PaymentNoteDescription::new(
         vec![fungible_asset.into()],
         alice_account.id(),
         target_account_id,
     );
+
     let transaction_request = TransactionRequestBuilder::new()
         .build_pay_to_id(
             payment_transaction,
-            None,             // recall_height
             NoteType::Public, // note type
             client.rng(),     // rng
         )

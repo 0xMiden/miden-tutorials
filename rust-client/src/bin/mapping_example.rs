@@ -62,6 +62,15 @@ async fn main() -> Result<(), ClientError> {
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
+    let no_auth_code = fs::read_to_string(Path::new("../masm/accounts/auth/no_auth.masm")).unwrap();
+    let no_auth_component = AccountComponent::compile(
+        no_auth_code,
+        assembler.clone(),
+        vec![StorageSlot::empty_value()],
+    )
+    .unwrap()
+    .with_supports_all_types();
+
     // Using an empty storage value in slot 0 since this is usually resurved
     // for the account pub_key and metadata
     let empty_storage_slot = StorageSlot::empty_value();
@@ -83,14 +92,12 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    // Anchor block of the account
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     // Build the new `Account` with the component
     let (mapping_example_contract, seed) = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(mapping_contract_component.clone())
+        .with_auth_component(no_auth_component)
         .build()
         .unwrap();
 
@@ -118,7 +125,6 @@ async fn main() -> Result<(), ClientError> {
     // Compile the transaction script with the library.
     let tx_script = TransactionScript::compile(
         script_code,
-        [],
         assembler.with_library(&account_component_lib).unwrap(),
     )
     .unwrap();

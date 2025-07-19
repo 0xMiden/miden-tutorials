@@ -55,12 +55,21 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating counter contract.");
 
+    // Prepare assembler (debug mode = true)
+    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+
     // Load the MASM file for the counter contract
     let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
-    // Prepare assembler (debug mode = true)
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let no_auth_code = fs::read_to_string(Path::new("../masm/accounts/auth/no_auth.masm")).unwrap();
+    let no_auth_component = AccountComponent::compile(
+        no_auth_code,
+        assembler.clone(),
+        vec![StorageSlot::empty_value()],
+    )
+    .unwrap()
+    .with_supports_all_types();
 
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
@@ -80,14 +89,12 @@ async fn main() -> Result<(), ClientError> {
     let mut seed = [0_u8; 32];
     client.rng().fill_bytes(&mut seed);
 
-    // Anchor block of the account
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     // Build the new `Account` with the component
     let (counter_contract, counter_seed) = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
+        .with_auth_component(no_auth_component)
         .build()
         .unwrap();
 
@@ -125,7 +132,6 @@ async fn main() -> Result<(), ClientError> {
 
     let tx_script = TransactionScript::compile(
         script_code,
-        [],
         assembler.with_library(&account_component_lib).unwrap(),
     )
     .unwrap();
@@ -157,7 +163,7 @@ async fn main() -> Result<(), ClientError> {
     let account = client.get_account(counter_contract.id()).await.unwrap();
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        account.unwrap().account().storage().get_item(1)
     );
 
     Ok(())

@@ -14,10 +14,6 @@ export.write_to_map
 
     dropw dropw dropw dropw
     # => []
-
-    # Incrementing the nonce by 1
-    push.1 exec.account::incr_nonce
-    # => []
 end
 
 # Inputs: [KEY]

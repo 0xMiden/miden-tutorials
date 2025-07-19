@@ -49,9 +49,6 @@ async fn main() -> Result<(), ClientError> {
 
     let key_pair = SecretKey::with_rng(client.rng());
 
-    // Anchor block
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     // Faucet parameters
     let symbol = TokenSymbol::new("MID").unwrap();
     let decimals = 8;
@@ -63,7 +60,7 @@ async fn main() -> Result<(), ClientError> {
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
 
     let (faucet_account, seed) = builder.build().unwrap();
@@ -101,7 +98,7 @@ async fn main() -> Result<(), ClientError> {
         let builder = AccountBuilder::new(init_seed)
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
-            .with_component(RpoFalcon512::new(key_pair.public_key()))
+            .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
             .with_component(BasicWallet);
 
         let (account, seed) = builder.build().unwrap();

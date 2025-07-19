@@ -105,6 +105,15 @@ async fn main() -> Result<(), ClientError> {
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
 
+    let no_auth_code = fs::read_to_string(Path::new("../masm/accounts/auth/no_auth.masm")).unwrap();
+    let no_auth_component = AccountComponent::compile(
+        no_auth_code,
+        assembler.clone(),
+        vec![StorageSlot::empty_value()],
+    )
+    .unwrap()
+    .with_supports_all_types();
+
     let contract_component = AccountComponent::compile(
         contract_code.clone(),
         assembler,
@@ -116,12 +125,11 @@ async fn main() -> Result<(), ClientError> {
     let mut seed = [0_u8; 32];
     client.rng().fill_bytes(&mut seed);
 
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     let (oracle_reader_contract, seed) = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(contract_component.clone())
+        .with_auth_component(no_auth_component)
         .build()
         .unwrap();
 
@@ -142,7 +150,6 @@ async fn main() -> Result<(), ClientError> {
 
     let tx_script = TransactionScript::compile(
         script_code,
-        [],
         assembler.with_library(&account_component_lib).unwrap(),
     )
     .unwrap();
