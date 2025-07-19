@@ -31,11 +31,11 @@ cd miden-counter-contract
 Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
-miden-client = { version = "0.9.2", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.9.4", default-features = false }
-miden-objects = { version = "0.9.4", default-features = false }
-miden-crypto = { version = "0.14.1", features = ["executable"] }
-miden-assembly = "0.14.0"
+miden-client = { version = "0.10.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.10.0", default-features = false }
+miden-objects = { version = "0.10.0", default-features = false }
+miden-crypto = { version = "0.15.0", features = ["executable"] }
+miden-assembly = "0.15.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -117,7 +117,7 @@ Create a directory named `masm` at the **root** of your `miden-counter-contract`
 Initialize the `masm` directory:
 
 ```bash
-mkdir -p masm/accounts masm/scripts
+mkdir -p masm/accounts masm/scripts masm/accounts/auth
 ```
 
 This will create:
@@ -125,6 +125,7 @@ This will create:
 ```
 masm/
 ├── accounts/
+│   └── auth/
 └── scripts/
 ```
 
@@ -204,6 +205,23 @@ end
 
 **Note**: _It's a good habit to add comments below each line of MASM code with the expected stack state. This improves readability and helps with debugging._
 
+### Authentication Component
+
+**Important**: Starting with Miden Client 0.10.0, all accounts must have an authentication component. For smart contracts that don't require authentication (like our counter contract), we use a NoAuth component.
+
+Create the `no_auth.masm` file inside the `masm/accounts/auth/` directory:
+
+```masm
+use.miden::account
+
+export.auth_tx_rpo_falcon512
+    # This is a no-op authentication procedure that always succeeds
+    # It's used for contracts that don't require authentication
+end
+```
+
+This NoAuth component allows any user to interact with the smart contract without requiring cryptographic authentication.
+
 ### Concept of function visibility and modifiers in Miden smart contracts
 
 The `export.increment_count` function in our Miden smart contract behaves like an "external" Solidity function without a modifier, meaning any user can call it to increment the contract's count. This is because it calls `account::incr_nonce` during execution. For internal procedures, use the `proc` keyword as opposed to `export`.
@@ -247,6 +265,13 @@ let counter_code = fs::read_to_string(counter_path).unwrap();
 // Prepare assembler (debug mode = true)
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
+// Load and compile the NoAuth component
+let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
+let no_auth_component =
+    AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
+        .unwrap()
+        .with_supports_all_types();
+
 // Compile the account code into `AccountComponent` with one storage slot
 let counter_component = AccountComponent::compile(
     counter_code.clone(),
@@ -270,10 +295,10 @@ let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
 // Build the new `Account` with the component
 let (counter_contract, counter_seed) = AccountBuilder::new(seed)
-    
     .account_type(AccountType::RegularAccountImmutableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(counter_component.clone())
+    .with_auth_component(no_auth_component)
     .build()
     .unwrap();
 
@@ -439,6 +464,13 @@ async fn main() -> Result<(), ClientError> {
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
+    // Load and compile the NoAuth component
+    let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
+    let no_auth_component =
+        AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
+            .unwrap()
+            .with_supports_all_types();
+
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
         counter_code.clone(),
@@ -462,10 +494,10 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the new `Account` with the component
     let (counter_contract, counter_seed) = AccountBuilder::new(seed)
-        
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
+        .with_auth_component(no_auth_component)
         .build()
         .unwrap();
 

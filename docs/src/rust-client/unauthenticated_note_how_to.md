@@ -111,7 +111,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        
+
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -147,7 +147,7 @@ async fn main() -> Result<(), ClientError> {
         client.rng().fill_bytes(&mut init_seed);
         let key_pair = SecretKey::with_rng(client.rng());
         let builder = AccountBuilder::new(init_seed)
-            
+
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
             .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -261,11 +261,10 @@ async fn main() -> Result<(), ClientError> {
         let deserialized_p2id_note = Note::read_from_bytes(&serialized).unwrap();
 
         // Time consume note request building
-        let consume_note_request =
-            TransactionRequestBuilder::consume_notes(vec![deserialized_p2id_note.id()])
-                .unauthenticated_input_notes([(deserialized_p2id_note, None)])
-                .build()
-                .unwrap();
+        let consume_note_request = TransactionRequestBuilder::new()
+            .unauthenticated_input_notes([(deserialized_p2id_note, None)])
+            .build()
+            .unwrap();
         let tx_execution_result = client
             .new_transaction(accounts[i + 1].id(), consume_note_request)
             .await?;

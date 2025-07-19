@@ -96,8 +96,8 @@ loop {
 
     if list_of_note_ids.len() == 5 {
         println!("Found 5 consumable notes for Alice. Consuming them now...");
-        let transaction_request = TransactionRequestBuilder::consume_notes(list_of_note_ids)
-            .build()
+        let transaction_request = TransactionRequestBuilder::new()
+            .build_consume_notes(list_of_note_ids)
             .unwrap();
         let tx_execution_result = client
             .new_transaction(alice_account.id(), transaction_request)
@@ -296,7 +296,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        
+
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -338,7 +338,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        
+
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))

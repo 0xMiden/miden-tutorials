@@ -43,11 +43,11 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.9.2", features = ["testing", "concurrent", "tonic", "sqlite"] }
-miden-lib = { version = "0.9.4", default-features = false }
-miden-objects = { version = "0.9.4", default-features = false }
-miden-crypto = { version = "0.14.1", features = ["executable"] }
-miden-assembly = "0.14.0"
+miden-client = { version = "0.10.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-lib = { version = "0.10.0", default-features = false }
+miden-objects = { version = "0.10.0", default-features = false }
+miden-crypto = { version = "0.15.0", features = ["executable"] }
+miden-assembly = "0.15.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -155,7 +155,7 @@ let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
 // Build the account
 let builder = AccountBuilder::new(init_seed)
-    
+
     .account_type(AccountType::RegularAccountUpdatableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -204,7 +204,7 @@ let key_pair = SecretKey::with_rng(client.rng());
 
 // Build the account
 let builder = AccountBuilder::new(init_seed)
-    
+
     .account_type(AccountType::FungibleFaucet)
     .storage_mode(AccountStorageMode::Public)
     .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -272,7 +272,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        
+
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -311,7 +311,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-        
+
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))

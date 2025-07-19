@@ -137,7 +137,6 @@ async fn create_basic_account(
     let key_pair = SecretKey::with_rng(client.rng());
     let anchor_block = client.get_latest_epoch_block().await.unwrap();
     let builder = AccountBuilder::new(init_seed)
-        
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -163,7 +162,6 @@ async fn create_basic_faucet(
     let decimals = 8;
     let max_supply = Felt::new(1_000_000);
     let builder = AccountBuilder::new(init_seed)
-        
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
