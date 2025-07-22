@@ -52,7 +52,7 @@ This tutorial assumes you have a basic understanding of Miden assembly and compl
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.9.4
+   pnpm i @demox-labs/miden-sdk@0.10.1
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
@@ -326,9 +326,6 @@ export async function foreignProcedureInvocation(): Promise<void> {
     end
   `;
 
-  // Empty inputs to the transaction script
-  const inputs = new TransactionScriptInputPairArray();
-
   // Create the library for the count reader contract
   let countReaderLib = AssemblerUtils.createAccountComponentLibrary(
     assembler,
@@ -339,7 +336,6 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Compile the transaction script with the count reader library
   let txScript = TransactionScript.compile(
     fpiScriptCode,
-    inputs,
     assembler.withLibrary(countReaderLib),
   );
 

@@ -39,7 +39,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.9.4
+   pnpm i @demox-labs/miden-sdk@0.10.1
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
@@ -177,8 +177,8 @@ export async function incrementCounterContract(): Promise<void> {
   let assembler = TransactionKernel.assembler();
 
   // Counter contract account id on testnet
-  const counterContractId = AccountId.fromHex(
-    "0xb32d619dfe9e2f0000010ecb441d3f",
+  const counterContractId = AccountId.fromBech32(
+    "mtst1qz43ftxkrzcjsqz3hpw332qwny2ggsp0",
   );
 
   // Reading the public state of the counter contract from testnet,
@@ -201,9 +201,6 @@ export async function incrementCounterContract(): Promise<void> {
     end
   `;
 
-  // Empty inputs to the transaction script
-  const inputs = new TransactionScriptInputPairArray();
-
   // Creating the library to call the counter contract
   let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
     assembler, // assembler
@@ -214,7 +211,6 @@ export async function incrementCounterContract(): Promise<void> {
   // Creating the transaction script
   let txScript = TransactionScript.compile(
     txScriptCode,
-    inputs,
     assembler.withLibrary(counterComponentLib),
   );
 
@@ -240,7 +236,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Here we get the first Word from storage of the counter contract
   // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
-  let count = counter?.storage().getItem(0);
+  let count = counter?.storage().getItem(1);
 
   // Converting the Word represented as a hex to a single integer value
   const counterValue = Number(
