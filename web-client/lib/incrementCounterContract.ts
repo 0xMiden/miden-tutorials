@@ -23,55 +23,52 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Counter contract code in Miden Assembly
   const counterContractCode = `
-      use.miden::account
-      use.std::sys
+    use.miden::account
+    use.std::sys
 
-      # => []
-      export.get_count
-          push.0
-          # => [index]
-          
-          # exec.account::get_item
-          # => [count]
-          
-          # exec.sys::truncate_stack
-          # => []
-      end
+    # => []
+    export.get_count
+        push.0
+        # => [index]
+        
+        exec.account::get_item
+        # => [count]
+        
+        exec.sys::truncate_stack
+        # => []
+    end
 
-      # => []
-      export.increment_count
-          push.0
-          # => [index]
-          
-          exec.account::get_item
-          # => [count]
-          
-          push.1 add
-          # => [count+1]
+    # => []
+    export.increment_count
+        push.0
+        # => [index]
+        
+        exec.account::get_item
+        # => [count]
+        
+        push.1 add
+        # => [count+1]
 
-          # debug statement with client
-          debug.stack
+        # debug statement with client
+        debug.stack
 
-          push.0
-          # [index, count+1]
-          
-          exec.account::set_item
-          # => []
-          
-          push.1 exec.account::incr_nonce
-          # => []
-          
-          exec.sys::truncate_stack
-          # => []
-      end
+        push.0
+        # [index, count+1]
+        
+        exec.account::set_item
+        # => []
+        
+        exec.sys::truncate_stack
+        # => []
+    end
     `;
 
   // Building the counter contract
   let assembler = TransactionKernel.assembler();
 
   // Counter contract account id on testnet
-  const counterContractId = AccountId.fromHex(
-    "0xb32d619dfe9e2f0000010ecb441d3f",
+  const counterContractId = AccountId.fromBech32(
+    "mtst1qz43ftxkrzcjsqz3hpw332qwny2ggsp0",
   );
 
   // Reading the public state of the counter contract from testnet,
@@ -94,9 +91,6 @@ export async function incrementCounterContract(): Promise<void> {
     end
   `;
 
-  // Empty inputs to the transaction script
-  const inputs = new TransactionScriptInputPairArray();
-
   // Creating the library to call the counter contract
   let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
     assembler, // assembler
@@ -107,7 +101,6 @@ export async function incrementCounterContract(): Promise<void> {
   // Creating the transaction script
   let txScript = TransactionScript.compile(
     txScriptCode,
-    inputs,
     assembler.withLibrary(counterComponentLib),
   );
 
@@ -133,7 +126,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Here we get the first Word from storage of the counter contract
   // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
-  let count = counter?.storage().getItem(0);
+  let count = counter?.storage().getItem(1);
 
   // Converting the Word represented as a hex to a single integer value
   const counterValue = Number(

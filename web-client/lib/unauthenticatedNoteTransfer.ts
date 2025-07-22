@@ -4,35 +4,56 @@
  */
 const P2ID_NOTE_SCRIPT = `
 use.miden::account
+use.miden::account_id
 use.miden::note
-use.miden::contracts::wallets::basic->wallet
+
+# ERRORS
+# =================================================================================================
 
 const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID note expects exactly 2 note inputs"
+
 const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 
-proc.add_note_assets_to_account
-    push.0 exec.note::get_assets
-    mul.4 dup.1 add                 
-    padw movup.5                    
-    dup dup.6 neq                 
-    while.true
-        dup movdn.5                 
-        mem_loadw                 
-        padw swapw padw padw swapdw
-        call.wallet::receive_asset
-        dropw dropw dropw          
-        movup.4 add.4 dup dup.6 neq
-    end
-    drop dropw drop
-end
-
+#! Pay-to-ID script: adds all assets from the note to the account, assuming ID of the account
+#! matches target account ID specified by the note inputs.
+#!
+#! Requires that the account exposes:
+#! - miden::contracts::wallets::basic::receive_asset procedure.
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Note inputs are assumed to be as follows:
+#! - target_account_id is the ID of the account for which the note is intended.
+#!
+#! Panics if:
+#! - Account does not expose miden::contracts::wallets::basic::receive_asset procedure.
+#! - Account ID of executing account is not equal to the Account ID specified via note inputs.
+#! - The same non-fungible asset already exists in the account.
+#! - Adding a fungible asset would result in amount overflow, i.e., the total amount would be
+#!   greater than 2^63.
 begin
-    push.0 exec.note::get_inputs       
+    # store the note inputs to memory starting at address 0
+    padw push.0 exec.note::get_inputs
+    # => [num_inputs, inputs_ptr, EMPTY_WORD]
+
+    # make sure the number of inputs is 2
     eq.2 assert.err=ERR_P2ID_WRONG_NUMBER_OF_INPUTS
-    padw movup.4 mem_loadw drop drop   
-    exec.account::get_id               
-    exec.account::is_id_equal assert.err=ERR_P2ID_TARGET_ACCT_MISMATCH
-    exec.add_note_assets_to_account
+    # => [inputs_ptr, EMPTY_WORD]
+
+    # read the target account ID from the note inputs
+    mem_loadw drop drop
+    # => [target_account_id_prefix, target_account_id_suffix]
+
+    exec.account::get_id
+    # => [account_id_prefix, account_id_suffix, target_account_id_prefix, target_account_id_suffix, ...]
+
+    # ensure account_id = target_account_id, fails otherwise
+    exec.account_id::is_equal assert.err=ERR_P2ID_TARGET_ACCT_MISMATCH
+    # => []
+
+    exec.note::add_note_assets_to_account
+    # => []
 end
 `;
 
