@@ -92,7 +92,7 @@ export default function Home() {
           >
             {isForeignProcedureInvocation
               ? "Working..."
-              : "Tutorial #4: Foreign Procedure Invocation"}
+              : "Tutorial #5: Foreign Procedure Invocation"}
           </button>
         </div>
       </div>
