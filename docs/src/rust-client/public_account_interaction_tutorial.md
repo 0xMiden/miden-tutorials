@@ -32,7 +32,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.10.0", features = ["testing", "concurrent", "tonic", "sqlite"] }
+miden-client = { version = "0.10.0", features = ["testing", "tonic", "sqlite"] }
+
+
 miden-lib = { version = "0.10.0", default-features = false }
 miden-objects = { version = "0.10.0", default-features = false }
 miden-crypto = { version = "0.15.0", features = ["executable"] }
