@@ -155,7 +155,7 @@ begin
     mem_load.TAG
     # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
-    call.wallet::create_note
+    call.tx::create_note
     # => [note_idx, pad(15) ...]
 
     padw mem_loadw.ASSET_HALF
@@ -225,6 +225,9 @@ use miden_client::{
     Client, ClientError, Felt,
 };
 
+use miden_objects::account::NetworkId;
+use miden_objects::note::NoteDetails;
+
 // Helper to create a basic account
 async fn create_basic_account(
     client: &mut Client,
@@ -236,7 +239,7 @@ async fn create_basic_account(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicWallet);
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -259,7 +262,7 @@ async fn create_basic_faucet(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -315,13 +318,22 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Alice's account ID: {:?}",
+        alice_account.id().to_bech32(NetworkId::Testnet)
+    );
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
-    println!("Bob's account ID: {:?}", bob_account.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Bob's account ID: {:?}",
+        bob_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore.clone()).await?;
-    println!("Faucet account ID: {:?}", faucet.id().to_bech32(NetworkId::Testnet));
+    println!(
+        "Faucet account ID: {:?}",
+        faucet.id().to_bech32(NetworkId::Testnet)
+    );
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -332,13 +344,14 @@ async fn main() -> Result<(), ClientError> {
     let amount: u64 = 100;
     let mint_amount = FungibleAsset::new(faucet_id, amount).unwrap();
 
-    let tx_req = TransactionRequestBuilder::new().build_mint_fungible_asset(
-        mint_amount,
-        alice_account.id(),
-        NoteType::Public,
-        client.rng(),
-    )
-    .unwrap();
+    let tx_req = TransactionRequestBuilder::new()
+        .build_mint_fungible_asset(
+            mint_amount,
+            alice_account.id(),
+            NoteType::Public,
+            client.rng(),
+        )
+        .unwrap();
 
     let tx_exec = client.new_transaction(faucet.id(), tx_req).await?;
     client.submit_transaction(tx_exec.clone()).await?;
@@ -367,7 +380,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 3] Create iterative output note");
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("./masm/notes/iterative_output_note.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../masm/notes/iterative_output_note.masm")).unwrap();
     let rng = client.rng();
     let serial_num = rng.draw_word();
 
@@ -439,7 +452,7 @@ async fn main() -> Result<(), ClientError> {
 
     let consume_custom_req = TransactionRequestBuilder::new()
         .unauthenticated_input_notes([(custom_note, None)])
-        .expected_future_notes(vec![output_note])
+        .own_output_notes(vec![(OutputNote::Full(output_note))])
         .build()
         .unwrap();
     let tx_result = client

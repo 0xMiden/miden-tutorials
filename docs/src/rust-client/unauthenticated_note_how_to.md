@@ -109,7 +109,7 @@ async fn main() -> Result<(), ClientError> {
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
 
     let (faucet_account, seed) = builder.build().unwrap();
@@ -145,7 +145,7 @@ async fn main() -> Result<(), ClientError> {
 
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
-            .with_component(RpoFalcon512::new(key_pair.public_key()))
+            .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
             .with_component(BasicWallet);
 
         let (account, seed) = builder.build().unwrap();

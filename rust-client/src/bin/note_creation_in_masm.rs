@@ -35,7 +35,7 @@ async fn create_basic_account(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicWallet);
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -58,7 +58,7 @@ async fn create_basic_faucet(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -248,10 +248,7 @@ async fn main() -> Result<(), ClientError> {
 
     let consume_custom_req = TransactionRequestBuilder::new()
         .unauthenticated_input_notes([(custom_note, None)])
-        .expected_future_notes(vec![(
-            NoteDetails::from(output_note.clone()),
-            output_note.metadata().tag(),
-        )])
+        .own_output_notes(vec![(OutputNote::Full(output_note))])
         .build()
         .unwrap();
     let tx_result = client

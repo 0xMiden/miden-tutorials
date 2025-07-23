@@ -73,7 +73,7 @@ begin
     mem_load.TAG
     # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
-    call.wallet::create_note
+    call.tx::create_note
     # => [note_idx, pad(15) ...]
 
     padw mem_loadw.ASSET_HALF
