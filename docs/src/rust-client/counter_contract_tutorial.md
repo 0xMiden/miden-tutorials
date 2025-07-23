@@ -311,9 +311,9 @@ After the program executes, you should see the counter contract hash and contrac
 
 ```
 [STEP 1] Creating counter contract.
-counter_contract commitment: RpoDigest([10854804595308759734, 11034759279878416408, 15662010127375823242, 9560626040625797366])
-counter_contract id: "mtst1qpj0g3ke67tg5qqqqd2z4ffm9g8ezpf6"
-counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0])] }
+counter_contract commitment: RpoDigest([3700134472268167470, 14878091556015233722, 3335592073702485043, 16978997897830363420])
+counter_contract id: "mtst1qql030hpsp0yyqra494lcwazxsym7add"
+counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0]), Value([0, 0, 0, 0])] }
 ```
 
 ## Step 4: Incrementing the count
