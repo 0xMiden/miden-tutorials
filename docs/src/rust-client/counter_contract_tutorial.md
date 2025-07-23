@@ -276,9 +276,6 @@ let counter_component = AccountComponent::compile(
 let mut seed = [0_u8; 32];
 client.rng().fill_bytes(&mut seed);
 
-// Anchor block of the account
-let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
 // Build the new `Account` with the component
 let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .account_type(AccountType::RegularAccountImmutableCode)

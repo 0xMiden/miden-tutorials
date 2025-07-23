@@ -176,8 +176,6 @@ async fn main() -> Result<(), ClientError> {
     let mut seed = [0_u8; 32];
     client.rng().fill_bytes(&mut seed);
 
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     let (oracle_reader_contract, seed) = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)

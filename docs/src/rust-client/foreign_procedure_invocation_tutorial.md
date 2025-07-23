@@ -160,9 +160,6 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    // Anchor block of the account
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     // Build the new `Account` with the component
     let (count_reader_contract, count_reader_seed) = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode)
@@ -455,9 +452,6 @@ async fn main() -> Result<(), ClientError> {
     // Init seed for the counter contract
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
-
-    // Anchor block of the account
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
     // Build the new `Account` with the component
     let (count_reader_contract, count_reader_seed) = AccountBuilder::new(init_seed)

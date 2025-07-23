@@ -152,12 +152,8 @@ client.rng().fill_bytes(&mut init_seed);
 
 let key_pair = SecretKey::with_rng(client.rng());
 
-// Anchor block
-let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
 // Build the account
 let builder = AccountBuilder::new(init_seed)
-
     .account_type(AccountType::RegularAccountUpdatableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(RpoFalcon512::new(key_pair.public_key()))
@@ -269,12 +265,8 @@ async fn main() -> Result<(), ClientError> {
 
     let key_pair = SecretKey::with_rng(client.rng());
 
-    // Anchor block
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
-
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))

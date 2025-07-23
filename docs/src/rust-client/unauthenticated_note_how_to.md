@@ -97,21 +97,16 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
+    // Generate key pair
     let key_pair = SecretKey::with_rng(client.rng());
-
-    // Anchor block
-    let anchor_block = client.get_latest_epoch_block().await.unwrap();
 
     // Faucet parameters
     let symbol = TokenSymbol::new("MID").unwrap();
     let decimals = 8;
     let max_supply = Felt::new(1_000_000);
 
-    // Generate key pair
-
     // Build the account
     let builder = AccountBuilder::new(init_seed)
-
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
         .with_component(RpoFalcon512::new(key_pair.public_key()))
