@@ -58,9 +58,6 @@ export.copy_count
     exec.account::set_item
     # => []
 
-    push.1 exec.account::incr_nonce
-    # => []
-
     exec.sys::truncate_stack
     # => []
 end
