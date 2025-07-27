@@ -248,7 +248,12 @@ async fn main() -> Result<(), ClientError> {
 
     let consume_custom_req = TransactionRequestBuilder::new()
         .unauthenticated_input_notes([(custom_note, None)])
-        .own_output_notes(vec![(OutputNote::Full(output_note))])
+        .expected_future_notes(vec![(
+            NoteDetails::from(output_note.clone()),
+            output_note.metadata().tag(),
+        )
+            .clone()])
+        .expected_output_recipients(vec![output_note.recipient().clone()])
         .build()
         .unwrap();
     let tx_result = client
