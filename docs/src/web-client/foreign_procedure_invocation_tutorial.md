@@ -456,7 +456,7 @@ Foreign Procedure Invocation Transaction completed!
 
 ## Understanding the Count Reader Contract
 
-The count reader smart contract contains a [`copy_count`](../../masm/accounts/count_reader.masm:50) procedure that uses [`tx::execute_foreign_procedure`](../../masm/accounts/count_reader.masm:51) to call the [`get_count`](../../masm/accounts/counter.masm:137) procedure in the counter contract.
+The count reader smart contract contains a `copy_count` procedure that uses `tx::execute_foreign_procedure` to call the `get_count` procedure in the counter contract.
 
 ```masm
 use.miden::account
@@ -485,15 +485,15 @@ export.copy_count
 end
 ```
 
-To call the [`get_count`](../../masm/accounts/counter.masm:137) procedure, we push its hash along with the counter contract's ID suffix and prefix onto the stack before calling [`tx::execute_foreign_procedure`](../../masm/accounts/count_reader.masm:51).
+To call the `get_count` procedure, we push its hash along with the counter contract's ID suffix and prefix onto the stack before calling `tx::execute_foreign_procedure`.
 
-The stack state before calling [`tx::execute_foreign_procedure`](../../masm/accounts/count_reader.masm:51) should look like this:
+The stack state before calling `tx::execute_foreign_procedure` should look like this:
 
 ```
 # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
 ```
 
-After calling the [`get_count`](../../masm/accounts/counter.masm:137) procedure in the counter contract, we save the count of the counter contract to index 0 in storage.
+After calling the `get_count` procedure in the counter contract, we save the count of the counter contract to index 0 in storage.
 
 ## Understanding the Transaction Script
 
@@ -523,16 +523,16 @@ end
 
 This script:
 
-1. Pushes the procedure hash of the [`get_count`](../../masm/accounts/counter.masm:137) function
+1. Pushes the procedure hash of the `get_count` function
 2. Pushes the counter contract's account ID suffix and prefix
-3. Calls the [`copy_count`](../../masm/accounts/count_reader.masm:50) procedure in our count reader contract
+3. Calls the `copy_count` procedure in our count reader contract
 4. Truncates the stack
 
 ## Key WebClient Concepts for FPI
 
 ### Getting Procedure Hashes
 
-In the WebClient, we get the procedure hash using the [`getProcedureHash`](../../web-client/lib/foreignProcedureInvocation.ts:183) method:
+In the WebClient, we get the procedure hash using the [`getProcedureHash`](../../../web-client/lib/foreignProcedureInvocation.ts:183) method:
 
 ```ts
 let getCountProcHash = counterContractComponent.getProcedureHash("get_count");
@@ -568,13 +568,13 @@ let countReaderLib = AssemblerUtils.createAccountComponentLibrary(
 
 ## Summary
 
-In this tutorial we created a smart contract that calls the [`get_count`](../../masm/accounts/counter.masm:137) procedure in the counter contract using foreign procedure invocation, and then saves the returned value to its local storage using the Miden WebClient.
+In this tutorial we created a smart contract that calls the `get_count` procedure in the counter contract using foreign procedure invocation, and then saves the returned value to its local storage using the Miden WebClient.
 
 The key steps were:
 
-1. Creating a count reader contract with a [`copy_count`](../../masm/accounts/count_reader.masm:50) procedure
+1. Creating a count reader contract with a `copy_count` procedure
 2. Importing the counter contract from the network
-3. Getting the procedure hash for the [`get_count`](../../masm/accounts/counter.masm:137) function
+3. Getting the procedure hash for the `get_count` function
 4. Building a transaction script that calls our count reader contract
 5. Executing the transaction with a foreign account reference
 
