@@ -83,7 +83,7 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     note::{create_p2id_note, NoteType},
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionRequestBuilder},
+    transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
     ClientError, Felt,
 };
 use miden_objects::account::{AccountIdVersion, NetworkId};
