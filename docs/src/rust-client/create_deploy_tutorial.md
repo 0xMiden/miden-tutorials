@@ -228,6 +228,9 @@ Add this snippet to the end of your file in the `main()` function:
 # use std::sync::Arc;
 # use tokio::time::Duration;
 #
+# use miden_lib::account::wallets::create_basic_wallet;
+# use miden_lib::AuthScheme;
+#
 # use miden_client::{
 #     account::{
 #         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
@@ -247,7 +250,6 @@ Add this snippet to the end of your file in the `main()` function:
 #
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
-#     // Initialize client & keystore
 #     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
@@ -259,43 +261,15 @@ Add this snippet to the end of your file in the `main()` function:
 #         .build()
 #         .await?;
 #
-#     let sync_summary = client.sync_state().await.unwrap();
-#     println!("Latest block: {}", sync_summary.block_num);
+#     let (alice_account, _) = create_basic_wallet(
+#         [0u8; 32],
+#         AuthScheme::NoAuth,
+#         AccountType::RegularAccountUpdatableCode,
+#         AccountStorageMode::Public
+#     ).unwrap();
 #
 #     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
 #         FilesystemKeyStore::new("./keystore".into()).unwrap();
-#
-#     //------------------------------------------------------------
-#     // STEP 1: Create a basic wallet for Alice
-#     //------------------------------------------------------------
-#     println!("\n[STEP 1] Creating a new account for Alice");
-#
-#     // Account seed
-#     let mut init_seed = [0_u8; 32];
-#     client.rng().fill_bytes(&mut init_seed);
-#
-#     let key_pair = SecretKey::with_rng(client.rng());
-#
-#     // Build the account
-#     let builder = AccountBuilder::new(init_seed)
-#         .account_type(AccountType::RegularAccountUpdatableCode)
-#         .storage_mode(AccountStorageMode::Public)
-#         .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
-#         .with_component(BasicWallet);
-#
-#     let (alice_account, seed) = builder.build().unwrap();
-#
-#     // Add the account to the client
-#     client
-#         .add_account(&alice_account, Some(seed), false)
-#         .await?;
-#
-#     // Add the key pair to the keystore
-#     keystore
-#         .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
-#         .unwrap();
-#
-#     println!("Alice's account ID: {:?}", alice_account.id().to_bech32(NetworkId::Testnet));
 #
 //------------------------------------------------------------
 // STEP 2: Deploy a fungible faucet
