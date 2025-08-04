@@ -86,7 +86,7 @@ use miden_client::{
     transaction::{OutputNote, TransactionRequestBuilder},
     ClientError, Felt,
 };
-use miden_objects::account::AccountIdVersion;
+use miden_objects::account::{AccountIdVersion, NetworkId};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
