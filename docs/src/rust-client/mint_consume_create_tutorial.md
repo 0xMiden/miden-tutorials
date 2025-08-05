@@ -211,7 +211,7 @@ let target_account_id = AccountId::dummy(
 let send_amount = 50;
 let fungible_asset = FungibleAsset::new(faucet_account.id(), send_amount).unwrap();
 
-let payment_transaction = PaymentTransactionData::new(
+let payment_transaction = PaymentNoteDescription::new(
     vec![fungible_asset.into()],
     alice_account.id(),
     target_account_id,
@@ -219,7 +219,6 @@ let payment_transaction = PaymentTransactionData::new(
 let transaction_request = TransactionRequestBuilder::new()
     .build_pay_to_id(
         payment_transaction,
-        None,             // recall_height
         NoteType::Public, // note type
         client.rng(),     // rng
     )
@@ -496,7 +495,7 @@ async fn main() -> Result<(), ClientError> {
     let send_amount = 50;
     let fungible_asset = FungibleAsset::new(faucet_account.id(), send_amount).unwrap();
 
-    let payment_transaction = PaymentTransactionData::new(
+    let payment_transaction = PaymentNoteDescription::new(
         vec![fungible_asset.into()],
         alice_account.id(),
         target_account_id,
@@ -504,7 +503,6 @@ async fn main() -> Result<(), ClientError> {
     let transaction_request = TransactionRequestBuilder::new()
         .build_pay_to_id(
             payment_transaction,
-            None,             // recall_height
             NoteType::Public, // note type
             client.rng(),     // rng
         )
