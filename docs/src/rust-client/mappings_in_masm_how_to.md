@@ -261,7 +261,6 @@ async fn main() -> Result<(), ClientError> {
     // Compile the transaction script with the library.
     let tx_script = TransactionScript::compile(
         script_code,
-        [],
         assembler.with_library(&account_component_lib).unwrap(),
     )
     .unwrap();
