@@ -4,3 +4,4 @@
 #![doc = include_str!("rust-client/public_account_interaction_tutorial.md")]
 #![doc = include_str!("rust-client/custom_note_how_to.md")]
 #![doc = include_str!("rust-client/foreign_procedure_invocation_tutorial.md")]
+#![doc = include_str!("rust-client/unauthenticated_note_how_to.md")]
