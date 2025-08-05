@@ -2,3 +2,4 @@
 #![doc = include_str!("rust-client/mint_consume_create_tutorial.md")]
 #![doc = include_str!("rust-client/counter_contract_tutorial.md")]
 #![doc = include_str!("rust-client/public_account_interaction_tutorial.md")]
+#![doc = include_str!("rust-client/custom_note_how_to.md")]
