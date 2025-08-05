@@ -233,7 +233,7 @@ Add this snippet to the end of your file in the `main()` function that we create
 ```rust,no_run
 # use rand::RngCore;
 # use std::{fs, path::Path, sync::Arc};
-# 
+#
 # use miden_assembly::{
 #     ast::{Module, ModuleKind},
 #     LibraryPath,
@@ -252,41 +252,41 @@ Add this snippet to the end of your file in the `main()` function that we create
 #     account::{AccountComponent, NetworkId},
 #     assembly::{Assembler, DefaultSourceManager},
 # };
-# 
+#
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
 #     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-# 
+#
 #     let mut client = ClientBuilder::new()
 #         .rpc(rpc_api)
 #         .filesystem_keystore("./keystore")
 #         .in_debug_mode(true)
 #         .build()
 #         .await?;
-# 
+#
 #     let sync_summary = client.sync_state().await.unwrap();
-# 
+#
 #     // -------------------------------------------------------------------------
 #     // STEP 1: Create the Count Reader Contract
 #     // -------------------------------------------------------------------------
-# 
+#
 #     // Load the MASM file for the counter contract
 #     let count_reader_path = Path::new("./masm/accounts/count_reader.masm");
 #     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
-# 
+#
 #     // Prepare assembler (debug mode = true)
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-# 
+#
 #     // Load and compile the NoAuth component
 #     let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
 #     let no_auth_component =
 #         AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
 #             .unwrap()
 #             .with_supports_all_types();
-# 
+#
 #     // Compile the account code into `AccountComponent` with one storage slot
 #     let counter_component = AccountComponent::compile(
 #         count_reader_code.clone(),
@@ -300,11 +300,11 @@ Add this snippet to the end of your file in the `main()` function that we create
 #     )
 #     .unwrap()
 #     .with_supports_all_types();
-# 
+#
 #     // Init seed for the counter contract
 #     let mut init_seed = [0_u8; 32];
 #     client.rng().fill_bytes(&mut init_seed);
-# 
+#
 #     // Build the new `Account` with the component
 #     let (count_reader_contract, count_reader_seed) = AccountBuilder::new(init_seed)
 #         .account_type(AccountType::RegularAccountImmutableCode)
@@ -313,7 +313,7 @@ Add this snippet to the end of your file in the `main()` function that we create
 #         .with_auth_component(no_auth_component)
 #         .build()
 #         .unwrap();
-# 
+#
 #     client
 #         .add_account(
 #             &count_reader_contract.clone(),
@@ -322,7 +322,7 @@ Add this snippet to the end of your file in the `main()` function that we create
 #         )
 #         .await
 #         .unwrap();
-# 
+#
 // -------------------------------------------------------------------------
 // STEP 2: Build & Get State of the Counter Contract
 // -------------------------------------------------------------------------
@@ -363,7 +363,7 @@ Add this snippet to the end of your file in the `main()` function:
 ```rust,no_run
 # use rand::RngCore;
 # use std::{fs, path::Path, sync::Arc};
-# 
+#
 # use miden_assembly::{
 #     ast::{Module, ModuleKind},
 #     LibraryPath,
@@ -382,7 +382,7 @@ Add this snippet to the end of your file in the `main()` function:
 #     account::{AccountComponent, NetworkId},
 #     assembly::{Assembler, DefaultSourceManager},
 # };
-# 
+#
 # fn create_library(
 #     assembler: Assembler,
 #     library_path: &str,
@@ -397,41 +397,41 @@ Add this snippet to the end of your file in the `main()` function:
 #     let library = assembler.clone().assemble_library([module])?;
 #     Ok(library)
 # }
-# 
+#
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
 #     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-# 
+#
 #     let mut client = ClientBuilder::new()
 #         .rpc(rpc_api)
 #         .filesystem_keystore("./keystore")
 #         .in_debug_mode(true)
 #         .build()
 #         .await?;
-# 
+#
 #     let sync_summary = client.sync_state().await.unwrap();
-# 
+#
 #     // -------------------------------------------------------------------------
 #     // STEP 1: Create the Count Reader Contract
 #     // -------------------------------------------------------------------------
-# 
+#
 #     // Load the MASM file for the counter contract
 #     let count_reader_path = Path::new("./masm/accounts/count_reader.masm");
 #     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
-# 
+#
 #     // Prepare assembler (debug mode = true)
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-# 
+#
 #     // Load and compile the NoAuth component
 #     let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
 #     let no_auth_component =
 #         AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
 #             .unwrap()
 #             .with_supports_all_types();
-# 
+#
 #     // Compile the account code into `AccountComponent` with one storage slot
 #     let counter_component = AccountComponent::compile(
 #         count_reader_code.clone(),
@@ -445,11 +445,11 @@ Add this snippet to the end of your file in the `main()` function:
 #     )
 #     .unwrap()
 #     .with_supports_all_types();
-# 
+#
 #     // Init seed for the counter contract
 #     let mut init_seed = [0_u8; 32];
 #     client.rng().fill_bytes(&mut init_seed);
-# 
+#
 #     // Build the new `Account` with the component
 #     let (count_reader_contract, count_reader_seed) = AccountBuilder::new(init_seed)
 #         .account_type(AccountType::RegularAccountImmutableCode)
@@ -458,7 +458,7 @@ Add this snippet to the end of your file in the `main()` function:
 #         .with_auth_component(no_auth_component)
 #         .build()
 #         .unwrap();
-# 
+#
 #     client
 #         .add_account(
 #             &count_reader_contract.clone(),
@@ -467,22 +467,22 @@ Add this snippet to the end of your file in the `main()` function:
 #         )
 #         .await
 #         .unwrap();
-# 
+#
 #     // -------------------------------------------------------------------------
 #     // STEP 2: Build & Get State of the Counter Contract
 #     // -------------------------------------------------------------------------
-# 
+#
 #     // Define the Counter Contract account id from counter contract deploy
 #     let (_, counter_contract_id) =
 #         AccountId::from_bech32("mtst1qz4a33pfjn49qqqqq090u4g55upcas8t").unwrap();
-# 
+#
 #     client
 #         .import_account_by_id(counter_contract_id)
 #         .await
 #         .unwrap();
-# 
+#
 #     let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
-# 
+#
 #     let counter_contract = if let Some(account_record) = counter_contract_details {
 #         // Clone the account to get an owned instance
 #         let account = account_record.account().clone();
@@ -490,7 +490,7 @@ Add this snippet to the end of your file in the `main()` function:
 #     } else {
 #         panic!("Counter contract not found!");
 #     };
-# 
+#
 // -------------------------------------------------------------------------
 // STEP 3: Call the Counter Contract via Foreign Procedure Invocation (FPI)
 // -------------------------------------------------------------------------
