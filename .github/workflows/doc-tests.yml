@@ -23,3 +23,4 @@ jobs:
         run: |
           rustup update --no-self-update
           cargo test --doc --release
+        working-directory: docs
