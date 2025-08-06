@@ -205,18 +205,9 @@ end
 
 ### Authentication Component
 
-**Important**: Starting with Miden Client 0.10.0, all accounts must have an authentication component. For smart contracts that don't require authentication (like our counter contract), we use a NoAuth component.
+**Important**: Starting with Miden Client 0.10.0, all accounts must have an authentication component. For smart contracts that don't require authentication (like our counter contract), we use a `NoAuth` component.
 
-Create the `no_auth.masm` file inside the `masm/accounts/auth/` directory:
-
-```masm
-use.miden::account
-export.auth__no_auth
-    push.1 exec.account::incr_nonce
-end
-```
-
-This NoAuth component allows any user to interact with the smart contract without requiring signature verification.
+This `NoAuth` component allows any user to interact with the smart contract without requiring signature verification.
 
 ### Custom script
 
@@ -253,6 +244,7 @@ To build the counter contract copy and paste the following code at the end of yo
 #     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
 #     ClientError, Felt,
 # };
+# use miden_lib::account::auth::NoAuth;
 # use miden_objects::{
 #     account::{AccountComponent, NetworkId}, assembly::Assembler, assembly::DefaultSourceManager,
 # };
@@ -297,13 +289,6 @@ let counter_code = fs::read_to_string(counter_path).unwrap();
 // Prepare assembler (debug mode = true)
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-// Load and compile the NoAuth component
-let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-let no_auth_component =
-    AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-        .unwrap()
-        .with_supports_all_types();
-
 // Compile the account code into `AccountComponent` with one storage slot
 let counter_component = AccountComponent::compile(
     counter_code.clone(),
@@ -327,7 +312,7 @@ let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .account_type(AccountType::RegularAccountImmutableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(counter_component.clone())
-    .with_auth_component(no_auth_component)
+    .with_auth_component(NoAuth)
     .build()
     .unwrap();
 
@@ -385,6 +370,7 @@ Paste the following code at the end of your `src/main.rs` file:
 #     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
 #     ClientError, Felt,
 # };
+# use miden_lib::account::auth::NoAuth;
 # use miden_objects::{
 #     account::{AccountComponent, NetworkId}, assembly::Assembler, assembly::DefaultSourceManager,
 # };
@@ -429,13 +415,6 @@ Paste the following code at the end of your `src/main.rs` file:
 #     // Prepare assembler (debug mode = true)
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 #
-#     // Load and compile the NoAuth component
-#     let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-#     let no_auth_component =
-#         AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-#             .unwrap()
-#             .with_supports_all_types();
-#
 #     // Compile the account code into `AccountComponent` with one storage slot
 #     let counter_component = AccountComponent::compile(
 #         counter_code.clone(),
@@ -459,7 +438,7 @@ Paste the following code at the end of your `src/main.rs` file:
 #         .account_type(AccountType::RegularAccountImmutableCode)
 #         .storage_mode(AccountStorageMode::Public)
 #         .with_component(counter_component.clone())
-#         .with_auth_component(no_auth_component)
+#         .with_auth_component(NoAuth)
 #         .build()
 #         .unwrap();
 #
@@ -540,6 +519,7 @@ use miden_client::{
     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
     ClientError, Felt,
 };
+use miden_lib::account::auth::NoAuth;
 use miden_objects::{
     account::{AccountComponent, NetworkId},
     assembly::Assembler,
@@ -590,15 +570,6 @@ async fn main() -> Result<(), ClientError> {
     let counter_path = Path::new("./masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
-    let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component = AccountComponent::compile(
-        no_auth_code,
-        assembler.clone(),
-        vec![StorageSlot::empty_value()],
-    )
-    .unwrap()
-    .with_supports_all_types();
-
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
         counter_code.clone(),
@@ -622,7 +593,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 

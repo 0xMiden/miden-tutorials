@@ -123,6 +123,7 @@ use miden_client::{
     },
     ClientError, Felt,
 };
+use miden_lib::account::auth::NoAuth;
 use miden_objects::{
     account::{AccountComponent, NetworkId},
     assembly::{Assembler, DefaultSourceManager},
@@ -157,13 +158,6 @@ async fn main() -> Result<(), ClientError> {
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-    // Load and compile the NoAuth component
-    let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component =
-        AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-            .unwrap()
-            .with_supports_all_types();
-
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
         count_reader_code.clone(),
@@ -187,7 +181,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 
@@ -248,6 +242,7 @@ Add this snippet to the end of your file in the `main()` function that we create
 #     },
 #     ClientError, Felt,
 # };
+# use miden_lib::account::auth::NoAuth;
 # use miden_objects::{
 #     account::{AccountComponent, NetworkId},
 #     assembly::{Assembler, DefaultSourceManager},
@@ -280,13 +275,7 @@ Add this snippet to the end of your file in the `main()` function that we create
 #     // Prepare assembler (debug mode = true)
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 #
-#     // Load and compile the NoAuth component
-#     let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-#     let no_auth_component =
-#         AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-#             .unwrap()
-#             .with_supports_all_types();
-#
+
 #     // Compile the account code into `AccountComponent` with one storage slot
 #     let counter_component = AccountComponent::compile(
 #         count_reader_code.clone(),
@@ -310,7 +299,7 @@ Add this snippet to the end of your file in the `main()` function that we create
 #         .account_type(AccountType::RegularAccountImmutableCode)
 #         .storage_mode(AccountStorageMode::Public)
 #         .with_component(counter_component.clone())
-#         .with_auth_component(no_auth_component)
+#         .with_auth_component(NoAuth)
 #         .build()
 #         .unwrap();
 #
@@ -378,6 +367,7 @@ Add this snippet to the end of your file in the `main()` function:
 #     },
 #     ClientError, Felt,
 # };
+# use miden_lib::account::auth::NoAuth;
 # use miden_objects::{
 #     account::{AccountComponent, NetworkId},
 #     assembly::{Assembler, DefaultSourceManager},
@@ -425,13 +415,6 @@ Add this snippet to the end of your file in the `main()` function:
 #     // Prepare assembler (debug mode = true)
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 #
-#     // Load and compile the NoAuth component
-#     let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-#     let no_auth_component =
-#         AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-#             .unwrap()
-#             .with_supports_all_types();
-#
 #     // Compile the account code into `AccountComponent` with one storage slot
 #     let counter_component = AccountComponent::compile(
 #         count_reader_code.clone(),
@@ -455,7 +438,7 @@ Add this snippet to the end of your file in the `main()` function:
 #         .account_type(AccountType::RegularAccountImmutableCode)
 #         .storage_mode(AccountStorageMode::Public)
 #         .with_component(counter_component.clone())
-#         .with_auth_component(no_auth_component)
+#         .with_auth_component(NoAuth)
 #         .build()
 #         .unwrap();
 #
@@ -626,6 +609,7 @@ use miden_client::{
     },
     ClientError, Felt,
 };
+use miden_lib::account::auth::NoAuth;
 use miden_objects::{
     account::{AccountComponent, NetworkId},
     assembly::{Assembler, DefaultSourceManager},
@@ -675,13 +659,6 @@ async fn main() -> Result<(), ClientError> {
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-    // Load and compile the NoAuth component
-    let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component =
-        AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-            .unwrap()
-            .with_supports_all_types();
-
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
         count_reader_code.clone(),
@@ -705,7 +682,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 
