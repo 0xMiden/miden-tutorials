@@ -218,7 +218,9 @@ Add the following code snippet to the end of your `src/main.rs` function:
 // -------------------------------------------------------------------------
 println!("\n[STEP 1] Reading data from public state");
 
-// Define the Counter Contract account id from counter contract deploy
+// Define the Counter Contract `AccountId`.
+// Below is the ID of the contract deployed to testnet, but you can replace with the `AccountId`
+// from your own counter contract deploy tutorial.
 let (_, counter_contract_id) =
     AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
 
@@ -381,7 +383,7 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust,no_run
+```rust
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{
