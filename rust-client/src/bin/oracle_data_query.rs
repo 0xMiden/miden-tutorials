@@ -1,14 +1,19 @@
+use miden_assembly::{
+    ast::{Module, ModuleKind},
+    Assembler, DefaultSourceManager, LibraryPath,
+};
 use rand::RngCore;
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::{
         component::AccountComponent, AccountBuilder, AccountId, AccountStorageMode, AccountType,
         StorageSlot,
     },
+    builder::ClientBuilder,
     rpc::{
         domain::account::{AccountStorageRequirements, StorageMapKey},
-        Endpoint,
+        Endpoint, TonicRpcClient,
     },
     transaction::{
         ForeignAccount, TransactionKernel, TransactionRequestBuilder, TransactionScript,
@@ -16,8 +21,6 @@ use miden_client::{
     Client, ClientError, Felt, Word, ZERO,
 };
 use miden_lib::account::auth::NoAuth;
-
-use miden_client_tools::{create_library, instantiate_client};
 
 /// Import the oracle + its publishers and return the ForeignAccount list
 /// Due to Pragma's decentralized oracle architecture, we need to get the
@@ -73,13 +76,35 @@ pub async fn get_oracle_foreign_accounts(
     Ok(foreign_accounts)
 }
 
+fn create_library(
+    assembler: Assembler,
+    library_path: &str,
+    source_code: &str,
+) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let module = Module::parser(ModuleKind::Library).parse_str(
+        LibraryPath::new(library_path)?,
+        source_code,
+        &source_manager,
+    )?;
+    let library = assembler.clone().assemble_library([module])?;
+    Ok(library)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // Initialize Client
     // -------------------------------------------------------------------------
     let endpoint = Endpoint::testnet();
-    let mut client = instantiate_client(endpoint, None).await.unwrap();
+    let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let mut client = ClientBuilder::new()
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
+        .in_debug_mode(true)
+        .build()
+        .await?;
 
     println!("Latest block: {}", client.sync_state().await?.block_num);
 
@@ -138,7 +163,8 @@ async fn main() -> Result<(), ClientError> {
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let library_path = "external_contract::oracle_reader";
-    let account_component_lib = create_library(contract_code, library_path).unwrap();
+    let account_component_lib =
+        create_library(assembler.clone(), library_path, &contract_code).unwrap();
 
     let tx_script = TransactionScript::compile(
         script_code,
