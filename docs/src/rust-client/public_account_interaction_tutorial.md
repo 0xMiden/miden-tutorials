@@ -219,7 +219,8 @@ Add the following code snippet to the end of your `src/main.rs` function:
 println!("\n[STEP 1] Reading data from public state");
 
 // Define the Counter Contract account id from counter contract deploy
-let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
+let (_, counter_contract_id) =
+    AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
 
 client
     .import_account_by_id(counter_contract_id)
@@ -306,8 +307,8 @@ Add the following code snippet to the end of your `src/main.rs` function:
 #
 #     let sync_summary = client.sync_state().await.unwrap();
 #
-#     // Dummy counter contract for the example
-#     let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
+#     let (_, counter_contract_id) =
+#         AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
 #     client
 #         .import_account_by_id(counter_contract_id)
 #         .await
@@ -434,7 +435,8 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Reading data from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let counter_contract_id = AccountId::from_hex("0x4eedb9db1bdcf90000036bcebfe53a").unwrap();
+    let (_, counter_contract_id) =
+        AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)
