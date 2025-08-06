@@ -1,4 +1,6 @@
 name: Documentation Tests
+permissions:
+  contents: read
 
 on:
   push:
