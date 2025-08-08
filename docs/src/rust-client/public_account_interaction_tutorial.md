@@ -58,7 +58,7 @@ mkdir -p masm/accounts masm/scripts
 
 This will create:
 
-```
+```text
 masm/
 ├── accounts/
 └── scripts/
@@ -123,7 +123,7 @@ end
 
 Copy and paste the following code into your `src/main.rs` file:
 
-```rust
+```rust,no_run
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{
@@ -183,14 +183,46 @@ We will be reading the public storage state of the counter contract deployed on 
 
 Add the following code snippet to the end of your `src/main.rs` function:
 
-```rust
+```rust,no_run
+# use std::{fs, path::Path, sync::Arc};
+# use miden_assembly::{
+#     ast::{Module, ModuleKind},
+#     LibraryPath,
+# };
+# use miden_client::{
+#     account::AccountId,
+#     builder::ClientBuilder,
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
+#     ClientError,
+# };
+# use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     let sync_summary = client.sync_state().await.unwrap();
 // -------------------------------------------------------------------------
 // STEP 1: Read the Public State of the Counter Contract
 // -------------------------------------------------------------------------
 println!("\n[STEP 1] Reading data from public state");
 
-// Define the Counter Contract account id from counter contract deploy
-let counter_contract_id = AccountId::from_hex("0x5fd8e3b9f4227200000581c6032f81").unwrap();
+// Define the Counter Contract `AccountId`.
+// Below is the ID of the contract deployed to testnet, but you can replace with the `AccountId`
+// from your own counter contract deploy tutorial.
+let (_, counter_contract_id) =
+    AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
 
 client
     .import_account_by_id(counter_contract_id)
@@ -210,6 +242,8 @@ let counter_contract = if let Some(account_record) = counter_contract_details {
 } else {
     panic!("Counter contract not found!");
 };
+#     Ok(())
+# }
 ```
 
 Run the following command to execute src/main.rs:
@@ -220,7 +254,7 @@ cargo run --release
 
 After the program executes, you should see the counter contract count value and nonce printed to the terminal, for example:
 
-```
+```text
 count val: [0, 0, 0, 5]
 counter nonce: 5
 ```
@@ -229,7 +263,64 @@ counter nonce: 5
 
 Add the following code snippet to the end of your `src/main.rs` function:
 
-```rust
+```rust,no_run
+# use std::{fs, path::Path, sync::Arc};
+# use miden_assembly::{
+#     ast::{Module, ModuleKind},
+#     LibraryPath,
+# };
+# use miden_client::{
+#     account::AccountId,
+#     builder::ClientBuilder,
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
+#     ClientError,
+# };
+# use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager, account::Account};
+#
+# fn create_library(
+#     assembler: Assembler,
+#     library_path: &str,
+#     source_code: &str,
+# ) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+#     let source_manager = Arc::new(DefaultSourceManager::default());
+#     let module = Module::parser(ModuleKind::Library).parse_str(
+#         LibraryPath::new(library_path)?,
+#         source_code,
+#         &source_manager,
+#     )?;
+#     let library = assembler.clone().assemble_library([module])?;
+#     Ok(library)
+# }
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     let sync_summary = client.sync_state().await.unwrap();
+#
+#     let (_, counter_contract_id) =
+#         AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
+#     client
+#         .import_account_by_id(counter_contract_id)
+#         .await
+#         .unwrap();
+#     let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
+#     let counter_contract = if let Some(account_record) = counter_contract_details {
+#         account_record.account().clone()
+#     } else {
+#         panic!("Counter contract not found!");
+#     };
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
@@ -251,7 +342,6 @@ let account_component_lib = create_library(
 
 let tx_script = TransactionScript::compile(
     script_code,
-    [],
     assembler.with_library(&account_component_lib).unwrap(),
 )
 .unwrap();
@@ -285,6 +375,8 @@ println!(
     "counter contract storage: {:?}",
     account.unwrap().account().storage().get_item(0)
 );
+#     Ok(())
+# }
 ```
 
 ## Summary
@@ -294,85 +386,48 @@ The final `src/main.rs` file should look like this:
 ```rust
 use std::{fs, path::Path, sync::Arc};
 
-use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
-use rand_chacha::ChaCha20Rng;
-use tokio::time::Duration;
-
+use miden_assembly::{
+    ast::{Module, ModuleKind},
+    LibraryPath,
+};
 use miden_client::{
-    account::{Account, AccountCode, AccountId, AccountType},
-    asset::AssetVault,
-    crypto::RpoRandomCoin,
-    rpc::{domain::account::AccountDetails, Endpoint, TonicRpcClient},
-    store::{sqlite_store::SqliteStore, StoreAuthenticator},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt,
+    account::AccountId,
+    builder::ClientBuilder,
+    rpc::{Endpoint, TonicRpcClient},
+    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
+    ClientError,
 };
+use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
 
-use miden_objects::{
-    account::{AccountComponent, AccountStorage, AuthSecretKey, StorageSlot},
-    assembly::Assembler,
-    crypto::dsa::rpo_falcon512::SecretKey,
-    Word,
-};
-
-pub async fn initialize_client() -> Result<Client<RpoRandomCoin>, ClientError> {
-    // RPC endpoint and timeout
-    let endpoint = Endpoint::testnet();
-    let timeout_ms = 10_000;
-
-    // Build RPC client
-    let rpc_api = Box::new(TonicRpcClient::new(endpoint, timeout_ms));
-
-    // Seed RNG
-    let mut seed_rng = rand::thread_rng();
-    let coin_seed: [u64; 4] = seed_rng.gen();
-
-    // Create random coin instance
-    let rng = RpoRandomCoin::new(coin_seed.map(Felt::new));
-
-    // SQLite path
-    let store_path = "store.sqlite3";
-
-    // Initialize SQLite store
-    let store = SqliteStore::new(store_path.into())
-        .await
-        .map_err(ClientError::StoreError)?;
-    let arc_store = Arc::new(store);
-
-    // Create authenticator referencing the store and RNG
-    let authenticator = StoreAuthenticator::new_with_rng(arc_store.clone(), rng);
-
-    // Instantiate client (toggle debug mode as needed)
-    let client = Client::new(rpc_api, rng, arc_store, Arc::new(authenticator), true);
-
-    Ok(client)
-}
-
-pub fn get_new_pk_and_authenticator() -> (Word, AuthSecretKey) {
-    // Create a deterministic RNG with zeroed seed
-    let seed = [0_u8; 32];
-    let mut rng = ChaCha20Rng::from_seed(seed);
-
-    // Generate Falcon-512 secret key
-    let sec_key = SecretKey::with_rng(&mut rng);
-
-    // Convert public key to `Word` (4xFelt)
-    let pub_key: Word = sec_key.public_key().into();
-
-    // Wrap secret key in `AuthSecretKey`
-    let auth_secret_key = AuthSecretKey::RpoFalcon512(sec_key);
-
-    (pub_key, auth_secret_key)
+fn create_library(
+    assembler: Assembler,
+    library_path: &str,
+    source_code: &str,
+) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let module = Module::parser(ModuleKind::Library).parse_str(
+        LibraryPath::new(library_path)?,
+        source_code,
+        &source_manager,
+    )?;
+    let library = assembler.clone().assemble_library([module])?;
+    Ok(library)
 }
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let mut client = initialize_client().await?;
-    println!("Client initialized successfully.");
+    let endpoint = Endpoint::testnet();
+    let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
-    // Fetch latest block from node
+    let mut client = ClientBuilder::new()
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
+        .in_debug_mode(true)
+        .build()
+        .await?;
+
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
 
@@ -382,97 +437,52 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Reading data from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let counter_contract_id = AccountId::from_hex("0x4eedb9db1bdcf90000036bcebfe53a").unwrap();
+    let (_, counter_contract_id) =
+        AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
 
-    let account_details = client
-        .test_rpc_api()
-        .get_account_update(counter_contract_id)
+    client
+        .import_account_by_id(counter_contract_id)
         .await
         .unwrap();
 
-    let AccountDetails::Public(counter_contract_details, _) = account_details else {
-        panic!("counter contract must be public");
+    let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
+
+    let counter_contract = if let Some(account_record) = counter_contract_details {
+        // Clone the account to get an owned instance
+        let account = account_record.account().clone();
+        println!(
+            "Account details: {:?}",
+            account.storage().slots().first().unwrap()
+        );
+        account // Now returns an owned account
+    } else {
+        panic!("Counter contract not found!");
     };
 
-    // Getting the value of the count from slot 0 and the nonce of the counter contract
-    let count_value = counter_contract_details.storage().slots().first().unwrap();
-    let counter_nonce = counter_contract_details.nonce();
-
-    println!("count val: {:?}", count_value.value());
-    println!("counter nonce: {:?}", counter_nonce);
-
     // -------------------------------------------------------------------------
-    // STEP 2: Build the Counter Contract
+    // STEP 2: Call the Counter Contract with a script
     // -------------------------------------------------------------------------
-    println!("\n[STEP 2] Building the counter contract");
 
-    // Load the MASM file for the counter contract
-    let file_path = Path::new("./masm/accounts/counter.masm");
-    let account_code = fs::read_to_string(file_path).unwrap();
+    // Load the MASM script referencing the increment procedure
+    let script_path = Path::new("./masm/scripts/counter_script.masm");
+    let script_code = fs::read_to_string(script_path).unwrap();
 
-    // Prepare assembler (debug mode = true)
+    let counter_path = Path::new("./masm/accounts/counter.masm");
+    let counter_code = fs::read_to_string(counter_path).unwrap();
+
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-
-    // Compile the account code into `AccountComponent` with the count value returned by the node
-    let account_component = AccountComponent::compile(
-        account_code,
-        assembler,
-        vec![StorageSlot::Value(count_value.value())],
-    )
-    .unwrap()
-    .with_supports_all_types();
-
-    // Initialize the AccountStorage with the count value returned by the node
-    let account_storage =
-        AccountStorage::new(vec![StorageSlot::Value(count_value.value())]).unwrap();
-
-    // Build AccountCode from components
-    let account_code = AccountCode::from_components(
-        &[account_component],
-        AccountType::RegularAccountImmutableCode,
+    let account_component_lib = create_library(
+        assembler.clone(),
+        "external_contract::counter_contract",
+        &counter_code,
     )
     .unwrap();
 
-    // The counter contract doesn't have any assets so we pass an empty vector
-    let vault = AssetVault::new(&[]).unwrap();
-
-    // Build the counter contract from parts
-    let counter_contract = Account::from_parts(
-        counter_contract_id,
-        vault,
-        account_storage,
-        account_code,
-        counter_nonce,
-    );
-
-    // Since anyone should be able to write to the counter contract, auth_secret_key is not required.
-    // However, to import to the client, we must generate a random value.
-    let (_, _auth_secret_key) = get_new_pk_and_authenticator();
-
-    client
-        .add_account(&counter_contract.clone(), None, &_auth_secret_key, true)
-        .await
-        .unwrap();
-
-    // -------------------------------------------------------------------------
-    // STEP 3: Call the Counter Contract with a script
-    // -------------------------------------------------------------------------
-    println!("\n[STEP 3] Call the increment_count procedure in the counter contract");
-
-    // The increment_count procedure hash is constant
-    let increment_procedure = "0xecd7eb223a5524af0cc78580d96357b298bb0b3d33fe95aeb175d6dab9de2e54";
-
-    // Load the MASM script referencing the increment procedure
-    let file_path = Path::new("./masm/scripts/counter_script.masm");
-    let original_code = fs::read_to_string(file_path).unwrap();
-
-    // Replace the placeholder with the actual procedure call
-
-    let replaced_code = original_code.replace("{increment_count}", increment_procedure);
-    println!("Final script:\n{}", replaced_code);
-
-    // Compile the script
-    let tx_script = client.compile_tx_script(vec![], &replaced_code).unwrap();
+    let tx_script = TransactionScript::compile(
+        script_code,
+        assembler.with_library(&account_component_lib).unwrap(),
+    )
+    .unwrap();
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -495,8 +505,6 @@ async fn main() -> Result<(), ClientError> {
     // Submit transaction to the network
     let _ = client.submit_transaction(tx_result).await;
 
-    // Wait, then re-sync
-    tokio::time::sleep(Duration::from_secs(3)).await;
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented counter
@@ -518,7 +526,7 @@ cargo run --release
 
 The output of our program will look something like this depending on the current count value in the smart contract:
 
-```
+```text
 Client initialized successfully.
 Latest block: 242342
 

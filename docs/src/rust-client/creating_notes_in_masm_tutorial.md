@@ -72,7 +72,7 @@ mkdir masm/notes
 
 This will create:
 
-```
+```text
 masm/
 └── notes/
 ```
@@ -201,7 +201,7 @@ With the Miden assembly note script written, we can move on to writing the Rust 
 
 Copy and paste the following code into your `src/main.rs` file.
 
-```rust
+```rust,no_run
 use rand::{prelude::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 use tokio::time::{sleep, Duration};
@@ -478,7 +478,7 @@ cargo run --release
 
 The output will look something like this:
 
-```
+```text
 Latest block: 226933
 
 [STEP 1] Creating new accounts

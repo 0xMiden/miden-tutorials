@@ -25,7 +25,7 @@ _How does it work?_ When a user choses to use delegated proving, they send off t
 
 The only downside of using delegated proving is that it reduces the privacy of the account that uses delegated proving, because the delegated prover would have knowledge of the inputs to the transaction that is being proven. For example, it would not be advisable to use delegated proving in the case of our "How to Create a Custom Note" tutorial, since the note we create requires knowledge of a hash preimage to redeem the assets in the note. Using delegated proving would reveal the hash preimage to the server running the delegated proving service.
 
-Anyone can run their own delegated prover server. If you are building a product on Miden, it may make sense to run your own delegated prover server for your users. To run your own delegated proving server, follow the instructions here: https://crates.io/crates/miden-proving-service
+Anyone can run their own delegated prover server. If you are building a product on Miden, it may make sense to run your own delegated prover server for your users. To run your own delegated proving server, follow the instructions here: https://crates.io/crates/miden-remote-prover.
 
 ## Step 1: Initialize your repository
 
@@ -50,7 +50,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 tokio = { version = "1.40", features = ["rt-multi-thread", "net", "macros"] }
 rand_chacha = "0.9.0"
-miden-client-tools = "0.2.0"
 ```
 
 ## Step 2: Initialize the client and delegated prover endpoint and construct transactions
@@ -59,89 +58,80 @@ Similarly to previous tutorials, we must instantiate the client.
 We construct a `RemoteTransactionProver` that points to our delegated-proving service running at https://tx-prover.testnet.miden.io.
 
 ```rust
+use miden_client::auth::AuthSecretKey;
+use miden_client::transaction::TransactionScript;
+use miden_lib::transaction::TransactionKernel;
 use std::sync::Arc;
 
-use miden_client::account::AccountId;
-use miden_client::crypto::FeltRng;
+use miden_client::account::{AccountStorageMode, AccountType};
+use miden_client::builder::ClientBuilder;
+use miden_client::crypto::SecretKey;
+use miden_client::rpc::TonicRpcClient;
 use miden_client::{
-    asset::FungibleAsset,
     keystore::FilesystemKeyStore,
-    note::NoteType,
     rpc::Endpoint,
-    transaction::{OutputNote, TransactionProver, TransactionRequestBuilder},
-    ClientError, Felt, RemoteTransactionProver,
+    transaction::{TransactionProver, TransactionRequestBuilder},
+    ClientError, RemoteTransactionProver,
 };
-use miden_client_tools::{
-    create_basic_account, create_exact_p2id_note, instantiate_client, mint_from_faucet_for_account,
-};
+use miden_lib::account::wallets::create_basic_wallet;
+use miden_lib::AuthScheme;
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    // Initialize client, keystore, & delegated prover endpoint
+    // Initialize client & keystore
     let endpoint = Endpoint::testnet();
-    let mut client = instantiate_client(endpoint, None).await.unwrap();
+    let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let mut client = ClientBuilder::new()
+        .rpc(rpc_api)
+        .filesystem_keystore("./keystore")
+        .in_debug_mode(true)
+        .build()
+        .await?;
 
     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
         FilesystemKeyStore::new("./keystore".into()).unwrap();
 
-    let remote_tx_prover: RemoteTransactionProver =
-        RemoteTransactionProver::new("https://tx-prover.testnet.miden.io");
-    let tx_prover: Arc<dyn TransactionProver + 'static> = Arc::new(remote_tx_prover);
+    let key_pair = SecretKey::with_rng(client.rng());
 
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
 
-    let (alice_account, _) = create_basic_account(&mut client, keystore.clone())
-        .await
+    let (alice_account, seed) = create_basic_wallet(
+        [0; 32],
+        AuthScheme::RpoFalcon512 {
+            pub_key: key_pair.public_key(),
+        },
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    )?;
+
+    client
+        .add_account(&alice_account, Some(seed), false)
+        .await?;
+    keystore
+        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
         .unwrap();
 
-    let (bob_account, _) = create_basic_account(&mut client, keystore.clone())
-        .await
-        .unwrap();
+    // -------------------------------------------------------------------------
+    // Setup the remote tx prover
+    // -------------------------------------------------------------------------
+    let remote_tx_prover: RemoteTransactionProver =
+        RemoteTransactionProver::new("https://tx-prover.testnet.miden.io");
+    let tx_prover: Arc<dyn TransactionProver + 'static> = Arc::new(remote_tx_prover);
 
-    // import public faucet id
-    let (_, faucet_id) = AccountId::from_bech32("mtst1qq932n3zkt5rxgpw5tgd9szxp58tllml").unwrap();
-    client.import_account_by_id(faucet_id).await.unwrap();
-    let binding = client.get_account(faucet_id).await.unwrap().unwrap();
-    let faucet = binding.account();
+    // We use a dummy transaction request to showcase delegated proving.
+    // The only effect of this tx should be increasing Alice's nonce.
+    println!("Alice nonce initial: {:?}", alice_account.nonce());
+    let script_code = "begin push.1 drop end";
+    let tx_script =
+        TransactionScript::compile(script_code, TransactionKernel::assembler()).unwrap();
 
-    let _ = mint_from_faucet_for_account(&mut client, &alice_account, &faucet, 1000, None)
-        .await
-        .unwrap();
-
-    let account = client
-        .get_account(alice_account.id())
-        .await
-        .unwrap()
-        .unwrap();
-
-    println!(
-        "Alice initial account balance: {:?}",
-        account.account().vault().get_balance(faucet.id())
-    );
-
-    // Creating 10 separate P2ID notes with 10 tokens each to send to Bob
-    let send_amount = 10;
-    let fungible_asset = FungibleAsset::new(faucet.id(), send_amount).unwrap();
-    let mut p2id_notes = vec![];
-    for _ in 0..=9 {
-        let p2id_note = create_exact_p2id_note(
-            alice_account.id(),
-            bob_account.id(),
-            vec![fungible_asset.into()],
-            NoteType::Public,
-            Felt::new(0),
-            client.rng().draw_word(),
-        )?;
-        p2id_notes.push(p2id_note);
-    }
-
-    // Specifying output notes and creating a tx request to create them
-    let output_notes: Vec<OutputNote> = p2id_notes.into_iter().map(OutputNote::Full).collect();
     let transaction_request = TransactionRequestBuilder::new()
-        .own_output_notes(output_notes)
+        .custom_script(tx_script)
         .build()
         .unwrap();
+
     let tx_execution_result = client
         .new_transaction(alice_account.id(), transaction_request)
         .await?;
@@ -161,13 +151,11 @@ async fn main() -> Result<(), ClientError> {
         .unwrap()
         .unwrap();
 
-    println!(
-        "Alice final account balance: {:?}",
-        account.account().vault().get_balance(faucet.id())
-    );
+    println!("Alice nonce has increased: {:?}", account.account().nonce());
 
     Ok(())
 }
+
 ```
 
 Now let's run the `src/main.rs` program:
@@ -178,7 +166,7 @@ cargo run --release
 
 The output will look like this:
 
-```
+```text
 Latest block: 226954
 Alice initial account balance: Ok(1000)
 Alice final account balance: Ok(900)

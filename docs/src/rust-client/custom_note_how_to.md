@@ -356,7 +356,7 @@ async fn main() -> Result<(), ClientError> {
 
 The output of our program will look something like this:
 
-```
+```text
 Latest block: 226943
 
 [STEP 1] Creating new accounts

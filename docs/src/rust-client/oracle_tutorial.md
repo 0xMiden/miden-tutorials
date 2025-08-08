@@ -66,6 +66,7 @@ use miden_client::{
     },
     Client, ClientError, Felt, Word, ZERO,
 };
+use miden_lib::account::auth::NoAuth;
 
 use miden_client_tools::{create_library, instantiate_client};
 
@@ -156,13 +157,6 @@ async fn main() -> Result<(), ClientError> {
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-    // Load and compile the NoAuth component
-    let no_auth_code = fs::read_to_string(Path::new("../masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component =
-        AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-            .unwrap()
-            .with_supports_all_types();
-
     let contract_component = AccountComponent::compile(
         contract_code.clone(),
         assembler,
@@ -178,7 +172,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(contract_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 

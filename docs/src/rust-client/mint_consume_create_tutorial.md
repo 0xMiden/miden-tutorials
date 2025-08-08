@@ -22,7 +22,60 @@ Below is an example of a transaction request minting tokens from the faucet for 
 
 Add this snippet to the end of your file in the `main()` function that we created in the previous chapter:
 
-```rust
+```rust,no_run
+# use rand::RngCore;
+# use std::sync::Arc;
+# use tokio::time::Duration;
+#
+# use miden_lib::account::wallets::create_basic_wallet;
+# use miden_lib::account::faucets::create_basic_fungible_faucet;
+# use miden_lib::AuthScheme;
+#
+# use miden_client::{
+#     account::{
+#         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
+#         AccountBuilder, AccountId, AccountStorageMode, AccountType,
+#     },
+#     asset::{FungibleAsset, TokenSymbol},
+#     auth::AuthSecretKey,
+#     builder::ClientBuilder,
+#     crypto::SecretKey,
+#     keystore::FilesystemKeyStore,
+#     note::{create_p2id_note, NoteType},
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
+#     ClientError, Felt,
+# };
+# use miden_objects::account::{AccountIdVersion, NetworkId};
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     let (alice_account, _) = create_basic_wallet(
+#         [0u8; 32],
+#         AuthScheme::NoAuth,
+#         AccountType::RegularAccountUpdatableCode,
+#         AccountStorageMode::Public
+#     ).unwrap();
+#     let (faucet_account, _) = create_basic_fungible_faucet(
+#         [1u8; 32],
+#         TokenSymbol::new("MID").unwrap(),
+#         8,
+#         Felt::new(1_000_000),
+#         AccountStorageMode::Public,
+#         AuthScheme::NoAuth,
+#     ).unwrap();
+#
 //------------------------------------------------------------
 // STEP 3: Mint 5 notes of 100 tokens for Alice
 //------------------------------------------------------------
@@ -52,6 +105,8 @@ println!("All 5 notes minted for Alice successfully!");
 
 // Re-sync so minted notes become visible
 client.sync_state().await?;
+#     Ok(())
+# }
 ```
 
 ## Step 2: Identifying consumable notes
@@ -66,7 +121,7 @@ _Tip: If you know how many notes to expect after a transaction, use an await or 
 
 #### Identifying which notes are available:
 
-```rust
+```rust,ignore
 let consumable_notes = client.get_consumable_notes(Some(alice_account.id())).await?;
 ```
 
@@ -78,7 +133,52 @@ The following code snippet identifies consumable notes and consumes them in a si
 
 Add this snippet to the end of your file in the `main()` function:
 
-```Rust
+```rust,no_run
+# use rand::RngCore;
+# use std::sync::Arc;
+# use tokio::time::Duration;
+#
+# use miden_lib::account::wallets::create_basic_wallet;
+# use miden_lib::AuthScheme;
+#
+# use miden_client::{
+#     account::{
+#         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
+#         AccountBuilder, AccountId, AccountStorageMode, AccountType,
+#     },
+#     asset::{FungibleAsset, TokenSymbol},
+#     auth::AuthSecretKey,
+#     builder::ClientBuilder,
+#     crypto::SecretKey,
+#     keystore::FilesystemKeyStore,
+#     note::{create_p2id_note, NoteType},
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
+#     ClientError, Felt,
+# };
+# use miden_objects::account::{AccountIdVersion, NetworkId};
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client & keystore
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     let (alice_account, _) = create_basic_wallet(
+#         [0u8; 32],
+#         AuthScheme::NoAuth,
+#         AccountType::RegularAccountUpdatableCode,
+#         AccountStorageMode::Public
+#     ).unwrap();
+#
 //------------------------------------------------------------
 // STEP 4: Alice consumes all her notes
 //------------------------------------------------------------
@@ -114,6 +214,8 @@ loop {
         tokio::time::sleep(Duration::from_secs(3)).await;
     }
 }
+#     Ok(())
+# }
 ```
 
 ## Step 4: Sending tokens to other accounts
@@ -134,7 +236,62 @@ In the snippet below, we create an empty vector to store five P2ID output notes,
 
 Add this snippet to the end of your file in the `main()` function:
 
-```Rust
+```rust,no_run
+# use rand::RngCore;
+# use std::sync::Arc;
+# use tokio::time::Duration;
+#
+# use miden_lib::account::wallets::create_basic_wallet;
+# use miden_lib::account::faucets::create_basic_fungible_faucet;
+# use miden_lib::AuthScheme;
+#
+# use miden_client::{
+#     account::{
+#         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
+#         AccountBuilder, AccountId, AccountStorageMode, AccountType,
+#     },
+#     asset::{FungibleAsset, TokenSymbol},
+#     auth::AuthSecretKey,
+#     builder::ClientBuilder,
+#     crypto::SecretKey,
+#     keystore::FilesystemKeyStore,
+#     note::{create_p2id_note, NoteType},
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
+#     ClientError, Felt,
+# };
+# use miden_objects::account::{AccountIdVersion, NetworkId};
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client & keystore
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     let (alice_account, _) = create_basic_wallet(
+#         [0u8; 32],
+#         AuthScheme::NoAuth,
+#         AccountType::RegularAccountUpdatableCode,
+#         AccountStorageMode::Public
+#     ).unwrap();
+#
+#     let (faucet_account, _) = create_basic_fungible_faucet(
+#         [1u8; 32],
+#         TokenSymbol::new("MID").unwrap(),
+#         8,
+#         Felt::new(1_000_000),
+#         AccountStorageMode::Public,
+#         AuthScheme::NoAuth,
+#     ).unwrap();
+#
 //------------------------------------------------------------
 // STEP 5: Alice sends 5 notes of 50 tokens to 5 users
 //------------------------------------------------------------
@@ -186,6 +343,8 @@ let tx_execution_result = client
 // Submitting the transaction
 client.submit_transaction(tx_execution_result).await?;
 println!("Submitted a transaction with 4 P2ID notes.");
+#     Ok(())
+# }
 ```
 
 ### Basic P2ID transfer
@@ -194,7 +353,62 @@ Now as an example, Alice will send some tokens to an account in a single transac
 
 Add this snippet to the end of your file in the `main()` function:
 
-```Rust
+```rust,no_run
+# use rand::RngCore;
+# use std::sync::Arc;
+# use tokio::time::Duration;
+#
+# use miden_lib::account::wallets::create_basic_wallet;
+# use miden_lib::account::faucets::create_basic_fungible_faucet;
+# use miden_lib::AuthScheme;
+#
+# use miden_client::{
+#     account::{
+#         component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
+#         AccountBuilder, AccountId, AccountStorageMode, AccountType,
+#     },
+#     asset::{FungibleAsset, TokenSymbol},
+#     auth::AuthSecretKey,
+#     builder::ClientBuilder,
+#     crypto::SecretKey,
+#     keystore::FilesystemKeyStore,
+#     note::{create_p2id_note, NoteType},
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
+#     ClientError, Felt,
+# };
+# use miden_objects::account::{AccountIdVersion, NetworkId};
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client & keystore
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     let (alice_account, _) = create_basic_wallet(
+#         [0u8; 32],
+#         AuthScheme::NoAuth,
+#         AccountType::RegularAccountUpdatableCode,
+#         AccountStorageMode::Public
+#     ).unwrap();
+#
+#     let (faucet_account, _) = create_basic_fungible_faucet(
+#         [1u8; 32],
+#         TokenSymbol::new("MID").unwrap(),
+#         8,
+#         Felt::new(1_000_000),
+#         AccountStorageMode::Public,
+#         AuthScheme::NoAuth,
+#     ).unwrap();
+#
 println!("Submitting one more single P2ID transaction...");
 let init_seed: [u8; 15] = {
     let mut init_seed = [0_u8; 15];
@@ -228,7 +442,8 @@ let tx_execution_result = client
     .await?;
 
 client.submit_transaction(tx_execution_result).await?;
-
+#     Ok(())
+# }
 ```
 
 Note: _In a production environment do not use `AccountId::new_dummy()`, this is simply for the sake of the tutorial example._
@@ -254,7 +469,7 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     note::{create_p2id_note, NoteType},
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, PaymentTransactionData, TransactionRequestBuilder},
+    transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
     ClientError, Felt,
 };
 use miden_objects::account::{AccountIdVersion, NetworkId};
@@ -530,7 +745,7 @@ cargo run --release
 
 The output will look like this:
 
-```
+```text
 Latest block: 226896
 
 [STEP 1] Creating a new account for Alice

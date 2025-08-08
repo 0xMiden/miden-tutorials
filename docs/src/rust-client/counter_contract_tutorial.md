@@ -50,7 +50,7 @@ In the previous section, we explained how to instantiate the Miden client. We ca
 
 Copy and paste the following code into your `src/main.rs` file:
 
-```rust
+```rust,no_run
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
@@ -123,7 +123,7 @@ mkdir -p masm/accounts masm/scripts masm/accounts/auth
 
 This will create:
 
-```
+```text
 masm/
 ├── accounts/
 │   └── auth/
@@ -205,18 +205,9 @@ end
 
 ### Authentication Component
 
-**Important**: Starting with Miden Client 0.10.0, all accounts must have an authentication component. For smart contracts that don't require authentication (like our counter contract), we use a NoAuth component.
+**Important**: Starting with Miden Client 0.10.0, all accounts must have an authentication component. For smart contracts that don't require authentication (like our counter contract), we use a `NoAuth` component.
 
-Create the `no_auth.masm` file inside the `masm/accounts/auth/` directory:
-
-```masm
-use.miden::account
-export.auth__no_auth
-    push.1 exec.account::incr_nonce
-end
-```
-
-This NoAuth component allows any user to interact with the smart contract without requiring signature verification.
+This `NoAuth` component allows any user to interact with the smart contract without requiring signature verification.
 
 ### Custom script
 
@@ -238,7 +229,54 @@ end
 
 To build the counter contract copy and paste the following code at the end of your `src/main.rs` file:
 
-```rust
+```rust,no_run
+# use rand::RngCore;
+# use std::{fs, path::Path, sync::Arc};
+#
+# use miden_assembly::{
+#     ast::{Module, ModuleKind},
+#     LibraryPath,
+# };
+# use miden_client::{
+#     account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
+#     builder::ClientBuilder,
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
+#     ClientError, Felt,
+# };
+# use miden_lib::account::auth::NoAuth;
+# use miden_objects::{
+#     account::{AccountComponent, NetworkId}, assembly::Assembler, assembly::DefaultSourceManager,
+# };
+#
+# fn create_library(
+#     assembler: Assembler,
+#     library_path: &str,
+#     source_code: &str,
+# ) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+#     let source_manager = Arc::new(DefaultSourceManager::default());
+#     let module = Module::parser(ModuleKind::Library).parse_str(
+#         LibraryPath::new(library_path)?,
+#         source_code,
+#         &source_manager,
+#     )?;
+#     let library = assembler.clone().assemble_library([module])?;
+#     Ok(library)
+# }
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
 // -------------------------------------------------------------------------
 // STEP 1: Create a basic counter contract
 // -------------------------------------------------------------------------
@@ -250,13 +288,6 @@ let counter_code = fs::read_to_string(counter_path).unwrap();
 
 // Prepare assembler (debug mode = true)
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-
-// Load and compile the NoAuth component
-let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-let no_auth_component =
-    AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-        .unwrap()
-        .with_supports_all_types();
 
 // Compile the account code into `AccountComponent` with one storage slot
 let counter_component = AccountComponent::compile(
@@ -281,7 +312,7 @@ let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .account_type(AccountType::RegularAccountImmutableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(counter_component.clone())
-    .with_auth_component(no_auth_component)
+    .with_auth_component(NoAuth)
     .build()
     .unwrap();
 
@@ -299,9 +330,11 @@ client
     .add_account(&counter_contract.clone(), Some(counter_seed), false)
     .await
     .unwrap();
+#     Ok(())
+# }
 ```
 
-Run the following command to execute src/main.rs:
+Run the following command to execute `src/main.rs`:
 
 ```bash
 cargo run --release
@@ -309,7 +342,7 @@ cargo run --release
 
 After the program executes, you should see the counter contract hash and contract id printed to the terminal, for example:
 
-```
+```text
 [STEP 1] Creating counter contract.
 counter_contract commitment: RpoDigest([3700134472268167470, 14878091556015233722, 3335592073702485043, 16978997897830363420])
 counter_contract id: "mtst1qql030hpsp0yyqra494lcwazxsym7add"
@@ -322,7 +355,93 @@ Now that we built the counter contract, lets create a transaction request to inc
 
 Paste the following code at the end of your `src/main.rs` file:
 
-```rust
+```rust,no_run
+# use rand::RngCore;
+# use std::{fs, path::Path, sync::Arc};
+#
+# use miden_assembly::{
+#     ast::{Module, ModuleKind},
+#     LibraryPath,
+# };
+# use miden_client::{
+#     account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
+#     builder::ClientBuilder,
+#     rpc::{Endpoint, TonicRpcClient},
+#     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
+#     ClientError, Felt,
+# };
+# use miden_lib::account::auth::NoAuth;
+# use miden_objects::{
+#     account::{AccountComponent, NetworkId}, assembly::Assembler, assembly::DefaultSourceManager,
+# };
+#
+# fn create_library(
+#     assembler: Assembler,
+#     library_path: &str,
+#     source_code: &str,
+# ) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+#     let source_manager = Arc::new(DefaultSourceManager::default());
+#     let module = Module::parser(ModuleKind::Library).parse_str(
+#         LibraryPath::new(library_path)?,
+#         source_code,
+#         &source_manager,
+#     )?;
+#     let library = assembler.clone().assemble_library([module])?;
+#     Ok(library)
+# }
+#
+# #[tokio::main]
+# async fn main() -> Result<(), ClientError> {
+#     // Initialize client
+#     let endpoint = Endpoint::testnet();
+#     let timeout_ms = 10_000;
+#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+#
+#     let mut client = ClientBuilder::new()
+#         .rpc(rpc_api)
+#         .filesystem_keystore("./keystore")
+#         .in_debug_mode(true)
+#         .build()
+#         .await?;
+#
+#     // -------------------------------------------------------------------------
+#     // STEP 1: Create a basic counter contract
+#     // -------------------------------------------------------------------------
+#
+#     // Load the MASM file for the counter contract
+#     let counter_path = Path::new("./masm/accounts/counter.masm");
+#     let counter_code = fs::read_to_string(counter_path).unwrap();
+#
+#     // Prepare assembler (debug mode = true)
+#     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+#
+#     // Compile the account code into `AccountComponent` with one storage slot
+#     let counter_component = AccountComponent::compile(
+#         counter_code.clone(),
+#         assembler,
+#         vec![StorageSlot::Value([
+#             Felt::new(0),
+#             Felt::new(0),
+#             Felt::new(0),
+#             Felt::new(0),
+#         ])],
+#     )
+#     .unwrap()
+#     .with_supports_all_types();
+#
+#     // Init seed for the counter contract
+#     let mut seed = [0_u8; 32];
+#     client.rng().fill_bytes(&mut seed);
+#
+#     // Build the new `Account` with the component
+#     let (counter_contract, counter_seed) = AccountBuilder::new(seed)
+#         .account_type(AccountType::RegularAccountImmutableCode)
+#         .storage_mode(AccountStorageMode::Public)
+#         .with_component(counter_component.clone())
+#         .with_auth_component(NoAuth)
+#         .build()
+#         .unwrap();
+#
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
@@ -342,7 +461,6 @@ let account_component_lib = create_library(
 
 let tx_script = TransactionScript::compile(
     script_code,
-    [],
     assembler.with_library(&account_component_lib).unwrap(),
 )
 .unwrap();
@@ -376,6 +494,8 @@ println!(
     "counter contract storage: {:?}",
     account.unwrap().account().storage().get_item(0)
 );
+#     Ok(())
+# }
 ```
 
 **Note**: _Once our counter contract is deployed, other users can increment the count of the smart contract simply by knowing the account id of the contract and the procedure hash of the `increment_count` procedure._
@@ -399,6 +519,7 @@ use miden_client::{
     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
     ClientError, Felt,
 };
+use miden_lib::account::auth::NoAuth;
 use miden_objects::{
     account::{AccountComponent, NetworkId},
     assembly::Assembler,
@@ -446,17 +567,8 @@ async fn main() -> Result<(), ClientError> {
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
     // Load the MASM file for the counter contract
-    let counter_path = Path::new("../masm/accounts/counter.masm");
+    let counter_path = Path::new("./masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
-
-    let no_auth_code = fs::read_to_string(Path::new("../masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component = AccountComponent::compile(
-        no_auth_code,
-        assembler.clone(),
-        vec![StorageSlot::empty_value()],
-    )
-    .unwrap()
-    .with_supports_all_types();
 
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
@@ -481,7 +593,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 
@@ -506,7 +618,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Counter Contract With Script");
 
     // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("../masm/scripts/counter_script.masm");
+    let script_path = Path::new("./masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -559,7 +671,7 @@ async fn main() -> Result<(), ClientError> {
 
 The output of our program will look something like this:
 
-```
+```text
 Latest block: 226717
 
 [STEP 1] Creating counter contract.
