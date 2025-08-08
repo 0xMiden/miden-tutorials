@@ -7,6 +7,8 @@ on:
     branches: [main]
   pull_request:
     types: [opened, reopened, synchronize]
+  schedule:
+    - cron: '0 7 * * 1'
 
 jobs:
   doc-tests:
