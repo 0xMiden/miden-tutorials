@@ -27,5 +27,5 @@ jobs:
       - name: Run documentation tests
         run: |
           rustup update --no-self-update
-          cargo test --doc --release
+          cargo test --doc --release -- --test-threads=1
         working-directory: docs
