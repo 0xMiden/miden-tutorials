@@ -1,6 +1,7 @@
 target/
 *.dat
 node/storage/*
+docs/Cargo.lock
 
 keystore
 *.sqlite3

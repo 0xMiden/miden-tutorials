@@ -68,6 +68,7 @@ use miden_client::{
     utils::{Deserializable, Serializable},
     ClientError, Felt,
 };
+use miden_objects::account::NetworkId;
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
@@ -304,7 +305,7 @@ async fn main() -> Result<(), ClientError> {
 
 The output of our program will look something like this:
 
-```
+```text
 Latest block: 227040
 
 [STEP 1] Deploying a new fungible faucet.

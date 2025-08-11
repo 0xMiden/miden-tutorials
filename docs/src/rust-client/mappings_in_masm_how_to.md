@@ -150,6 +150,7 @@ use miden_client::{
     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
     ClientError, Felt,
 };
+use miden_lib::account::auth::NoAuth;
 use miden_objects::{
     account::{AccountComponent, StorageMap},
     assembly::Assembler,
@@ -200,13 +201,6 @@ async fn main() -> Result<(), ClientError> {
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-    // Load and compile the NoAuth component
-    let no_auth_code = fs::read_to_string(Path::new("./masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component =
-        AccountComponent::compile(no_auth_code, assembler.clone(), vec![StorageSlot::empty_value()])
-            .unwrap()
-            .with_supports_all_types();
-
     // Using an empty storage value in slot 0 since this is usually resurved
     // for the account pub_key and metadata
     let empty_storage_slot = StorageSlot::empty_value();
@@ -233,7 +227,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(mapping_contract_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 
@@ -261,7 +255,6 @@ async fn main() -> Result<(), ClientError> {
     // Compile the transaction script with the library.
     let tx_script = TransactionScript::compile(
         script_code,
-        [],
         assembler.with_library(&account_component_lib).unwrap(),
     )
     .unwrap();

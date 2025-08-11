@@ -1,3 +1,4 @@
+use miden_lib::account::auth::NoAuth;
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
@@ -62,15 +63,6 @@ async fn main() -> Result<(), ClientError> {
     let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
-    let no_auth_code = fs::read_to_string(Path::new("../masm/accounts/auth/no_auth.masm")).unwrap();
-    let no_auth_component = AccountComponent::compile(
-        no_auth_code,
-        assembler.clone(),
-        vec![StorageSlot::empty_value()],
-    )
-    .unwrap()
-    .with_supports_all_types();
-
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
         counter_code.clone(),
@@ -94,7 +86,7 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
-        .with_auth_component(no_auth_component)
+        .with_auth_component(NoAuth)
         .build()
         .unwrap();
 
@@ -163,7 +155,7 @@ async fn main() -> Result<(), ClientError> {
     let account = client.get_account(counter_contract.id()).await.unwrap();
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(1)
+        account.unwrap().account().storage().get_item(0)
     );
 
     Ok(())
