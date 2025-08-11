@@ -1,0 +1,5 @@
+use.external_contract::network_counter_contract
+
+begin
+    call.network_counter_contract::increment_count
+end

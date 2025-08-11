@@ -1,0 +1,37 @@
+use.miden::account
+use.std::sys
+
+const.COUNTER_SLOT=0
+
+# => []
+export.get_count
+    push.COUNTER_SLOT
+    # => [index]
+    
+    exec.account::get_item
+    # => [count]
+    
+    exec.sys::truncate_stack
+    # => []
+end
+
+# => []
+export.increment_count
+    push.COUNTER_SLOT
+    # => [index]
+    
+    exec.account::get_item
+    # => [count]
+    
+    add.1
+    # => [count+1]
+
+    push.COUNTER_SLOT
+    # [index, count+1]
+    
+    exec.account::set_item
+    # => []
+    
+    exec.sys::truncate_stack
+    # => []
+end
