@@ -22,10 +22,10 @@ jobs:
           # Only update the cache on push onto the main branch. This strikes a nice balance between
           # cache hits and cache evictions (github has a 10GB cache limit).
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        working-directory: docs
+          workspaces: docs
 
       - name: Run documentation tests
         run: |
           rustup update --no-self-update
-          cargo test --doc --release
+          cargo test --doc --release -- --test-threads=1
         working-directory: docs
