@@ -118,7 +118,7 @@ Create a directory named `masm` at the **root** of your `miden-counter-contract`
 Initialize the `masm` directory:
 
 ```bash
-mkdir -p masm/accounts masm/scripts masm/accounts/auth
+mkdir -p masm/accounts masm/scripts
 ```
 
 This will create:
@@ -126,7 +126,6 @@ This will create:
 ```text
 masm/
 ├── accounts/
-│   └── auth/
 └── scripts/
 ```
 
