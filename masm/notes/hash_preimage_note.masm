@@ -1,32 +1,46 @@
 use.miden::note
 use.miden::contracts::wallets::basic->wallet
 
-# => [HASH_PREIMAGE_SECRET]
+# CONSTANTS
+# =================================================================================================
+
+const.EXPECTED_DIGEST_PTR=0
+const.ASSET_PTR=100
+
+# ERRORS
+# =================================================================================================
+
+const.ERROR_DIGEST_MISMATCH="Expected digest does not match computed digest"
+
+#! Inputs (arguments):  [HASH_PREIMAGE_SECRET]
+#! Outputs: []
+#!
+#! Note inputs are assumed to be as follows:
+#!  => EXPECTED_DIGEST
 begin
-
+    # => HASH_PREIMAGE_SECRET
     # Hashing the secret number
-    hperm
-    # => [F,E,D]
-    # E is digest
-
-    dropw swapw dropw
+    hash
     # => [DIGEST]
 
     # Writing the note inputs to memory
-    push.0 exec.note::get_inputs drop drop
-    # => [DIGEST]
+    push.EXPECTED_DIGEST_PTR exec.note::get_inputs drop drop
 
-    # Pad stack and load note inputs from memory
-    padw push.0 mem_loadw
-    # => [INPUTS, DIGEST]
+    # Pad stack and load expected digest from memory
+    padw push.EXPECTED_DIGEST_PTR mem_loadw
+    # => [EXPECTED_DIGEST, DIGEST]
 
     # Assert that the note input matches the digest
     # Will fail if the two hashes do not match
-    assert_eqw
+    assert_eqw.err=ERROR_DIGEST_MISMATCH
     # => []
 
-    # Write the asset in note to memory address 0
-    push.0 exec.note::get_assets
+    # ---------------------------------------------------------------------------------------------
+    # If the check is successful, we allow for the asset to be consumed
+    # ---------------------------------------------------------------------------------------------
+
+    # Write the asset in note to memory address ASSET_PTR
+    push.ASSET_PTR exec.note::get_assets
     # => [num_assets, dest_ptr]
 
     drop

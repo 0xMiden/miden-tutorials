@@ -19,7 +19,7 @@ use miden_client::{
     rpc::{Endpoint, TonicRpcClient},
     store::InputNoteRecord,
     transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt, Word,
+    Client, ClientError, Felt,
 };
 use miden_objects::account::NetworkId;
 use miden_objects::Hasher;
@@ -176,8 +176,7 @@ async fn main() -> Result<(), ClientError> {
     // STEP 3: Create custom note
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Create custom note");
-    let mut secret_vals = vec![Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
-    secret_vals.splice(0..0, Word::default().iter().cloned());
+    let secret_vals = vec![Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let digest = Hasher::hash_elements(&secret_vals);
     println!("digest: {:?}", digest);
 

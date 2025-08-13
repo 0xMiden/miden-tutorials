@@ -118,7 +118,7 @@ Create a directory named `masm` at the **root** of your `miden-counter-contract`
 Initialize the `masm` directory:
 
 ```bash
-mkdir -p masm/accounts masm/scripts masm/accounts/auth
+mkdir -p masm/accounts masm/scripts
 ```
 
 This will create:
@@ -126,7 +126,6 @@ This will create:
 ```text
 masm/
 ├── accounts/
-│   └── auth/
 └── scripts/
 ```
 
@@ -149,13 +148,13 @@ The import `std::sys` contains a useful procedure for truncating the operand sta
 
 #### Here's a breakdown of what the `increment_count` procedure does:
 
-1. Pushes `0` onto the stack, representing the index of the storage slot to read.
-2. Calls `account::get_item` with the index of `0`.
+1. Pushes `COUNTER_SLOT`(=0) onto the stack, representing the index of the storage slot to read.
+2. Calls `account::get_item` with the index of `COUNTER_SLOT`.
 3. Pushes `1` onto the stack.
 4. Adds `1` to the count value returned from `account::get_item`.
-5. _For demonstration purposes_, calls `debug.stack` to see the state of the stack
-6. Pushes `0` onto the stack, which is the index of the storage slot we want to write to.
-7. Calls `account::set_item` which saves the incremented count to storage at index `0`
+5. _For demonstration purposes_, calls `debug.stack` to see the state of the stack.
+6. Pushes `COUNTER_SLOT` onto the stack again, which is the index of the storage slot we want to write to.
+7. Calls `account::set_item` which saves the incremented count to storage at index `COUNTER_SLOT`.
 8. Calls `sys::truncate_stack` to truncate the stack to size 16.
 
 Inside of the `masm/accounts/` directory, create the `counter.masm` file:
@@ -164,9 +163,10 @@ Inside of the `masm/accounts/` directory, create the `counter.masm` file:
 use.miden::account
 use.std::sys
 
+const.COUNTER_SLOT=0
 # => []
 export.get_count
-    push.0
+    push.COUNTER_SLOT
     # => [index]
 
     exec.account::get_item
@@ -178,7 +178,7 @@ end
 
 # => []
 export.increment_count
-    push.0
+    push.COUNTER_SLOT
     # => [index]
 
     exec.account::get_item
@@ -190,7 +190,7 @@ export.increment_count
     # debug statement with client
     debug.stack
 
-    push.0
+    push.COUNTER_SLOT
     # [index, count+1]
 
     exec.account::set_item
