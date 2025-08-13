@@ -50,32 +50,46 @@ Below is the Miden Assembly code for the note:
 use.miden::note
 use.miden::contracts::wallets::basic->wallet
 
-# => [HASH_PREIMAGE_SECRET]
+# CONSTANTS
+# =================================================================================================
+
+const.EXPECTED_DIGEST_PTR=0
+const.ASSET_PTR=100
+
+# ERRORS
+# =================================================================================================
+
+const.ERROR_DIGEST_MISMATCH="Expected digest does not match computed digest"
+
+#! Inputs (arguments):  [HASH_PREIMAGE_SECRET]
+#! Outputs: []
+#!
+#! Note inputs are assumed to be as follows:
+#!  => EXPECTED_DIGEST
 begin
-
+    # => HASH_PREIMAGE_SECRET
     # Hashing the secret number
-    hperm
-    # => [F,E,D]
-    # E is digest
-
-    dropw swapw dropw
+    hash
     # => [DIGEST]
 
     # Writing the note inputs to memory
-    push.0 exec.note::get_inputs drop drop
-    # => [DIGEST]
+    push.EXPECTED_DIGEST_PTR exec.note::get_inputs drop drop
 
-    # Pad stack and load note inputs from memory
-    padw push.0 mem_loadw
-    # => [INPUTS, DIGEST]
+    # Pad stack and load expected digest from memory
+    padw push.EXPECTED_DIGEST_PTR mem_loadw
+    # => [EXPECTED_DIGEST, DIGEST]
 
     # Assert that the note input matches the digest
     # Will fail if the two hashes do not match
-    assert_eqw
+    assert_eqw.err=ERROR_DIGEST_MISMATCH
     # => []
 
-    # Write the asset in note to memory address 0
-    push.0 exec.note::get_assets
+    # ---------------------------------------------------------------------------------------------
+    # If the check is successful, we allow for the asset to be consumed
+    # ---------------------------------------------------------------------------------------------
+
+    # Write the asset in note to memory address ASSET_PTR
+    push.ASSET_PTR exec.note::get_assets
     # => [num_assets, dest_ptr]
 
     drop
@@ -93,14 +107,16 @@ end
 
 ### How the assembly code works:
 
-1. **Passing the Secret:**  
+1. **Constants and Error Handling:**  
+   The code defines memory pointers (`EXPECTED_DIGEST_PTR` and `ASSET_PTR`) for better code organization and an error message for digest mismatches.
+2. **Passing the Secret:**  
    The secret number is passed as `Note Arguments` into the note.
-2. **Hashing the Secret:**  
-   The `hperm` instruction applies a hash permutation to the secret number, resulting in a hash that takes up four stack elements.
-3. **Stack Cleanup and Comparison:**  
-   The assembly code extracts the digest, loads the note inputs from memory and checks if the computed hash matches the note’s stored hash.
-4. **Asset Transfer:**  
-   If the hash of the number passed in as `Note Arguments` matches the hash stored in the note inputs, the script continues, and the asset stored in the note is loaded from memory and passed to Bob’s wallet via the `wallet::receive_asset` function.
+3. **Hashing the Secret:**  
+   The `hash` instruction applies a hash permutation to the secret number, resulting in a digest that takes up four stack elements.
+4. **Digest Comparison:**  
+   The assembly code loads the expected digest from the note inputs stored in memory and compares it with the computed hash. If they don't match, the transaction fails with a clear error message.
+5. **Asset Transfer:**  
+   If the hash of the number passed in as `Note Arguments` matches the hash stored in the note inputs, the script continues, and the asset stored in the note is loaded from memory and passed to Bob's wallet via the `wallet::receive_asset` function.
 
 ### 5. Consuming the note
 
@@ -291,8 +307,7 @@ async fn main() -> Result<(), ClientError> {
     // STEP 3: Create custom note
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Create custom note");
-    let mut secret_vals = vec![Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
-    secret_vals.splice(0..0, Word::default().iter().cloned());
+    let secret_vals = vec![Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let digest = Hasher::hash_elements(&secret_vals);
     println!("digest: {:?}", digest);
 
