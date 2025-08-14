@@ -1,5 +1,5 @@
-use.external_contract::network_counter_contract
+use.external_contract::counter_contract
 
 begin
-    call.network_counter_contract::increment_count
+    call.counter_contract::increment_count
 end
