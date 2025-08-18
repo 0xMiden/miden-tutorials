@@ -121,7 +121,7 @@ Create `masm/scripts/counter_script.masm`:
 use.external_contract::counter_contract
 
 begin
-    call.counter_contract::increment
+    call.counter_contract::increment_count
 end
 ```
 
@@ -135,7 +135,7 @@ Create `masm/notes/network_increment_note.masm`:
 use.external_contract::counter_contract
 
 begin
-    call.counter_contract::increment
+    call.counter_contract::increment_count
 end
 ```
 
