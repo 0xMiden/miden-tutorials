@@ -9,6 +9,7 @@
     - [Mint, Consume, and Create Notes](./rust-client/mint_consume_create_tutorial.md)
     - [Deploying a Counter Contract](./rust-client/counter_contract_tutorial.md)
     - [Interacting with Public Smart Contracts](./rust-client/public_account_interaction_tutorial.md)
+    - [Network Transactions on Miden](./rust-client/network_transactions_tutorial.md)
     - [How To Create Notes with Custom Logic](./rust-client/custom_note_how_to.md)
     - [Foreign Procedure Invocation](./rust-client/foreign_procedure_invocation_tutorial.md)
     - [How to Use Unauthenticated Notes](./rust-client/unauthenticated_note_how_to.md)

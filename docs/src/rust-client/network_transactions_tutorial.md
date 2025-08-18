@@ -125,7 +125,7 @@ begin
 end
 ```
 
-This script will be used to deploy the network account and ensure it's commited on-chain.
+This script executes a function call (increment) that creates a necessary state change for our contract to be deployed and stored on the network on-chain. In Miden, network contracts must have their state modified through a transaction to be properly registered and committed to the blockchain - simply creating the account isn't sufficient for network storage mode.
 
 ### Network Note for User Interaction
 
@@ -1329,4 +1329,4 @@ The same MASM code works for both regular and network contracts - the difference
 
 ### Continue learning
 
-Next tutorial: [Foreign Procedure Invocation](foreign_procedure_invocation_tutorial.md)
+Next tutorial: [How To Create Notes with Custom Logic](custom_note_how_to.md)
