@@ -1,0 +1,5 @@
+use.external_contract::game_contract
+
+begin
+    call.game_contract::make_a_move
+end

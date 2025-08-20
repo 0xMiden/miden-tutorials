@@ -1,0 +1,120 @@
+use.miden::account
+use.miden::account_id
+use.std::sys
+
+# PROCEDURES:
+# "constructor" / "start"
+# make_a_move
+# end (identify win or draw)
+
+# STORAGE:
+# PLAYER1 SLOT
+# PLAYER2 SLOT
+# BOOLEAN_SLOT
+# MAPPING_SLOT
+#
+# player1 ID
+# player2 ID
+# boolean flag who is next to play
+# mapping (field values)
+
+const.ERR_WRONG_PLAYER="Wrong player trying to make move"
+const.ERR_NO_WINNER="There is no winner or draw"
+
+const.PLAYER1_SLOT=0
+const.PLAYER2_SLOT=1
+const.FLAG_SLOT=2
+const.MAPPING_SLOT=3
+
+# => [player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+export.constructor
+    debug.stack
+    # store player1 ID
+    push.PLAYER1_SLOT debug.stack exec.account::set_item
+    # => [player2_prefix, player2_suffix]
+
+    # pad to word
+
+    # store player2 ID
+    push.PLAYER2_SLOT exec.account::set_item
+    # => []
+end
+
+# => [caller_suffix, caller_prefix, field_index]
+export.make_a_move
+    debug.stack
+    # Stack: [caller_suffix, caller_prefix, field_index]
+
+    # verify caller ID is in line with current player
+    push.FLAG_SLOT exec.account::get_item
+    # [flag, caller_suffix, caller_prefix, field_index]
+
+    # Push zero (to compare to zero)
+    padw
+    # [0 word, FLAG, caller_suffix, caller_prefix, field_index]
+
+    # Check if equal
+    eqw
+    # [is_true, caller_suffix, caller_prefix, field_index]
+
+    if.true
+        push.PLAYER1_SLOT push.1 
+        # [player1_slot, 1, caller_suffix, caller_prefix, field_index]
+        swap.4
+        # [field_index, player1_slot, 1, caller_suffix, caller_prefix]
+        # [player1_slot, caller_suffix, caller_prefix, field_index, 1]
+    else
+        push.PLAYER2_SLOT push.2 swap.4
+        # [player2_slot, caller_suffix, caller_prefix, field_index, 2]
+    end
+
+    exec.account::get_item
+    # [player2_suffix, player2_prefix, caller_suffix, caller_prefix, field_index, move_value]
+
+    exec.account_id::is_equal assert.err=ERR_WRONG_PLAYER
+    # [field_index, move_value]
+
+    dup dup dup
+    # [FIELD_INDEX, move_value]
+
+    dup.4 dup.5 dup.6 movup.7
+    # [MOVE_VALUE, FIELD_INDEX]
+
+    swapw
+
+    debug.stack
+
+    exec.account::set_item
+    # []
+
+    # TODO: verify that field can be played on (not yet placed by other player)
+end
+
+# export.end_game
+    # verify player has won game OR that draw
+
+    # store winning lines
+    # exec.check_line 0 1 2
+    # exec.check_line 3 4 5
+    # exec.check_line 6 7 8
+    # exec.check_line 0 3 6
+    # exec.check_line 1 4 7
+    # exec.check_line 2 5 8
+    # exec.check_line 0 4 8
+    # exec.check_line 2 4 6
+
+    # per line, check if all of the boxes have same value (except 0)
+
+    # if fails => check if cell left that is not 0
+    # if not => draw
+    # if there is lift => return error (no winner found)
+# end
+
+export.check_line
+    push.MAPPING_SLOT
+    # [slot, index1, index2, index3]
+end
+
+# export.check_draw
+    # check that each item of mapping has equal value except zero (=> win)
+# end

@@ -1,0 +1,10 @@
+use.miden::note
+use.external_contract::game_contract
+
+#! Inputs (arguments):  [field_index]
+begin
+    # => [field_index]
+    exec.note::get_sender
+    # => [sender_prefix, sender_suffix, field_index]
+    call.game_contract::make_a_move
+end
