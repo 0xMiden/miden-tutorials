@@ -233,35 +233,35 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // STEP 4: Create "make a move" note
     // -------------------------------------------------------------------------
-    // println!("\n[STEP 4] Create 'make a move' note");
+    println!("\n[STEP 4] Create 'make a move' note");
 
-    // let note_code = fs::read_to_string(Path::new("../masm/notes/make_a_move_note.masm")).unwrap();
-    // let note_script = NoteScript::compile(
-    //     note_code,
-    //     assembler
-    //         .clone()
-    //         .with_library(&account_component_lib)
-    //         .unwrap(),
-    // )
-    // .unwrap();
+    let note_code = fs::read_to_string(Path::new("../masm/notes/make_a_move_note.masm")).unwrap();
+    let note_script = NoteScript::compile(
+        note_code,
+        assembler
+            .clone()
+            .with_library(&account_component_lib)
+            .unwrap(),
+    )
+    .unwrap();
 
     let empty_assets = NoteAssets::new(vec![])?;
 
-    // let index: u64 = 5;
-    // let note_inputs = NoteInputs::new(vec![Felt::new(index)]).unwrap();
-    // let serial_num = client.rng().draw_word();
-    // let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-    // let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    // let metadata = NoteMetadata::new(
-    //     alice_account.id(),
-    //     NoteType::Public,
-    //     tag,
-    //     NoteExecutionHint::always(),
-    //     Felt::new(0),
-    // )?;
-    // let make_a_move_note = Note::new(empty_assets.clone(), metadata, recipient);
+    let index: u64 = 5;
+    let note_inputs = NoteInputs::new(vec![Felt::new(index)]).unwrap();
+    let serial_num = client.rng().draw_word();
+    let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    let metadata = NoteMetadata::new(
+        alice_account.id(),
+        NoteType::Public,
+        tag,
+        NoteExecutionHint::always(),
+        Felt::new(0),
+    )?;
+    let make_a_move_note = Note::new(empty_assets.clone(), metadata, recipient);
 
-    // println!("Make a move note ID: {:?}", make_a_move_note.id().to_hex());
+    println!("Make a move note ID: {:?}", make_a_move_note.id().to_hex());
 
     // -------------------------------------------------------------------------
     // STEP 5: Create "end game" note
@@ -303,7 +303,10 @@ async fn main() -> Result<(), ClientError> {
 
     // build and submit transaction
     let note_request = TransactionRequestBuilder::new()
-        .own_output_notes(vec![OutputNote::Full(end_game_note.clone())])
+        .own_output_notes(vec![
+            OutputNote::Full(make_a_move_note.clone()),
+            OutputNote::Full(end_game_note.clone()),
+        ])
         .build()
         .unwrap();
     let tx_result = client
@@ -313,22 +316,7 @@ async fn main() -> Result<(), ClientError> {
     let _ = client.submit_transaction(tx_result.clone()).await;
     client.sync_state().await?;
 
-    println!("Submitted end game note");
-
-    // // build and submit transaction
-    // let note_request = TransactionRequestBuilder::new()
-    //     .own_output_notes(vec![OutputNote::Full(end_game_note.clone())])
-    //     .build()
-    //     .unwrap();
-    // let tx_result = client
-    //     .new_transaction(alice_account.id(), note_request)
-    //     .await
-    //     .unwrap();
-    // let _ = client.submit_transaction(tx_result.clone()).await;
-
-    // println!("Submitted end game note");
-
-    // client.sync_state().await?;
+    println!("Submitted make a move note AND end game note");
 
     // -------------------------------------------------------------------------
     // STEP 7: Call the Game Contract with notes
@@ -337,7 +325,7 @@ async fn main() -> Result<(), ClientError> {
 
     println!("Consuming note as beneficiary");
     let consume_custom_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(end_game_note, None)])
+        .unauthenticated_input_notes([(make_a_move_note, None)])
         // .unauthenticated_input_notes([(make_a_move_note, None), (end_game_note, None)])
         .build()
         .unwrap();

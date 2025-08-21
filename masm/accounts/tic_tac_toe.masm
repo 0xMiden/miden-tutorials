@@ -2,7 +2,9 @@ use.miden::account
 use.miden::note
 use.miden::account_id
 
+const.ERR_WRONG_FIELD_INDEX="Wrong field index to make move"
 const.ERR_WRONG_PLAYER="Wrong player trying to make move"
+const.ERR_FIELD_USED="Field has already been used"
 const.ERR_WRONG_PLAYER_SLOT="Wrong player slot supplied"
 const.ERR_NO_WINNER="There is no winner or draw"
 
@@ -39,11 +41,12 @@ export.constructor
 end
 
 # => [caller_prefix, caller_suffix, field_index]
-# TODO: verify field_index is not greater than 8
-# TODO: verify that field_index can be played upon (has zero value)
 export.make_a_move
+    dup push.8 lt assert.err=ERR_WRONG_FIELD_INDEX
+    # [field_index]
+
     exec.note::get_sender
-    # Stack: [caller_prefix, caller_suffix, field_index]
+    # [caller_prefix, caller_suffix, field_index]
 
     # verify caller ID is in line with current player
     push.FLAG_SLOT exec.account::get_item
@@ -102,12 +105,24 @@ export.make_a_move
     exec.account::set_map_item
     # [OLD_MAP_ROOT, OLD_MAP_VALUE]
 
+    dropw
+    # [OLD_MAP_VALUE]
+
+    padw
+    # [EMPTY_WORD, OLD_MAP_VALUE]
+
+    eqw
+    # [is_equal, EMPTY_WORD, OLD_MAP_VALUE]
+
+    assert.err=ERR_FIELD_USED
+    # [EMPTY_WORD, OLD_MAP_VALUE]
+
     dropw dropw
+    # []
 end
 
 # => [player_slot]
 export.end_game
-    # TODO: check that player slot is smaller than 2
     dup push.3 lt assert.err=ERR_WRONG_PLAYER_SLOT
     # [player_slot]
 
@@ -137,7 +152,7 @@ export.end_game
     mem_storew.32 dropw
 
     # push i for loop
-    push.1 # !!!TODO: EDIT THAT!!!
+    push.8
     dup neq.0
     # [true, i, player_slot]
 
@@ -162,8 +177,6 @@ export.end_game
             # Add win logic
         end
 
-        debug.stack
-
         swap
         # [i, player_slot]
 
@@ -178,7 +191,7 @@ export.end_game
     drop
     # [player_slot]
 
-    # if fails => check if cell left that is not 0
+    # TODO: check if cell left that is not 0
     # if not => draw
     # if there is lift => return error (no winner found)
 end
