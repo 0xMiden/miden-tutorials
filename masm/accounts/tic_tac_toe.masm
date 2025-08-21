@@ -28,48 +28,60 @@ const.MAPPING_SLOT=3
 
 # => [player1_prefix, player1_suffix, player2_prefix, player2_suffix]
 export.constructor
-    debug.stack
-    # store player1 ID
-    push.PLAYER1_SLOT debug.stack exec.account::set_item
-    # => [player2_prefix, player2_suffix]
+    # store player1 ID by padding value to size of one word
+    push.0.0 push.PLAYER1_SLOT
+    # [player1_slot, 0, 0, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    exec.account::set_item
+    # [OLD_VALUE, player2_prefix, player2_suffix]
+
+    # drop old value from stack
+    dropw
+    # [player2_prefix, player2_suffix]
 
     # pad to word
+    push.0.0 push.PLAYER2_SLOT
+    # [player2_slot, 0, 0, player2_prefix, player2_suffix]
 
     # store player2 ID
-    push.PLAYER2_SLOT exec.account::set_item
-    # => []
+    exec.account::set_item
+
+    # Drop old value from stack (returned by set_teim call)
+    dropw
+    # []
 end
 
-# => [caller_suffix, caller_prefix, field_index]
+# => [caller_prefix, caller_suffix, field_index]
 export.make_a_move
     debug.stack
-    # Stack: [caller_suffix, caller_prefix, field_index]
+    # Stack: [caller_prefix, caller_suffix, field_index]
 
     # verify caller ID is in line with current player
     push.FLAG_SLOT exec.account::get_item
-    # [flag, caller_suffix, caller_prefix, field_index]
+    # [flag, caller_prefix, caller_suffix, field_index]
 
     # Push zero (to compare to zero)
     padw
-    # [0 word, FLAG, caller_suffix, caller_prefix, field_index]
+    # [0WORD, FLAG, caller_prefix, caller_suffix, field_index]
 
     # Check if equal
     eqw
-    # [is_true, caller_suffix, caller_prefix, field_index]
+    # [is_true, caller_prefix, caller_suffix, field_index]
 
     if.true
-        push.PLAYER1_SLOT push.1 
-        # [player1_slot, 1, caller_suffix, caller_prefix, field_index]
-        swap.4
-        # [field_index, player1_slot, 1, caller_suffix, caller_prefix]
-        # [player1_slot, caller_suffix, caller_prefix, field_index, 1]
+        push.PLAYER1_SLOT push.1
+        # [1, player1_slot, caller_prefix, caller_suffix, field_index]
+        movdn.4
+        # [player1_slot, caller_prefix, caller_suffix, field_index, 1]
     else
-        push.PLAYER2_SLOT push.2 swap.4
-        # [player2_slot, caller_suffix, caller_prefix, field_index, 2]
+        push.PLAYER2_SLOT push.2
+        # [2, player2_slot, caller_prefix, caller_suffix, field_index]
+        movdn.4
+        # [player2_slot, caller_prefix, caller_suffix, field_index, 2]
     end
 
     exec.account::get_item
-    # [player2_suffix, player2_prefix, caller_suffix, caller_prefix, field_index, move_value]
+    # [player_prefix, player_suffix, caller_prefix, caller_suffix, field_index, move_value]
 
     exec.account_id::is_equal assert.err=ERR_WRONG_PLAYER
     # [field_index, move_value]
