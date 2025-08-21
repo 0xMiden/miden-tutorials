@@ -264,22 +264,40 @@ end
         # [is_zero, 0, i]
 
         if.false
-            # return false
+            swap drop
+            # [0]
+
+            add.1
+            # [1] <- indicator that not zero line
+
+            # make loop exit
+            push.1
+            # [1 (i), 1]
+
+            swap
+            # [1, 1 (i)]
         end
 
         swap
-        # [i, player_slot]
+        # [i, 0 OR 1]
 
         sub.1
-        # [i-1, player_slot]
+        # [i-1, 0 OR 1]
 
         dup neq.0
-        # [true/false, i-1, player_slot]
+        # [true/false, i-1, 0 OR 1]
     end
-    # [0, 0]
+    # [0, 0 OR 1]
 
-    add.1
-    # [1] (true)
+    drop
+    # [0 OR 1]
+
+    if.true
+        push.0
+    else
+        push.1
+        
+    # [true_or_false]
 # end
 
 # => [key1, key2, key3, player_value]
