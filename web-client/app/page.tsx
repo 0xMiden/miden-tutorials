@@ -5,6 +5,7 @@ import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProve
 import { incrementCounterContract } from "../lib/incrementCounterContract";
 import { unauthenticatedNoteTransfer } from "../lib/unauthenticatedNoteTransfer";
 import { foreignProcedureInvocation } from "../lib/foreignProcedureInvocation";
+import { customNoteDemo } from "../lib/customNoteDemo";
 
 export default function Home() {
   const [isCreatingNotes, setIsCreatingNotes] = useState(false);
@@ -12,6 +13,7 @@ export default function Home() {
   const [isIncrementCounter, setIsIncrementCounter] = useState(false);
   const [isUnauthenticatedNoteTransfer, setIsUnauthenticatedNoteTransfer] = useState(false);
   const [isForeignProcedureInvocation, setIsForeignProcedureInvocation] = useState(false);
+  const [isCustomNoteDemo, setIsCustomNoteDemo] = useState(false);
 
   const handleCreateMintConsume = async () => {
     setIsCreatingNotes(true);
@@ -41,6 +43,12 @@ export default function Home() {
     setIsForeignProcedureInvocation(true);
     await foreignProcedureInvocation();
     setIsForeignProcedureInvocation(false);
+  };
+
+  const handleCustomNoteDemo = async () => {
+    setIsCustomNoteDemo(true);
+    await customNoteDemo();
+    setIsCustomNoteDemo(false);
   };
 
   return (
@@ -93,6 +101,15 @@ export default function Home() {
             {isForeignProcedureInvocation
               ? "Working..."
               : "Tutorial #5: Foreign Procedure Invocation"}
+          </button>
+
+          <button
+            onClick={handleCustomNoteDemo}
+            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
+          >
+            {isCustomNoteDemo
+              ? "Working..."
+              : "Tutorial #6: Custom Note with Hash Preimage"}
           </button>
         </div>
       </div>
