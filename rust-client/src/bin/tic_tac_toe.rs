@@ -44,7 +44,8 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::new("http".to_string(), "localhost".to_string(), Some(57291));
+    // let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
@@ -78,6 +79,14 @@ async fn main() -> Result<(), ClientError> {
     println!("alice suffix: {:?}", alice_account.id().suffix());
     println!("bob prefix: {:?}", bob_account.id().prefix().as_felt());
     println!("bob suffix: {:?}", bob_account.id().suffix());
+    println!(
+        "alice id: {:?}",
+        alice_account.id().to_bech32(NetworkId::Testnet)
+    );
+    println!(
+        "bob id: {:?}",
+        bob_account.id().to_bech32(NetworkId::Testnet)
+    );
 
     // -------------------------------------------------------------------------
     // STEP 2: Create the tic tac toe game contract
@@ -106,6 +115,8 @@ async fn main() -> Result<(), ClientError> {
             // player2 storage slot
             empty_storage_slot.clone(),
             // flag storage slot
+            empty_storage_slot.clone(),
+            // winner storage slot
             empty_storage_slot.clone(),
             // mapping storage slot
             storage_slot_map,
@@ -211,42 +222,88 @@ async fn main() -> Result<(), ClientError> {
         account_data.storage().get_item(2)
     );
     println!(
-        "game contract mapping storage: {:?}",
+        "game contract winner storage: {:?}",
         account_data.storage().get_item(3)
+    );
+    println!(
+        "game contract mapping storage: {:?}",
+        account_data.storage().get_item(4)
     );
 
     // -------------------------------------------------------------------------
-    // STEP 4: Call the Game Contract with "make a move" note
+    // STEP 4: Create "make a move" note
     // -------------------------------------------------------------------------
-    println!("\n[STEP 4] Create 'make a move' note");
+    // println!("\n[STEP 4] Create 'make a move' note");
 
-    let note_code = fs::read_to_string(Path::new("../masm/notes/make_a_move_note.masm")).unwrap();
-    let note_script = NoteScript::compile(
-        note_code,
+    // let note_code = fs::read_to_string(Path::new("../masm/notes/make_a_move_note.masm")).unwrap();
+    // let note_script = NoteScript::compile(
+    //     note_code,
+    //     assembler
+    //         .clone()
+    //         .with_library(&account_component_lib)
+    //         .unwrap(),
+    // )
+    // .unwrap();
+
+    let empty_assets = NoteAssets::new(vec![])?;
+
+    // let index: u64 = 5;
+    // let note_inputs = NoteInputs::new(vec![Felt::new(index)]).unwrap();
+    // let serial_num = client.rng().draw_word();
+    // let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+    // let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    // let metadata = NoteMetadata::new(
+    //     alice_account.id(),
+    //     NoteType::Public,
+    //     tag,
+    //     NoteExecutionHint::always(),
+    //     Felt::new(0),
+    // )?;
+    // let make_a_move_note = Note::new(empty_assets.clone(), metadata, recipient);
+
+    // println!("Make a move note ID: {:?}", make_a_move_note.id().to_hex());
+
+    // -------------------------------------------------------------------------
+    // STEP 5: Create "end game" note
+    // -------------------------------------------------------------------------
+    println!("\n[STEP 5] Create 'end game' note");
+
+    let end_game_note_code =
+        fs::read_to_string(Path::new("../masm/notes/end_game_note.masm")).unwrap();
+    let end_game_note_script = NoteScript::compile(
+        end_game_note_code,
         assembler.with_library(&account_component_lib).unwrap(),
     )
     .unwrap();
 
-    let index: u64 = 5;
-    let note_inputs = NoteInputs::new(vec![Felt::new(index)]).unwrap();
-    let serial_num = client.rng().draw_word();
-    let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let metadata = NoteMetadata::new(
+    let player_slot: u64 = 1;
+    let end_game_note_inputs = NoteInputs::new(vec![Felt::new(player_slot)]).unwrap();
+    let end_game_serial_num = client.rng().draw_word();
+    let end_game_recipient = NoteRecipient::new(
+        end_game_serial_num,
+        end_game_note_script,
+        end_game_note_inputs,
+    );
+    let end_game_tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    let end_game_metadata = NoteMetadata::new(
         alice_account.id(),
         NoteType::Public,
-        tag,
+        end_game_tag,
         NoteExecutionHint::always(),
         Felt::new(0),
     )?;
-    let assets = NoteAssets::new(vec![])?;
-    let make_a_move_note = Note::new(assets, metadata, recipient);
+    let end_game_note = Note::new(empty_assets, end_game_metadata, end_game_recipient);
 
-    println!("Make a move note ID: {:?}", make_a_move_note.id().to_hex());
+    println!("End game note ID: {:?}", end_game_note.id().to_hex());
+
+    // -------------------------------------------------------------------------
+    // STEP 6: Submit notes on-chain
+    // -------------------------------------------------------------------------
+    println!("\n[STEP 6] Submit notes on-chain");
 
     // build and submit transaction
     let note_request = TransactionRequestBuilder::new()
-        .own_output_notes(vec![OutputNote::Full(make_a_move_note.clone())])
+        .own_output_notes(vec![OutputNote::Full(end_game_note.clone())])
         .build()
         .unwrap();
     let tx_result = client
@@ -256,14 +313,32 @@ async fn main() -> Result<(), ClientError> {
     let _ = client.submit_transaction(tx_result.clone()).await;
     client.sync_state().await?;
 
+    println!("Submitted end game note");
+
+    // // build and submit transaction
+    // let note_request = TransactionRequestBuilder::new()
+    //     .own_output_notes(vec![OutputNote::Full(end_game_note.clone())])
+    //     .build()
+    //     .unwrap();
+    // let tx_result = client
+    //     .new_transaction(alice_account.id(), note_request)
+    //     .await
+    //     .unwrap();
+    // let _ = client.submit_transaction(tx_result.clone()).await;
+
+    // println!("Submitted end game note");
+
+    // client.sync_state().await?;
+
     // -------------------------------------------------------------------------
-    // STEP 5: Call the Game Contract with "make a move" note
+    // STEP 7: Call the Game Contract with notes
     // -------------------------------------------------------------------------
-    println!("\n[STEP 5] Call Game Contract With 'make a move' note");
+    println!("\n[STEP 7] Call Game Contract with all notes");
 
     println!("Consuming note as beneficiary");
     let consume_custom_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(make_a_move_note, None)])
+        .unauthenticated_input_notes([(end_game_note, None)])
+        // .unauthenticated_input_notes([(make_a_move_note, None), (end_game_note, None)])
         .build()
         .unwrap();
     let tx_result = client

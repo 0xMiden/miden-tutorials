@@ -1,30 +1,16 @@
 use.miden::account
+use.miden::note
 use.miden::account_id
-use.std::sys
-
-# PROCEDURES:
-# "constructor" / "start"
-# make_a_move
-# end (identify win or draw)
-
-# STORAGE:
-# PLAYER1 SLOT
-# PLAYER2 SLOT
-# BOOLEAN_SLOT
-# MAPPING_SLOT
-#
-# player1 ID
-# player2 ID
-# boolean flag who is next to play
-# mapping (field values)
 
 const.ERR_WRONG_PLAYER="Wrong player trying to make move"
+const.ERR_WRONG_PLAYER_SLOT="Wrong player slot supplied"
 const.ERR_NO_WINNER="There is no winner or draw"
 
 const.PLAYER1_SLOT=0
 const.PLAYER2_SLOT=1
 const.FLAG_SLOT=2
-const.MAPPING_SLOT=3
+const.WINNER_SLOT=3
+const.MAPPING_SLOT=4
 
 # => [player1_prefix, player1_suffix, player2_prefix, player2_suffix]
 export.constructor
@@ -56,6 +42,7 @@ end
 # TODO: verify field_index is not greater than 8
 # TODO: verify that field_index can be played upon (has zero value)
 export.make_a_move
+    exec.note::get_sender
     # Stack: [caller_prefix, caller_suffix, field_index]
 
     # verify caller ID is in line with current player
@@ -119,32 +106,141 @@ export.make_a_move
 end
 
 # => [player_slot]
-# export.end_game
+export.end_game
     # TODO: check that player slot is smaller than 2
+    dup push.3 lt assert.err=ERR_WRONG_PLAYER_SLOT
+    # [player_slot]
 
-    # store winning lines
-    # exec.check_line 0 1 2
-    # exec.check_line 3 4 5
-    # exec.check_line 6 7 8
-    # exec.check_line 0 3 6
-    # exec.check_line 1 4 7
-    # exec.check_line 2 5 8
-    # exec.check_line 0 4 8
-    # exec.check_line 2 4 6
+    # push all indexes onto stack
+    push.0.0.1.2
+    mem_storew.1 dropw
 
-    # per line, check if all of the boxes have same value (except 0)
+    push.0.3.4.5
+    mem_storew.2 dropw
+
+    push.0.6.7.8
+    mem_storew.3 dropw
+
+    push.0.0.3.6
+    mem_storew.4 dropw
+
+    push.0.1.4.7
+    mem_storew.5 dropw
+
+    push.0.2.5.8
+    mem_storew.6 dropw
+
+    push.0.0.4.8
+    mem_storew.7 dropw
+
+    push.0.2.4.6
+    mem_storew.8 dropw
+
+    # push i for loop
+    push.1 # !!!TODO: EDIT THAT!!!
+    dup neq.0
+    # [true, i, player_slot]
+
+    # check stack size to determine if exiting or not
+    while.true
+        # [i, player_slot]
+        
+        dup movdn.2 padw
+        # [0, 0, 0, 0, i, player_slot, i]
+
+        debug.stack
+
+        movup.4 mem_loadw
+        # [0, index, index, index, player_slot, i]
+
+        drop
+        # [index, index, index, player_slot, i]
+
+        exec.check_line
+        # [is_win, player_slot, i]
+
+        if.true
+            drop drop
+            # Add win logic
+        end
+
+        swap
+        # [i, player_slot]
+
+        sub.1
+        # [i-1, player_slot]
+
+        dup neq.0
+        # [true/false, i-1, player_slot]
+    end
 
     # if fails => check if cell left that is not 0
     # if not => draw
     # if there is lift => return error (no winner found)
-# end
-
-# => [player_slot, index1, index2, index3]
-export.check_line
-    push.MAPPING_SLOT
-    # [slot, index1, index2, index3]
 end
 
-# export.check_draw
+# => [key1, key2, key3, player_slot]
+proc.check_line
+    # add i to stack
+    push.3
+    # [i, key1, key2, key3, player_slot]
+    dup neq.0
+    # [true, i, key1, key2, key3, player_slot]
+
+    while.true
+        sub.1
+        # [i-1, key_or_value, key_or_value, key_or_value, player_slot]
+
+        # Move index to end
+        movdn.4
+        # [key_or_value, key_or_value, key_or_value, player_slot, i-1]
+
+        exec.retrieve_board_value movdn.2
+        # [key_or_value, key_or_value, value, player_slot, i-1]
+
+        # move index to top
+        movup.4
+        # [i-1, key_or_value, key_or_value, value, player_slot]
+
+        dup neq.0
+    end
+    # [0, value3, value2, value1, player_slot]
+
+    drop
+    # [value3, value2, value1, player_slot]
+
+    swap.3
+    # [player_slot, value3, value2, value1]
+
+    # compute player value
+    add.1
+    # [player_value, value3, value2, value1]
+
+    dup dup dup dup dup
+    # [player_value, PLAYER_VALUE, player_value, value3, value2, value1]
+
+    sub.1 movdn.8
+    # [PLAYER_VALUE, player_value, value3, value2, value1, player_slot]
+
+    eqw
+    # [is_equal, PLAYER_VALUE, player_value, value3, value2, value1, player_slot]
+
+    movdn.8 dropw dropw
+    # [is_equal, player_slot]
+end
+
+# proc.check_draw
     # check that each item of mapping has equal value except zero (=> win)
 # end
+
+# [key]
+proc.retrieve_board_value
+    dup dup dup
+
+    push.MAPPING_SLOT
+
+    exec.account::get_map_item
+
+    # remove trailing empty fields
+    drop drop drop  
+end
