@@ -11,10 +11,8 @@ begin
     eq.1 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
     # [inputs_ptr]
     
-    mem_loadw drop drop drop
+    padw movup.4 mem_loadw drop drop drop
     # [field_index]
 
     call.game_contract::make_a_move
-
-    drop drop
 end
