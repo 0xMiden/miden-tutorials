@@ -111,30 +111,30 @@ export.end_game
     dup push.3 lt assert.err=ERR_WRONG_PLAYER_SLOT
     # [player_slot]
 
-    # push all indexes onto stack
-    push.0.0.1.2
-    mem_storew.1 dropw
-
-    push.0.3.4.5
-    mem_storew.2 dropw
-
-    push.0.6.7.8
-    mem_storew.3 dropw
-
-    push.0.0.3.6
+    # Store all possible winning lines in memory
+    push.2.1.0.0 # 0 1 2
     mem_storew.4 dropw
 
-    push.0.1.4.7
-    mem_storew.5 dropw
-
-    push.0.2.5.8
-    mem_storew.6 dropw
-
-    push.0.0.4.8
-    mem_storew.7 dropw
-
-    push.0.2.4.6
+    push.5.4.3.0 # 3 4 5
     mem_storew.8 dropw
+
+    push.8.7.6.0 # 6 7 8
+    mem_storew.12 dropw
+
+    push.6.3.0.0 # 0 3 6
+    mem_storew.16 dropw
+
+    push.7.4.1.0 # 1 4 7
+    mem_storew.20 dropw
+
+    push.8.5.2.0 # 2 5 8
+    mem_storew.24 dropw
+
+    push.8.4.0.0 # 0 4 8
+    mem_storew.28 dropw
+
+    push.6.4.2.0 # 2 4 6
+    mem_storew.32 dropw
 
     # push i for loop
     push.1 # !!!TODO: EDIT THAT!!!
@@ -148,9 +148,7 @@ export.end_game
         dup movdn.2 padw
         # [0, 0, 0, 0, i, player_slot, i]
 
-        debug.stack
-
-        movup.4 mem_loadw
+        movup.4 mul.4 mem_loadw
         # [0, index, index, index, player_slot, i]
 
         drop
@@ -164,6 +162,8 @@ export.end_game
             # Add win logic
         end
 
+        debug.stack
+
         swap
         # [i, player_slot]
 
@@ -173,6 +173,10 @@ export.end_game
         dup neq.0
         # [true/false, i-1, player_slot]
     end
+    # [i-1, player_slot]
+    
+    drop
+    # [player_slot]
 
     # if fails => check if cell left that is not 0
     # if not => draw
