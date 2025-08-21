@@ -1,10 +1,21 @@
 use.miden::note
 use.external_contract::game_contract
 
+const.ERR_WRONG_NUMBER_OF_INPUTS = "Note excepts exactly 1 note input"
+
 #! Inputs (arguments):  [field_index]
 begin
-    # => [field_index]
+    push.0 exec.note::get_inputs
+    # [num_inputs, inputs_ptr]
+    
+    eq.1 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
+    # [inputs_ptr]
+    
+    mem_loadw drop drop drop
+    # [field_index]
+
     exec.note::get_sender
-    # => [sender_prefix, sender_suffix, field_index]
+    # [sender_prefix, sender_suffix, field_index]
+
     call.game_contract::make_a_move
 end

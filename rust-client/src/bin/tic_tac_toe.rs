@@ -7,13 +7,9 @@ use miden_assembly::{
     LibraryPath,
 };
 use miden_client::{
-    account::{
-        component::{BasicWallet, RpoFalcon512},
-        AccountBuilder, AccountStorageMode, AccountType, StorageSlot,
-    },
-    auth::AuthSecretKey,
+    account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
     builder::ClientBuilder,
-    crypto::{FeltRng, SecretKey},
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
@@ -23,8 +19,9 @@ use miden_client::{
     transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder, TransactionScript},
     ClientError, Felt,
 };
+use miden_client_tools::create_basic_account;
 use miden_objects::{
-    account::{AccountComponent, NetworkId},
+    account::{AccountComponent, NetworkId, StorageMap},
     assembly::Assembler,
     assembly::DefaultSourceManager,
 };
@@ -68,40 +65,19 @@ async fn main() -> Result<(), ClientError> {
     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
         FilesystemKeyStore::new("./keystore".into()).unwrap();
 
-    // Alice Account seed
-    let mut alice_seed = [0_u8; 32];
-    let mut bob_seed = [0_u8; 32];
-    client.rng().fill_bytes(&mut alice_seed);
-    client.rng().fill_bytes(&mut bob_seed);
-
-    let alice_key_pair = SecretKey::with_rng(client.rng());
-    let bob_key_pair = SecretKey::with_rng(client.rng());
-
-    // Build the account
-    let alice_builder = AccountBuilder::new(alice_seed)
-        .account_type(AccountType::RegularAccountUpdatableCode)
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(alice_key_pair.public_key()))
-        .with_component(BasicWallet);
-
-    let bob_builder = AccountBuilder::new(bob_seed)
-        .account_type(AccountType::RegularAccountUpdatableCode)
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(bob_key_pair.public_key()))
-        .with_component(BasicWallet);
-
-    let (alice_account, _) = alice_builder.build().unwrap();
-    let (bob_account, _) = bob_builder.build().unwrap();
-
-    // Add Alice key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(alice_key_pair))
+    let (alice_account, _) = create_basic_account(&mut client, keystore.clone())
+        .await
         .unwrap();
 
-    // Add Bob key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(bob_key_pair))
+    let (bob_account, _) = create_basic_account(&mut client, keystore.clone())
+        .await
         .unwrap();
+
+    // print suffix and prefix for both alice and bob
+    println!("alice prefix: {:?}", alice_account.id().prefix().as_felt());
+    println!("alice suffix: {:?}", alice_account.id().suffix());
+    println!("bob prefix: {:?}", bob_account.id().prefix().as_felt());
+    println!("bob suffix: {:?}", bob_account.id().suffix());
 
     // -------------------------------------------------------------------------
     // STEP 2: Create the tic tac toe game contract
@@ -117,15 +93,22 @@ async fn main() -> Result<(), ClientError> {
 
     let empty_storage_slot = StorageSlot::Value([Felt::new(0); 4]);
 
+    let storage_map = StorageMap::new();
+    let storage_slot_map = StorageSlot::Map(storage_map.clone());
+
     // Compile the account code into `AccountComponent` with one storage slot
     let game_component = AccountComponent::compile(
         game_code.clone(),
         assembler,
         vec![
+            // player1 storage slot
             empty_storage_slot.clone(),
+            // player2 storage slot
             empty_storage_slot.clone(),
+            // flag storage slot
             empty_storage_slot.clone(),
-            empty_storage_slot,
+            // mapping storage slot
+            storage_slot_map,
         ],
     )
     .unwrap()
@@ -161,10 +144,10 @@ async fn main() -> Result<(), ClientError> {
 
     // Compose TX script input arguments
     let deployment_script_arg: [Felt; 4] = [
-        alice_account.id().suffix(),
-        alice_account.id().prefix().as_felt(),
         bob_account.id().suffix(),
         bob_account.id().prefix().as_felt(),
+        alice_account.id().suffix(),
+        alice_account.id().prefix().as_felt(),
     ];
 
     // Load the MASM script referencing the game deployment procedure
@@ -214,9 +197,22 @@ async fn main() -> Result<(), ClientError> {
 
     // Retrieve updated contract data to see the incremented game
     let account = client.get_account(game_contract.id()).await.unwrap();
+    let account_data = account.unwrap().account().clone();
     println!(
-        "game contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        "game contract player1 storage: {:?}",
+        account_data.storage().get_item(0)
+    );
+    println!(
+        "game contract player2 storage: {:?}",
+        account_data.storage().get_item(1)
+    );
+    println!(
+        "game contract flag storage: {:?}",
+        account_data.storage().get_item(2)
+    );
+    println!(
+        "game contract mapping storage: {:?}",
+        account_data.storage().get_item(3)
     );
 
     // -------------------------------------------------------------------------
@@ -231,7 +227,7 @@ async fn main() -> Result<(), ClientError> {
     )
     .unwrap();
 
-    let index: u64 = 1;
+    let index: u64 = 5;
     let note_inputs = NoteInputs::new(vec![Felt::new(index)]).unwrap();
     let serial_num = client.rng().draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
