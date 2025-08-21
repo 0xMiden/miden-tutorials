@@ -236,7 +236,7 @@ export.end_game
 end
 
 # []
-# proc.check_draw
+proc.check_draw
     # check that each item of mapping has equal value except zero (=> win)
 
     # Add empty zero word (expected value)
@@ -296,9 +296,10 @@ end
         push.0
     else
         push.1
-        
+    end
+
     # [true_or_false]
-# end
+end
 
 # => [key1, key2, key3, player_value]
 proc.check_line
