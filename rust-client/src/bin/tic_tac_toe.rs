@@ -325,8 +325,8 @@ async fn main() -> Result<(), ClientError> {
 
     println!("Consuming note as beneficiary");
     let consume_custom_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(make_a_move_note, None)])
-        // .unauthenticated_input_notes([(make_a_move_note, None), (end_game_note, None)])
+        // .unauthenticated_input_notes([(make_a_move_note, None)])
+        .unauthenticated_input_notes([(make_a_move_note, None), (end_game_note, None)])
         .build()
         .unwrap();
     let tx_result = client

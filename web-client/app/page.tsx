@@ -1,99 +1,70 @@
 "use client";
+
 import { useState } from "react";
-import { createMintConsume } from "../lib/createMintConsume";
-import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
-import { incrementCounterContract } from "../lib/incrementCounterContract";
-import { unauthenticatedNoteTransfer } from "../lib/unauthenticatedNoteTransfer";
-import { foreignProcedureInvocation } from "../lib/foreignProcedureInvocation";
+
+type Player = "X" | "O";
+type BoardState = (Player | null)[][];
 
 export default function Home() {
-  const [isCreatingNotes, setIsCreatingNotes] = useState(false);
-  const [isMultiSendNotes, setIsMultiSendNotes] = useState(false);
-  const [isIncrementCounter, setIsIncrementCounter] = useState(false);
-  const [isUnauthenticatedNoteTransfer, setIsUnauthenticatedNoteTransfer] = useState(false);
-  const [isForeignProcedureInvocation, setIsForeignProcedureInvocation] = useState(false);
+  const [board, setBoard] = useState<BoardState>(() =>
+    Array(3)
+      .fill(null)
+      .map(() => Array(3).fill(null)),
+  );
+  const [currentPlayer, setCurrentPlayer] = useState<Player>("X");
 
-  const handleCreateMintConsume = async () => {
-    setIsCreatingNotes(true);
-    await createMintConsume();
-    setIsCreatingNotes(false);
+  const handleSquareClick = (row: number, col: number) => {
+    if (board[row][col]) return;
+
+    const newBoard = [...board];
+    newBoard[row][col] = currentPlayer;
+    setBoard(newBoard);
+    setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
   };
 
-  const handleMultiSendNotes = async () => {
-    setIsMultiSendNotes(true);
-    await multiSendWithDelegatedProver();
-    setIsMultiSendNotes(false);
-  };
-
-  const handleIncrementCounterContract = async () => {
-    setIsIncrementCounter(true);
-    await incrementCounterContract();
-    setIsIncrementCounter(false);
-  };
-
-  const handleUnauthenticatedNoteTransfer = async () => {
-    setIsUnauthenticatedNoteTransfer(true);
-    await unauthenticatedNoteTransfer();
-    setIsUnauthenticatedNoteTransfer(false);
-  };
-
-  const handleForeignProcedureInvocation = async () => {
-    setIsForeignProcedureInvocation(true);
-    await foreignProcedureInvocation();
-    setIsForeignProcedureInvocation(false);
+  const togglePlayer = () => {
+    // TODO: add wallet adapter here
+    setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black text-slate-800 dark:text-slate-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-semibold mb-4">Miden Web App</h1>
-        <p className="mb-6">Open your browser console to see WebClient logs.</p>
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-slate-100 relative">
+      {/* Title Header - Top Left */}
+      <div className="absolute top-6 left-6">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 px-6 py-4">
+          <h1 className="text-2xl font-semibold text-orange-400">
+            Miden Tic Tac Toe Game
+          </h1>
+        </div>
+      </div>
 
-        <div className="max-w-sm w-full bg-gray-800/20 border border-gray-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
-          <button
-            onClick={handleCreateMintConsume}
-            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
-          >
-            {isCreatingNotes
-              ? "Working..."
-              : "Tutorial #1: Create, Mint, Consume Notes"}
-          </button>
+      {/* User Toggle - Top Right */}
+      <div className="absolute top-6 right-6">
+        <button
+          onClick={togglePlayer}
+          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          Current: {currentPlayer}
+        </button>
+      </div>
 
-          <button
-            onClick={handleMultiSendNotes}
-            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
-          >
-            {isMultiSendNotes
-              ? "Working..."
-              : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
-          </button>
-
-          <button
-            onClick={handleIncrementCounterContract}
-            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
-          >
-            {isIncrementCounter
-              ? "Working..."
-              : "Tutorial #3: Increment Counter Contract"}
-          </button>
-
-          <button
-            onClick={handleUnauthenticatedNoteTransfer}
-            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
-          >
-            {isUnauthenticatedNoteTransfer
-              ? "Working..."
-              : "Tutorial #4: Unauthenticated Note Transfer"}
-          </button>
-
-          <button
-            onClick={handleForeignProcedureInvocation}
-            className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
-          >
-            {isForeignProcedureInvocation
-              ? "Working..."
-              : "Tutorial #5: Foreign Procedure Invocation"}
-          </button>
+      {/* Game Board Container */}
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-8">
+          {/* Tic Tac Toe Board */}
+          <div className="grid grid-cols-3 gap-2">
+            {board.map((row, rowIndex) =>
+              row.map((cell, colIndex) => (
+                <button
+                  key={`${rowIndex}-${colIndex}`}
+                  onClick={() => handleSquareClick(rowIndex, colIndex)}
+                  className="w-24 h-24 bg-gray-700 hover:bg-gray-600 border-2 border-orange-400 rounded-lg flex items-center justify-center text-4xl font-bold text-orange-400 transition-all duration-200 hover:border-orange-300 hover:shadow-lg hover:shadow-orange-400/20 active:scale-95 flex-shrink-0"
+                >
+                  {cell}
+                </button>
+              )),
+            )}
+          </div>
         </div>
       </div>
     </main>
