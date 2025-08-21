@@ -173,8 +173,25 @@ export.end_game
         # [is_win, player_slot, i]
 
         if.true
-            drop drop
-            # Add win logic
+            swap drop
+            # [player_slot]
+
+            push.0.0.0 push.WINNER_SLOT
+            # [winner_slot, 0, 0, 0, player_slot]
+
+            exec.account::set_item
+            # [OLD_VALUE]
+
+            dropw
+            # []
+
+            # Push 1 to exit loop
+            push.1
+            # [1]
+
+            # Push 3 to indicate win
+            push.3
+            # [3, 1]
         end
 
         swap
@@ -186,14 +203,20 @@ export.end_game
         dup neq.0
         # [true/false, i-1, player_slot]
     end
-    # [i-1, player_slot]
+    # [i-1, player_slot OR 3]
     
     drop
-    # [player_slot]
+    # [player_slot OR 3]
 
-    # TODO: check if cell left that is not 0
-    # if not => draw
-    # if there is lift => return error (no winner found)
+    neq.3
+    # [not_win]
+
+    if.true
+        # check for draw
+
+        push.0.1
+        eq assert.err=ERR_NO_WINNER
+    end
 end
 
 # => [key1, key2, key3, player_slot]
