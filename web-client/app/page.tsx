@@ -3,21 +3,19 @@
 import { useState } from "react";
 
 type Player = "X" | "O";
-type BoardState = (Player | null)[][];
+type BoardState = (Player | null)[];
 
 export default function Home() {
-  const [board, setBoard] = useState<BoardState>(() =>
-    Array(3)
-      .fill(null)
-      .map(() => Array(3).fill(null)),
-  );
+  const [board, setBoard] = useState<BoardState>(() => Array(9).fill(null));
   const [currentPlayer, setCurrentPlayer] = useState<Player>("X");
 
-  const handleSquareClick = (row: number, col: number) => {
-    if (board[row][col]) return;
+  const handleSquareClick = (index: number) => {
+    if (board[index]) return;
+
+    // TODO: add logic to create network note and consume it here
 
     const newBoard = [...board];
-    newBoard[row][col] = currentPlayer;
+    newBoard[index] = currentPlayer;
     setBoard(newBoard);
     setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
   };
@@ -53,17 +51,15 @@ export default function Home() {
         <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-8">
           {/* Tic Tac Toe Board */}
           <div className="grid grid-cols-3 gap-2">
-            {board.map((row, rowIndex) =>
-              row.map((cell, colIndex) => (
-                <button
-                  key={`${rowIndex}-${colIndex}`}
-                  onClick={() => handleSquareClick(rowIndex, colIndex)}
-                  className="w-24 h-24 bg-gray-700 hover:bg-gray-600 border-2 border-orange-400 rounded-lg flex items-center justify-center text-4xl font-bold text-orange-400 transition-all duration-200 hover:border-orange-300 hover:shadow-lg hover:shadow-orange-400/20 active:scale-95 flex-shrink-0"
-                >
-                  {cell}
-                </button>
-              )),
-            )}
+            {board.map((cell, index) => (
+              <button
+                key={index}
+                onClick={() => handleSquareClick(index)}
+                className="w-24 h-24 bg-gray-700 hover:bg-gray-600 border-2 border-orange-400 rounded-lg flex items-center justify-center text-4xl font-bold text-orange-400 transition-all duration-200 hover:border-orange-300 hover:shadow-lg hover:shadow-orange-400/20 active:scale-95 flex-shrink-0"
+              >
+                {cell}
+              </button>
+            ))}
           </div>
         </div>
       </div>

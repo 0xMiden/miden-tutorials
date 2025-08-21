@@ -156,24 +156,26 @@ export.end_game
     dup neq.0
     # [true, i, player_slot]
 
-    # check stack size to determine if exiting or not
     while.true
         # [i, player_slot]
+
+        swap add.1 swap
+        # [i, expected_player_value]
         
         dup movdn.2 padw
         # [0, 0, 0, 0, i, player_slot, i]
 
         movup.4 mul.4 mem_loadw
-        # [0, index, index, index, player_slot, i]
+        # [0, index, index, index, expected_player_value, i]
 
         drop
-        # [index, index, index, player_slot, i]
+        # [index, index, index, expected_player_value, i]
 
         exec.check_line
-        # [is_win, player_slot, i]
+        # [is_win, expected_player_value, i]
 
         if.true
-            swap drop
+            swap drop sub.1
             # [player_slot]
 
             push.0.0.0 push.WINNER_SLOT
@@ -212,66 +214,119 @@ export.end_game
     # [not_win]
 
     if.true
-        # check for draw
+        exec.check_draw
+        # [is_draw]
 
-        push.0.1
-        eq assert.err=ERR_NO_WINNER
+        if.true
+            # store 2 at winner_slot
+            
+            push.2.0.0.0 push.WINNER_SLOT
+            # [winner_slot, 0, 0, 0, 2]
+
+            exec.account::set_item
+            # [OLD_VALUE]
+
+            dropw
+            # []
+        else
+            push.0.1
+            eq assert.err=ERR_NO_WINNER
+        end
     end
 end
 
-# => [key1, key2, key3, player_slot]
+# []
+# proc.check_draw
+    # check that each item of mapping has equal value except zero (=> win)
+
+    # Add empty zero word (expected value)
+    push.0
+    # [0]
+
+    # push i for loop
+    push.8
+    dup neq.0
+    # [true, i, 0]
+
+    while.true
+        # [i, 0]
+        
+        dup movdn.2 padw
+        # [0, 0, 0, 0, i, 0, i]
+
+        movup.4 mul.4 mem_loadw
+        # [0, index, index, index, 0, i]
+
+        drop
+        # [index, index, index, 0, i]
+
+        exec.check_line
+        # [is_zero, 0, i]
+
+        if.false
+            # return false
+        end
+
+        swap
+        # [i, player_slot]
+
+        sub.1
+        # [i-1, player_slot]
+
+        dup neq.0
+        # [true/false, i-1, player_slot]
+    end
+    # [0, 0]
+
+    add.1
+    # [1] (true)
+# end
+
+# => [key1, key2, key3, player_value]
 proc.check_line
     # add i to stack
     push.3
-    # [i, key1, key2, key3, player_slot]
+    # [i, key1, key2, key3, player_value]
     dup neq.0
-    # [true, i, key1, key2, key3, player_slot]
+    # [true, i, key1, key2, key3, player_value]
 
     while.true
         sub.1
-        # [i-1, key_or_value, key_or_value, key_or_value, player_slot]
+        # [i-1, key_or_value, key_or_value, key_or_value, player_value]
 
         # Move index to end
         movdn.4
-        # [key_or_value, key_or_value, key_or_value, player_slot, i-1]
+        # [key_or_value, key_or_value, key_or_value, player_value, i-1]
 
         exec.retrieve_board_value movdn.2
-        # [key_or_value, key_or_value, value, player_slot, i-1]
+        # [key_or_value, key_or_value, value, player_value, i-1]
 
         # move index to top
         movup.4
-        # [i-1, key_or_value, key_or_value, value, player_slot]
+        # [i-1, key_or_value, key_or_value, value, player_value]
 
         dup neq.0
     end
-    # [0, value3, value2, value1, player_slot]
+    # [0, value3, value2, value1, player_value]
 
     drop
-    # [value3, value2, value1, player_slot]
+    # [value3, value2, value1, player_value]
 
     swap.3
-    # [player_slot, value3, value2, value1]
-
-    # compute player value
-    add.1
     # [player_value, value3, value2, value1]
 
     dup dup dup dup dup
     # [player_value, PLAYER_VALUE, player_value, value3, value2, value1]
 
-    sub.1 movdn.8
-    # [PLAYER_VALUE, player_value, value3, value2, value1, player_slot]
+    movdn.8
+    # [PLAYER_VALUE, player_value, value3, value2, value1, player_value]
 
     eqw
-    # [is_equal, PLAYER_VALUE, player_value, value3, value2, value1, player_slot]
+    # [is_equal, PLAYER_VALUE, player_value, value3, value2, value1, player_value]
 
     movdn.8 dropw dropw
-    # [is_equal, player_slot]
+    # [is_equal, player_value]
 end
-
-# proc.check_draw
-    # check that each item of mapping has equal value except zero (=> win)
-# end
 
 # [key]
 proc.retrieve_board_value
