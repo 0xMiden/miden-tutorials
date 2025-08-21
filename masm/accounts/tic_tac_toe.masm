@@ -53,6 +53,8 @@ export.constructor
 end
 
 # => [caller_prefix, caller_suffix, field_index]
+# TODO: verify field_index is not greater than 8
+# TODO: verify that field_index can be played upon (has zero value)
 export.make_a_move
     # Stack: [caller_prefix, caller_suffix, field_index]
 
@@ -114,14 +116,11 @@ export.make_a_move
     # [OLD_MAP_ROOT, OLD_MAP_VALUE]
 
     dropw dropw
-
-    debug.stack
-
-    # TODO: verify that field can be played on (not yet placed by other player)
 end
 
+# => [player_slot]
 # export.end_game
-    # verify player has won game OR that draw
+    # TODO: check that player slot is smaller than 2
 
     # store winning lines
     # exec.check_line 0 1 2
@@ -140,6 +139,7 @@ end
     # if there is lift => return error (no winner found)
 # end
 
+# => [player_slot, index1, index2, index3]
 export.check_line
     push.MAPPING_SLOT
     # [slot, index1, index2, index3]

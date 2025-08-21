@@ -18,4 +18,6 @@ begin
     # [sender_prefix, sender_suffix, field_index]
 
     call.game_contract::make_a_move
+
+    drop drop
 end
