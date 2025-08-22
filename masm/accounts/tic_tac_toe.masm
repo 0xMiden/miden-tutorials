@@ -244,33 +244,30 @@ proc.check_draw
     # [0]
 
     # push i for loop
-    push.8
+    push.9
     dup neq.0
     # [true, i, 0]
 
     while.true
-        # [i, 0]
+        dup
+        # [i, i, 0]
         
-        dup movdn.2 padw
-        # [0, 0, 0, 0, i, 0, i]
+        # check field value
+        exec.retrieve_board_value
+        # [value, i, 0]
 
-        movup.4 mul.4 mem_loadw
-        # [0, index, index, index, 0, i]
+        # if not zero => break out of loop and return false
+        neq.0
+        # [is_zero, i, 0]
 
-        drop
-        # [index, index, index, 0, i]
-
-        exec.check_line
-        # [is_zero, 0, i]
-
-        if.false
+        if.true
             swap drop
             # [0]
 
             add.1
-            # [1] <- indicator that not zero line
+            # [1] <- indicator that not a draw
 
-            # make loop exit
+            # make loop exit by pushing i=1
             push.1
             # [1 (i), 1]
 
@@ -297,7 +294,6 @@ proc.check_draw
     else
         push.1
     end
-
     # [true_or_false]
 end
 
