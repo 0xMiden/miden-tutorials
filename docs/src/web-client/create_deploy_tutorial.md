@@ -99,7 +99,7 @@ export async function createMintConsume(): Promise<void> {
 
 > To instantiate the WebClient, pass in the endpoint of the Miden node.
 
-> Since we will be handling proof generation in the browser, it will be slower than proof generation handled by the Rust client. Check out the tutorial on how to use delegated proving in the browser to speed up proof generation.
+> Since we will be handling proof generation in the browser, it will be slower than proof generation handled by the Rust client. Check out the [tutorial on delegated proving](./creating_multiple_notes_tutorial.md#what-is-delegated-proving) to speed up proof generation in the browser.
 
 ## Step 3: Edit the `app/page.tsx` file:
 
