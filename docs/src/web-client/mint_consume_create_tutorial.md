@@ -182,9 +182,6 @@ export async function createMintConsume(): Promise<void> {
   await client.syncState();
 
   // 4. Mint tokens from the faucet to Alice
-  await client.fetchAndCacheAccountAuthByAccountId(faucet.id());
-  await client.syncState();
-
   console.log("Minting 1000 tokens to Alice...");
   const mintTxRequest = client.newMintTransactionRequest(
     alice.id(),
