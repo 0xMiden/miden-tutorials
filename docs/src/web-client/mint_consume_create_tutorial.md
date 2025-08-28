@@ -15,12 +15,14 @@ In the previous tutorial, we set up the foundation - creating Alice's wallet and
 ## Prerequisites
 
 This tutorial builds directly on the previous one. Make sure you have:
+
 - Completed the "Creating Accounts and Deploying Faucets" tutorial
 - Your Next.js app with the Miden WebClient set up
 
 ## Understanding Notes in Miden
 
 Before we start coding, it's important to understand **notes**:
+
 - Minting a note from a faucet does not automatically add the tokens to your account balance. It creates a note addressed to you.
 - You must **consume** a note to add its tokens to your account balance.
 - Until consumed, tokens exist in the note but aren't in your account yet.
@@ -31,6 +33,8 @@ Let's mint some tokens for Alice. When we mint from a faucet, it creates a note 
 
 Add this to the end of your `createMintConsume` function in `lib/createMintConsume.ts`:
 
+<!-- prettier-ignore-start -->
+
 ```ts
 // 4. Mint tokens from the faucet to Alice
 await client.syncState();
@@ -40,7 +44,7 @@ const mintTxRequest = client.newMintTransactionRequest(
   alice.id(),           // Target account (who receives the tokens)
   faucet.id(),          // Faucet account (who mints the tokens)
   NoteType.Public,      // Note visibility (public = on-chain)
-  BigInt(1000)          // Amount to mint (in base units)
+  BigInt(1000),         // Amount to mint (in base units)
 );
 
 const mintTx = await client.newTransaction(faucet.id(), mintTxRequest);
@@ -51,6 +55,8 @@ console.log("Waiting 10 seconds for transaction confirmation...");
 await new Promise((resolve) => setTimeout(resolve, 10000));
 await client.syncState();
 ```
+
+<!-- prettier-ignore-end -->
 
 ### What's happening here?
 
@@ -70,7 +76,7 @@ const consumableNotes = await client.getConsumableNotes(alice.id());
 console.log(`Found ${consumableNotes.length} note(s) to consume`);
 
 const noteIds = consumableNotes.map((note) =>
-  note.inputNoteRecord().id().toString()
+  note.inputNoteRecord().id().toString(),
 );
 console.log("Consumable note IDs:", noteIds);
 ```
@@ -98,6 +104,7 @@ _The standard asset transfer note on Miden is the P2ID note (Pay-to-Id). There i
 
 Now that Alice has tokens in her account, she can send some to Bob:
 
+<!-- prettier-ignore-start -->
 ```ts
 // Add this import at the top of the file
 import { NoteType } from "@demox-labs/miden-sdk";
@@ -112,7 +119,7 @@ const sendTxRequest = client.newSendTransactionRequest(
   AccountId.fromHex(bobAccountId), // Recipient account
   faucet.id(),                     // Asset ID (faucet that created the tokens)
   NoteType.Public,                 // Note visibility
-  BigInt(100)                      // Amount to send
+  BigInt(100),                     // Amount to send
 );
 
 const sendTx = await client.newTransaction(alice.id(), sendTxRequest);
@@ -121,9 +128,12 @@ await client.submitTransaction(sendTx);
 console.log("Tokens sent successfully!");
 ```
 
+<!-- prettier-ignore-end -->
+
 ### Understanding P2ID notes
 
 The transaction creates a **P2ID (Pay-to-ID)** note:
+
 - It's the standard way to transfer assets in Miden
 - The note is "locked" to Bob's account ID, i.e. only Bob can consume this note to receive the tokens
 - Public notes are visible onchain; private notes would need to be shared offchain (e.g. via a private channel)
@@ -180,7 +190,7 @@ export async function createMintConsume(): Promise<void> {
     alice.id(),
     faucet.id(),
     NoteType.Public,
-    BigInt(1000)
+    BigInt(1000),
   );
 
   const mintTx = await client.newTransaction(faucet.id(), mintTxRequest);
@@ -193,7 +203,7 @@ export async function createMintConsume(): Promise<void> {
   // 5. Find notes available for consumption
   const consumableNotes = await client.getConsumableNotes(alice.id());
   const noteIds = consumableNotes.map((note) =>
-    note.inputNoteRecord().id().toString()
+    note.inputNoteRecord().id().toString(),
   );
   console.log("Consumable note IDs:", noteIds);
 
@@ -215,7 +225,7 @@ export async function createMintConsume(): Promise<void> {
     AccountId.fromHex(bobAccountId),
     faucet.id(),
     NoteType.Public,
-    BigInt(100)
+    BigInt(100),
   );
 
   const sendTx = await client.newTransaction(alice.id(), sendTxRequest);
@@ -262,10 +272,12 @@ The Miden webclient stores account and note data in the browser. To clear the ac
 ## What's next?
 
 You've now learned the complete note lifecycle in Miden:
+
 1. **Minting** - Creating new tokens from a faucet (issued in notes)
 2. **Consuming** - Adding tokens from notes to an account
 3. **Transferring** - Sending tokens to other accounts
 
 In the next tutorials, we'll explore:
+
 - Creating multiple notes in a single transaction
 - Delegated proving

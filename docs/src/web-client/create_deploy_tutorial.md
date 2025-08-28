@@ -6,7 +6,6 @@ _Using the Miden WebClient in TypeScript to create accounts and deploy faucets_
 
 In this tutorial, we'll build a simple Next.js application that demonstrates the fundamentals of interacting with the Miden blockchain using the WebClient SDK. We'll walk through creating a Miden account for Alice and deploying a fungible faucet contract that can mint tokens. This sets the foundation for more complex operations like issuing assets and transferring them between accounts.
 
-
 ## What we'll cover
 
 - Understanding the difference between public and private accounts & notes
@@ -155,6 +154,7 @@ Now we'll create Alice's account. Let's create a **public** account so we can ea
 
 Back in `lib/createMintConsume.ts`, extend the `createMintConsume()` function:
 
+<!-- prettier-ignore-start -->
 ```ts
 // lib/createMintConsume.ts
 export async function createMintConsume(): Promise<void> {
@@ -183,6 +183,7 @@ export async function createMintConsume(): Promise<void> {
   console.log("Alice ID:", alice.id().toString());
 }
 ```
+<!-- prettier-ignore-end -->
 
 ## Step 5: Deploy a Fungible Faucet
 
@@ -190,6 +191,7 @@ A faucet in Miden is a special type of account that can mint new tokens. Think o
 
 Add this code after creating Alice's account:
 
+<!-- prettier-ignore-start -->
 ```ts
 // 3. Deploy a fungible faucet
 // A faucet is an account that can mint new tokens
@@ -205,6 +207,7 @@ console.log("Faucet account ID:", faucetAccount.id().toString());
 
 console.log("Setup complete.");
 ```
+<!-- prettier-ignore-end -->
 
 ### Understanding Faucet Parameters:
 
@@ -219,6 +222,7 @@ console.log("Setup complete.");
 ## Summary
 
 In this tutorial, we've successfully:
+
 1. Set up a Next.js application with the Miden WebClient SDK
 2. Connected to the Miden testnet
 3. Created a wallet account for Alice
@@ -287,10 +291,12 @@ Setup complete.
 ## What's Next?
 
 Now that you have:
+
 - A wallet account for Alice that can hold tokens
 - A faucet that can mint new MID tokens
 
 In the next tutorial, we'll:
+
 1. Mint tokens from the faucet to Alice's account
 2. Consume notes
 3. Transfer tokens between accounts
