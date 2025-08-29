@@ -430,10 +430,10 @@ async fn main() -> Result<(), ClientError> {
     let p2id_withdraw_recipient: Word = withdraw_p2id_note.recipient().digest().into();
 
     let note_inputs = NoteInputs::new(vec![
-        p2id_withdraw_recipient[3],
-        p2id_withdraw_recipient[2],
-        p2id_withdraw_recipient[1],
         p2id_withdraw_recipient[0],
+        p2id_withdraw_recipient[1],
+        p2id_withdraw_recipient[2],
+        p2id_withdraw_recipient[3],
         withdraw_p2id_note.metadata().execution_hint().into(),
         withdraw_p2id_note.metadata().note_type().into(),
         Felt::new(0),
@@ -486,7 +486,7 @@ async fn main() -> Result<(), ClientError> {
     let note_args: Word = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into();
 
     let consume_deposit_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(withdrawal_note, note_args.into())])
+        .unauthenticated_input_notes([(withdrawal_note.clone(), note_args.into())])
         .build()
         .unwrap();
     let tx_result = client
@@ -509,16 +509,41 @@ async fn main() -> Result<(), ClientError> {
         account.unwrap().account().storage().get_item(0)
     );
 
-    let output_note_recipient = tx_result
-        .created_notes()
-        .get_note(0)
-        .recipient()
-        .unwrap()
-        .digest();
+    wait_for_note(
+        &mut client,
+        Some(alice_account.clone()),
+        &withdrawal_note,
+        tx_result.executed_transaction().id(),
+    )
+    .await?;
 
-    assert_eq!(
-        output_note_recipient,
-        withdraw_p2id_note.recipient().digest()
+    // -------------------------------------------------------------------------
+    // STEP 9: Consume the private p2id note
+    // -------------------------------------------------------------------------
+    println!("\n[STEP 9] Consume the output p2id note");
+
+    let consume_deposit_request = TransactionRequestBuilder::new()
+        .unauthenticated_input_notes([(withdraw_p2id_note.clone(), None)])
+        .build()
+        .unwrap();
+    let tx_result = client
+        .new_transaction(alice_account_id, consume_deposit_request)
+        .await
+        .unwrap();
+    println!(
+        "Deposit Tx on MidenScan: https://testnet.midenscan.com/tx/{:?}",
+        tx_result.executed_transaction().id()
+    );
+    println!("account delta: {:?}", tx_result.account_delta().vault());
+    let _ = client.submit_transaction(tx_result.clone()).await;
+
+    client.sync_state().await.unwrap();
+
+    // Retrieve updated contract data to see the balance
+    let account = client.get_account(deposit_contract.id()).await.unwrap();
+    println!(
+        "deposit contract balance: {:?}",
+        account.unwrap().account().storage().get_item(0)
     );
 
     Ok(())
