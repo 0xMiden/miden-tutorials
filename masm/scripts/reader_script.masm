@@ -10,7 +10,7 @@ begin
 
     push.{account_id_prefix}
     # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
- 
+
     call.count_reader_contract::copy_count
     # => []
 

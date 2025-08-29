@@ -1,5 +1,5 @@
-use.miden::note
 use.miden::contracts::wallets::basic->wallet
+use.miden::note
 
 # CONSTANTS
 # =================================================================================================
@@ -9,7 +9,6 @@ const.ASSET_PTR=100
 
 # ERRORS
 # =================================================================================================
-
 const.ERROR_DIGEST_MISMATCH="Expected digest does not match computed digest"
 
 #! Inputs (arguments):  [HASH_PREIMAGE_SECRET]

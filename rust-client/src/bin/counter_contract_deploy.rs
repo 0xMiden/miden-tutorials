@@ -1,4 +1,7 @@
-use miden_lib::account::auth::NoAuth;
+use miden_lib::account::{
+    auth::{AuthRpoFalcon512Acl, NoAuth},
+    wallets::BasicWallet,
+};
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
@@ -85,8 +88,9 @@ async fn main() -> Result<(), ClientError> {
     let (counter_contract, counter_seed) = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
+        .with_component(BasicWallet)
         .with_component(counter_component.clone())
-        .with_auth_component(NoAuth)
+        .with_auth_component(AuthRpoFalcon512Acl)
         .build()
         .unwrap();
 

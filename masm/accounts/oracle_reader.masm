@@ -1,6 +1,6 @@
 use.miden::tx
 
-# Fetches the current price from the `get_median` 
+# Fetches the current price from the `get_median`
 # procedure from the Pragma oracle
 # => []
 export.get_price

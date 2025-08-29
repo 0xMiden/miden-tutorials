@@ -10,7 +10,8 @@ use miden_assembly::{
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, RpoFalcon512},
-        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
+        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageMap,
+        StorageSlot,
     },
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
@@ -208,19 +209,14 @@ async fn main() -> Result<(), ClientError> {
     let contract_path = Path::new("../masm/accounts/deposit_withdraw.masm");
     let contract_code = fs::read_to_string(contract_path).unwrap();
 
+    let storage_map = StorageMap::new();
+    let storage_slot_map = StorageSlot::Map(storage_map.clone());
+
     // Compile the account code into `AccountComponent` with one storage slot for balance
-    let contract_component = AccountComponent::compile(
-        contract_code.clone(),
-        assembler,
-        vec![StorageSlot::Value([
-            Felt::new(0),
-            Felt::new(0),
-            Felt::new(0),
-            Felt::new(0),
-        ])],
-    )
-    .unwrap()
-    .with_supports_all_types();
+    let contract_component =
+        AccountComponent::compile(contract_code.clone(), assembler, vec![storage_slot_map])
+            .unwrap()
+            .with_supports_all_types();
 
     // Init seed for the deposit_withdraw contract
     let mut seed = [0_u8; 32];
@@ -411,9 +407,9 @@ async fn main() -> Result<(), ClientError> {
     println!("Withdraw note assets: {:?}", withdraw_p2id_note.assets());
 
     // -------------------------------------------------------------------------
-    // STEP 7: Create withdrawal note with assets
+    // STEP 7: Create withdrawal note
     // -------------------------------------------------------------------------
-    println!("\n[STEP 4] Create deposit note with assets");
+    println!("\n[STEP 7] Create withdrawal note with assets");
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
 
@@ -431,20 +427,21 @@ async fn main() -> Result<(), ClientError> {
     let note_script =
         NoteScript::compile(note_code, assembler.with_library(&contract_lib).unwrap()).unwrap();
 
-    let recipient: Word = withdraw_p2id_note.recipient().digest().into();
+    let p2id_withdraw_recipient: Word = withdraw_p2id_note.recipient().digest().into();
 
     let note_inputs = NoteInputs::new(vec![
-        recipient[3],
-        recipient[2],
-        recipient[1],
-        recipient[0],
+        p2id_withdraw_recipient[3],
+        p2id_withdraw_recipient[2],
+        p2id_withdraw_recipient[1],
+        p2id_withdraw_recipient[0],
         withdraw_p2id_note.metadata().execution_hint().into(),
         withdraw_p2id_note.metadata().note_type().into(),
         Felt::new(0),
         withdraw_p2id_note.metadata().tag().into(),
     ])
     .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+
+    let withdrawal_note_recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
     let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
     let metadata = NoteMetadata::new(
         alice_account_id,
@@ -454,7 +451,7 @@ async fn main() -> Result<(), ClientError> {
         Felt::new(0),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let withdrawal_note = Note::new(vault, metadata, recipient);
+    let withdrawal_note = Note::new(vault, metadata, withdrawal_note_recipient);
     println!("deposit note hash: {:?}", withdrawal_note.id().to_hex());
 
     let note_request = TransactionRequestBuilder::new()
@@ -484,7 +481,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // STEP 8: Consume the withdrawal note
     // -------------------------------------------------------------------------
-    println!("\n[STEP 5] Deposit assets into the contract");
+    println!("\n[STEP 8] Consume the withdrawal note");
 
     let note_args: Word = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into();
 
@@ -501,7 +498,7 @@ async fn main() -> Result<(), ClientError> {
         tx_result.executed_transaction().id()
     );
     println!("account delta: {:?}", tx_result.account_delta().vault());
-    let _ = client.submit_transaction(tx_result).await;
+    let _ = client.submit_transaction(tx_result.clone()).await;
 
     client.sync_state().await.unwrap();
 
@@ -510,6 +507,18 @@ async fn main() -> Result<(), ClientError> {
     println!(
         "deposit contract balance: {:?}",
         account.unwrap().account().storage().get_item(0)
+    );
+
+    let output_note_recipient = tx_result
+        .created_notes()
+        .get_note(0)
+        .recipient()
+        .unwrap()
+        .digest();
+
+    assert_eq!(
+        output_note_recipient,
+        withdraw_p2id_note.recipient().digest()
     );
 
     Ok(())

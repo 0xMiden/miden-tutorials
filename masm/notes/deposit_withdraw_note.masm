@@ -1,5 +1,6 @@
 use.external_contract::deposit_withdraw_contract
 use.miden::note
+use.std::sys
 
 # CONSTANTS
 # =================================================================================================
@@ -40,12 +41,17 @@ begin
         push.111 debug.stack drop
 
         # store note inputs into memory starting at address 0
-        push.0 exec.note::get_inputs
+        push.0 exec.note::get_inputs drop
         # => [num_inputs, inputs_ptr]
 
-        debug.mem
+        mem_loadw.0
+        padw mem_loadw.4
+        # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
         call.deposit_withdraw_contract::withdraw
 
     end
+
+    exec.sys::truncate_stack
+
 end
