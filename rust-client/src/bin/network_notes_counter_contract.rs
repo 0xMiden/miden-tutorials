@@ -459,7 +459,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Build and submit the transaction containing the note
     let note_req = TransactionRequestBuilder::new()
-        .own_output_notes(vec![OutputNote::Full(staking_note)])
+        .own_output_notes(vec![OutputNote::Full(staking_note.clone())])
         .build()?;
 
     let tx_result = client.new_transaction(alice_account.id(), note_req).await?;
@@ -469,7 +469,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let note_tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-        note_tx_id
+        note_tx_id,
     );
 
     client.sync_state().await?;
@@ -488,35 +488,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n[STEP 8] Staking contarct will now consume Alice's note.");
     client.add_note_tag(tag).await?;
 
-    loop {
-        // Resync to get the latest data
-        client.sync_state().await?;
+    // loop {
+    // Resync to get the latest data
+    client.sync_state().await?;
 
-        let consumable_notes = client
-            .get_consumable_notes(Some(staking_contract.id()))
-            .await?;
-        let list_of_note_ids: Vec<_> = consumable_notes.iter().map(|(note, _)| note.id()).collect();
+    let consumable_notes = client
+        .get_consumable_notes(Some(staking_contract.id()))
+        .await?;
+    let _list_of_note_ids: Vec<_> = consumable_notes.iter().map(|(note, _)| note.id()).collect();
 
-        if list_of_note_ids.len() == 1 {
-            println!("Found Staking note onchain. Consuming it now...");
-            let transaction_request = TransactionRequestBuilder::new()
-                .build_consume_notes(list_of_note_ids)
-                .unwrap();
-            let tx_execution_result = client
-                .new_transaction(staking_contract.id(), transaction_request)
-                .await?;
+    let _ = client
+        .get_input_notes(miden_client::store::NoteFilter::All)
+        .await
+        .unwrap()
+        .iter()
+        .for_each(|n| println!("{}", n.id()));
 
-            client.submit_transaction(tx_execution_result).await?;
-            println!("Worked.");
-            break;
-        } else {
-            println!(
-                "Currently, Staking Contract has {} consumable notes. Waiting...",
-                list_of_note_ids.len()
-            );
-            tokio::time::sleep(Duration::from_secs(3)).await;
-        }
-    }
+    //if list_of_note_ids.len() == 1 {
+    println!("Found Staking note onchain. Consuming it now...");
+    let transaction_request = TransactionRequestBuilder::new()
+        .unauthenticated_input_notes([(staking_note, None)])
+        .build_consume_notes(vec![])
+        .unwrap();
+    let tx_execution_result = client
+        .new_transaction(staking_contract.id(), transaction_request)
+        .await?;
+
+    client.submit_transaction(tx_execution_result).await?;
+    println!("Worked.");
+    //break;
+    // } else {
+    //     println!(
+    //         "Currently, Staking Contract has {} consumable notes. Waiting...",
+    //         list_of_note_ids.len()
+    //     );
+    //     tokio::time::sleep(Duration::from_secs(3)).await;
+    // }
+    //}
 
     // Checking updated state
     let new_account_state = client.get_account(staking_contract.id()).await.unwrap();
