@@ -268,6 +268,7 @@ async fn main() -> Result<(), ClientError> {
             client.rng(),
         )
         .unwrap();
+
     let tx_exec = client.new_transaction(faucet.id(), tx_request).await?;
     client.submit_transaction(tx_exec.clone()).await?;
 
@@ -358,10 +359,10 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 5] Deposit assets into the contract");
 
-    let note_args: Word = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(1)].into();
+    // let note_args: Word = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(1)].into();
 
     let consume_deposit_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(deposit_note, note_args.into())])
+        .unauthenticated_input_notes([(deposit_note, None)])
         .build()
         .unwrap();
     let tx_result = client
@@ -483,10 +484,10 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 8] Consume the withdrawal note");
 
-    let note_args: Word = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+    // let note_args: Word = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into();
 
     let consume_deposit_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(withdrawal_note.clone(), note_args.into())])
+        .unauthenticated_input_notes([(withdrawal_note.clone(), None)])
         .build()
         .unwrap();
     let tx_result = client

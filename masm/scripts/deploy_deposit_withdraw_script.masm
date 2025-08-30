@@ -1,0 +1,8 @@
+use.external_contract::deposit_withdraw_contract
+
+begin
+
+    push.111 debug.stack drop
+
+    call.deposit_withdraw_contract::deploy_contract
+end

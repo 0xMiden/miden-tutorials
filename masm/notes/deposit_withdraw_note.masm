@@ -18,6 +18,14 @@ begin
 
     debug.stack
 
+    push.0 exec.note::get_inputs
+    # => [num_inputs]
+
+    eq.0
+    # => [no_inputs]
+
+    push.111 debug.stack drop
+
     if.true
 
         # Write the asset in note to memory address ASSET_PTR
@@ -41,7 +49,7 @@ begin
         push.111 debug.stack drop
 
         # store note inputs into memory starting at address 0
-        push.0 exec.note::get_inputs drop
+        #push.0 exec.note::get_inputs drop
         # => [num_inputs, inputs_ptr]
 
         mem_loadw.0

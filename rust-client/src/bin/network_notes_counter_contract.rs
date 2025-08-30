@@ -248,7 +248,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Build and submit the transaction containing the note
     let note_req = TransactionRequestBuilder::new()
-        .own_output_notes(vec![OutputNote::Full(increment_note)])
+        .own_output_notes(vec![OutputNote::Full(increment_note.clone())])
         .build()?;
 
     let tx_result = client.new_transaction(alice_account.id(), note_req).await?;
@@ -262,6 +262,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     client.sync_state().await?;
+
+    println!("network note id: {:?}", increment_note.id().to_hex());
 
     println!("network increment note creation tx submitted, waiting for onchain commitment");
 

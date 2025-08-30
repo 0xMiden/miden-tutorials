@@ -6,6 +6,45 @@ use.std::sys
 
 const.BALANCES_SLOT=0
 
+export.deploy_contract
+
+    push.0.0.0.0
+    # => [KEY]
+
+    push.BALANCES_SLOT
+    # => [slot, KEY]
+
+    push.222 debug.stack drop
+
+    exec.account::get_map_item
+    # => [VALUE]
+
+    push.333 debug.stack drop
+
+    padw
+    # => [EMPTY_WORD, VALUE]
+
+    assert_eqw
+    # => []
+
+    push.1.1.1.1
+    # => [VALUE]
+
+    padw
+    # => [KEY, VALUE]
+
+    push.BALANCES_SLOT
+    # => [slot]
+
+    push.444 debug.stack drop
+
+    exec.account::set_map_item
+    # => [OLD_MAP, SOME_WORD]
+
+    dropw dropw
+
+end
+
 # Deposit assets into the contract
 # Expects the asset to be on the stack: [ASSET]
 # => []
@@ -47,6 +86,8 @@ export.withdraw
 
     exec.note::get_sender
     # => [sender]
+
+    push.0 movdn.2 push.0 movdn.2
 
     push.BALANCES_SLOT
 
