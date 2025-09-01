@@ -1204,6 +1204,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-client-tools"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa53dadb108dc17c4e7bfd9987c973d98d89cc49228c250235bbf81c9c04d3e6"
+dependencies = [
+ "miden-assembly",
+ "miden-client",
+ "miden-crypto 0.15.6",
+ "miden-lib",
+ "miden-objects",
+ "miden-tx",
+ "rand 0.9.1",
+ "rand_chacha 0.9.0",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "miden-core"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2153,6 +2172,7 @@ version = "0.1.0"
 dependencies = [
  "miden-assembly",
  "miden-client",
+ "miden-client-tools",
  "miden-crypto 0.15.6",
  "miden-lib",
  "miden-objects",
