@@ -1,6 +1,4 @@
 use miden_client::auth::AuthSecretKey;
-use miden_client::transaction::TransactionScript;
-use miden_lib::transaction::TransactionKernel;
 use std::sync::Arc;
 
 use miden_client::account::{AccountStorageMode, AccountType};
@@ -11,7 +9,7 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     rpc::Endpoint,
     transaction::{TransactionProver, TransactionRequestBuilder},
-    ClientError, RemoteTransactionProver,
+    ClientError, RemoteTransactionProver, ScriptBuilder,
 };
 use miden_lib::account::wallets::create_basic_wallet;
 use miden_lib::AuthScheme;
@@ -19,13 +17,15 @@ use miden_lib::AuthScheme;
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -44,7 +44,8 @@ async fn main() -> Result<(), ClientError> {
         },
         AccountType::RegularAccountImmutableCode,
         AccountStorageMode::Private,
-    )?;
+    )
+    .unwrap();
 
     client
         .add_account(&alice_account, Some(seed), false)
@@ -64,8 +65,9 @@ async fn main() -> Result<(), ClientError> {
     // The only effect of this tx should be increasing Alice's nonce.
     println!("Alice nonce initial: {:?}", alice_account.nonce());
     let script_code = "begin push.1 drop end";
-    let tx_script =
-        TransactionScript::compile(script_code, TransactionKernel::assembler()).unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .compile_tx_script(script_code)
+        .unwrap();
 
     let transaction_request = TransactionRequestBuilder::new()
         .custom_script(tx_script)

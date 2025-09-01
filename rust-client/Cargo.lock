@@ -1207,18 +1207,20 @@ dependencies = [
 
 [[package]]
 name = "miden-block-prover"
-version = "0.12.0"
-source = "git+https://github.com/0xMiden/miden-base?branch=next#d302bcdcc84dd94601633e51acd37c2bb7d6cdeb"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "647ac07da368ec735ed22a28006e4e263eb454d806a044edfe423b735247cb42"
 dependencies = [
- "miden-lib 0.12.0",
- "miden-objects 0.12.0",
+ "miden-lib",
+ "miden-objects",
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "miden-client"
-version = "0.11.0"
-source = "git+https://github.com/0xMiden/miden-client.git?branch=next#f8cb3e2224c0dcbad436c3c9364e90e069208a35"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "512f3ee6cc55611f22a1cd4712732ee8708e4af489fe5c249eb99cf4abc3a373"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1226,9 +1228,9 @@ dependencies = [
  "deadpool",
  "deadpool-sync",
  "hex",
- "miden-lib 0.12.0",
+ "miden-lib",
  "miden-node-proto-build",
- "miden-objects 0.12.0",
+ "miden-objects",
  "miden-remote-prover-client",
  "miden-testing",
  "miden-tx",
@@ -1315,26 +1317,12 @@ dependencies = [
 
 [[package]]
 name = "miden-lib"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b0fa273f407c77701c298bb446436b895de15a3869a765be189129f5e6186ac"
+checksum = "07947bc8471c133dbf6d063973531f0e6428852cc67d6a23f74f88c67cae9ee1"
 dependencies = [
  "miden-assembly",
- "miden-objects 0.11.0",
- "miden-processor",
- "miden-stdlib",
- "regex",
- "thiserror 2.0.12",
- "walkdir",
-]
-
-[[package]]
-name = "miden-lib"
-version = "0.12.0"
-source = "git+https://github.com/0xMiden/miden-base?branch=next#d302bcdcc84dd94601633e51acd37c2bb7d6cdeb"
-dependencies = [
- "miden-assembly",
- "miden-objects 0.12.0",
+ "miden-objects",
  "miden-processor",
  "miden-stdlib",
  "rand",
@@ -1399,7 +1387,8 @@ dependencies = [
 [[package]]
 name = "miden-node-proto-build"
 version = "0.11.0"
-source = "git+https://github.com/0xMiden/miden-node?branch=next#f6603d3900f51266635ae99619aa643b52c31ddf"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "233a0ef0afeace15f08acfb0b377cbdd50914c6574f74209f87eab44ce92e1e2"
 dependencies = [
  "anyhow",
  "prost",
@@ -1409,29 +1398,9 @@ dependencies = [
 
 [[package]]
 name = "miden-objects"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a20d48144b3ada8cf075f37c823eb30bbda26deac69688a5f34ecf56f74087df"
-dependencies = [
- "bech32",
- "getrandom 0.3.3",
- "miden-assembly",
- "miden-core",
- "miden-crypto",
- "miden-processor",
- "miden-utils-sync",
- "miden-verifier",
- "rand",
- "rand_xoshiro",
- "semver 1.0.26",
- "thiserror 2.0.12",
- "winter-rand-utils",
-]
-
-[[package]]
-name = "miden-objects"
-version = "0.12.0"
-source = "git+https://github.com/0xMiden/miden-base?branch=next#d302bcdcc84dd94601633e51acd37c2bb7d6cdeb"
+checksum = "a848cda86c5abab6a2eeec7f066d6eaf2f2af432fea8da78199a1da51fdea6b6"
 dependencies = [
  "bech32",
  "getrandom 0.3.3",
@@ -1446,7 +1415,7 @@ dependencies = [
  "semver 1.0.26",
  "serde",
  "thiserror 2.0.12",
- "toml 0.9.5",
+ "toml",
  "winter-rand-utils",
 ]
 
@@ -1483,11 +1452,12 @@ dependencies = [
 [[package]]
 name = "miden-remote-prover-client"
 version = "0.11.0"
-source = "git+https://github.com/0xMiden/miden-node?branch=next#f6603d3900f51266635ae99619aa643b52c31ddf"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "352c63eb48e52b440580aa7f6682e925fefd31166421fdc836714811dd9823af"
 dependencies = [
  "getrandom 0.3.3",
  "miden-node-proto-build",
- "miden-objects 0.12.0",
+ "miden-objects",
  "miden-tx",
  "miette",
  "prost",
@@ -1516,14 +1486,15 @@ dependencies = [
 
 [[package]]
 name = "miden-testing"
-version = "0.12.0"
-source = "git+https://github.com/0xMiden/miden-base?branch=next#d302bcdcc84dd94601633e51acd37c2bb7d6cdeb"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6d4d3283db8ffc5ff60e9259baf9c6736df06fc38212c9b79eaf3926aaad316"
 dependencies = [
  "anyhow",
  "itertools",
  "miden-block-prover",
- "miden-lib 0.12.0",
- "miden-objects 0.12.0",
+ "miden-lib",
+ "miden-objects",
  "miden-processor",
  "miden-tx",
  "rand",
@@ -1535,11 +1506,12 @@ dependencies = [
 
 [[package]]
 name = "miden-tx"
-version = "0.12.0"
-source = "git+https://github.com/0xMiden/miden-base?branch=next#d302bcdcc84dd94601633e51acd37c2bb7d6cdeb"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83ba01b977d313f82c19351c48b0c28a4969fd97a6b00f3d6a098ed2cc14bc2b"
 dependencies = [
- "miden-lib 0.12.0",
- "miden-objects 0.12.0",
+ "miden-lib",
+ "miden-objects",
  "miden-processor",
  "miden-prover",
  "miden-verifier",
@@ -2245,8 +2217,8 @@ dependencies = [
  "miden-assembly",
  "miden-client",
  "miden-crypto",
- "miden-lib 0.11.0",
- "miden-objects 0.11.0",
+ "miden-lib",
+ "miden-objects",
  "rand",
  "rand_chacha",
  "serde",
@@ -2824,23 +2796,8 @@ checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
 dependencies = [
  "serde",
  "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
+ "toml_datetime",
  "toml_edit",
-]
-
-[[package]]
-name = "toml"
-version = "0.9.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75129e1dc5000bfbaa9fee9d1b21f974f9fbad9daec557a521ee6e080825f6e8"
-dependencies = [
- "indexmap",
- "serde",
- "serde_spanned 1.0.0",
- "toml_datetime 0.7.0",
- "toml_parser",
- "toml_writer",
- "winnow",
 ]
 
 [[package]]
@@ -2848,15 +2805,6 @@ name = "toml_datetime"
 version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml_datetime"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bade1c3e902f58d73d3f294cd7f20391c1cb2fbcb643b73566bc773971df91e3"
 dependencies = [
  "serde",
 ]
@@ -2870,17 +2818,8 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
+ "toml_datetime",
  "toml_write",
- "winnow",
-]
-
-[[package]]
-name = "toml_parser"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b551886f449aa90d4fe2bdaa9f4a2577ad2dde302c61ecf262d80b116db95c10"
-dependencies = [
  "winnow",
 ]
 
@@ -2889,12 +2828,6 @@ name = "toml_write"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
-
-[[package]]
-name = "toml_writer"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc842091f2def52017664b53082ecbbeb5c7731092bad69d2c63050401dfd64"
 
 [[package]]
 name = "tonic"
@@ -3076,7 +3009,7 @@ dependencies = [
  "serde_json",
  "target-triple",
  "termcolor",
- "toml 0.8.23",
+ "toml",
 ]
 
 [[package]]
