@@ -232,8 +232,9 @@ async fn main() -> Result<(), ClientError> {
 
     // Submit transaction to the network
     let _ = client.submit_transaction(tx_result).await;
+    client.sync_state().await.unwrap();
 
-    sleep(Duration::from_secs(7)).await;
+    sleep(Duration::from_secs(10)).await;
 
     client.sync_state().await.unwrap();
 
