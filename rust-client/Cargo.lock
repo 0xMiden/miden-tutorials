@@ -1471,6 +1471,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-standards"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "miden-assembly",
+ "miden-lib",
+ "miden-objects",
+]
+
+[[package]]
 name = "miden-stdlib"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2219,6 +2229,7 @@ dependencies = [
  "miden-crypto",
  "miden-lib",
  "miden-objects",
+ "miden-standards",
  "rand",
  "rand_chacha",
  "serde",

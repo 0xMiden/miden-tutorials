@@ -2,10 +2,6 @@ use miden_lib::account::auth::NoAuth;
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
-use miden_assembly::{
-    ast::{Module, ModuleKind},
-    LibraryPath,
-};
 use miden_client::{
     account::{
         AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
@@ -14,29 +10,11 @@ use miden_client::{
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
+    transaction::TransactionRequestBuilder,
     ClientError, Felt, ScriptBuilder,
 };
-use miden_objects::{
-    account::{AccountComponent, NetworkId},
-    assembly::Assembler,
-    assembly::DefaultSourceManager,
-};
-
-fn create_library(
-    assembler: Assembler,
-    library_path: &str,
-    source_code: &str,
-) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
-    let source_manager = Arc::new(DefaultSourceManager::default());
-    let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
-        source_code,
-        &source_manager,
-    )?;
-    let library = assembler.clone().assemble_library([module])?;
-    Ok(library)
-}
+use miden_objects::account::{AccountComponent, NetworkId};
+use miden_standards::counter::library as counter_library;
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
@@ -61,17 +39,9 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating counter contract.");
 
-    // Prepare assembler (debug mode = true)
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-
-    // Load the MASM file for the counter contract
-    let counter_path = Path::new("../masm/accounts/counter.masm");
-    let counter_code = fs::read_to_string(counter_path).unwrap();
-
     // Compile the account code into `AccountComponent` with one storage slot
-    let counter_component = AccountComponent::compile(
-        counter_code.clone(),
-        assembler,
+    let counter_component = AccountComponent::new(
+        counter_library().expect("Failed to get counter library"),
         vec![StorageSlot::Value(
             [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into(),
         )],
@@ -120,17 +90,10 @@ async fn main() -> Result<(), ClientError> {
     let script_path = Path::new("../masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let account_component_lib = create_library(
-        assembler.clone(),
-        "external_contract::counter_contract",
-        &counter_code,
-    )
-    .unwrap();
     println!("here");
 
     let tx_script = ScriptBuilder::new(true)
-        .with_dynamically_linked_library(&account_component_lib)
+        .with_dynamically_linked_library(&counter_library().expect("Failed to get counter library"))
         .unwrap()
         .compile_tx_script(script_code)
         .unwrap();
