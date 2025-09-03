@@ -43,7 +43,7 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11.1", features = ["testing", "tonic", "sqlite"] }
+miden-client = { version = "0.11.2", features = ["testing", "tonic", "sqlite"] }
 miden-lib = { version = "0.11.1", default-features = false }
 miden-objects = { version = "0.11.1", default-features = false, features = ["testing"] }
 miden-crypto = { version = "0.15.9", features = ["executable"] }
@@ -162,7 +162,7 @@ Add this snippet to the end of your file in the `main()` function:
 # };
 # use miden_lib::account::auth::AuthRpoFalcon512;
 # use miden_objects::account::{AccountIdVersion, NetworkId};
-
+#
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client & keystore
@@ -234,7 +234,7 @@ Add this snippet to the end of your file in the `main()` function:
 # use rand::RngCore;
 # use std::sync::Arc;
 # use tokio::time::Duration;
-
+#
 # use miden_client::{
 #     account::{
 #         component::{BasicFungibleFaucet, BasicWallet},
