@@ -1,4 +1,3 @@
-use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;
@@ -19,7 +18,7 @@ use miden_client::{
     transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
     ClientError, Felt,
 };
-
+use miden_lib::account::auth::AuthRpoFalcon512;
 use miden_objects::account::{AccountIdVersion, NetworkId};
 
 #[tokio::main]
@@ -28,20 +27,18 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
+        FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .authenticator(keystore)
+        .authenticator(keystore.clone().into())
         .in_debug_mode(true.into())
         .build()
         .await?;
 
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
-
-    let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
-        FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     //------------------------------------------------------------
     // STEP 1: Create a basic wallet for Alice

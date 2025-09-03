@@ -13,8 +13,9 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     rpc::{domain::account::AccountStorageRequirements, Endpoint, TonicRpcClient},
     transaction::{ForeignAccount, TransactionKernel, TransactionRequestBuilder},
-    ClientError, Felt, ScriptBuilder,
+    ClientError, ScriptBuilder,
 };
+use miden_crypto::Word;
 use miden_lib::account::auth::NoAuth;
 use miden_objects::{
     account::{AccountComponent, NetworkId},
@@ -67,12 +68,10 @@ async fn main() -> Result<(), ClientError> {
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
     // Compile the account code into `AccountComponent` with one storage slot
-    let counter_component = AccountComponent::compile(
+    let count_reader_component = AccountComponent::compile(
         count_reader_code.clone(),
         assembler.clone(),
-        vec![StorageSlot::Value(
-            [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into(),
-        )],
+        vec![StorageSlot::Value(Word::default())],
     )
     .unwrap()
     .with_supports_all_types();
@@ -85,7 +84,7 @@ async fn main() -> Result<(), ClientError> {
     let (count_reader_contract, count_reader_seed) = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_component(counter_component.clone())
+        .with_component(count_reader_component.clone())
         .with_auth_component(NoAuth)
         .build()
         .unwrap();
@@ -119,7 +118,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_address) =
-        Address::from_bech32("mdev1qrsrfk44zrlksqzr5ekfy92dwpcqqerfclr").unwrap();
+        Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
     let counter_contract_id = match counter_contract_address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),
@@ -234,7 +233,7 @@ async fn main() -> Result<(), ClientError> {
     let _ = client.submit_transaction(tx_result).await;
     client.sync_state().await.unwrap();
 
-    sleep(Duration::from_secs(10)).await;
+    sleep(Duration::from_secs(5)).await;
 
     client.sync_state().await.unwrap();
 
@@ -251,7 +250,7 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
     println!(
         "count reader contract storage: {:?}",
-        account_2.unwrap().account().storage()
+        account_2.unwrap().account().storage().get_item(0)
     );
 
     Ok(())

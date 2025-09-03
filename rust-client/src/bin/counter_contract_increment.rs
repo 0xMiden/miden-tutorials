@@ -54,7 +54,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_network_id, address) =
-        Address::from_bech32("mdev1qrsrfk44zrlksqzr5ekfy92dwpcqqerfclr").unwrap();
+        Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
     let counter_contract_id = match address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),
