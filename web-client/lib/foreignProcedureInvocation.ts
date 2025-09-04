@@ -25,7 +25,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
     AccountStorageMode,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = "https://rpc.devnet.miden.io:443";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
@@ -74,10 +74,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   const seed = new Uint8Array(32);
   crypto.getRandomValues(seed);
 
-  let anchor = await client.getLatestEpochBlock();
-
   let countReaderContract = new AccountBuilder(seed)
-    .anchor(anchor)
     .accountType(AccountType.RegularAccountImmutableCode)
     .storageMode(AccountStorageMode.public())
     .withComponent(countReaderComponent)
@@ -221,7 +218,6 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Compile the transaction script with the count reader library
   let txScript = TransactionScript.compile(
     fpiScriptCode,
-    inputs,
     assembler.withLibrary(countReaderLib),
   );
 
@@ -236,7 +232,9 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Build a transaction request with the custom script
   let txRequest = new TransactionRequestBuilder()
     .withCustomScript(txScript)
+    
     .withForeignAccounts([foreignAccount])
+    
     .build();
 
   console.log("HERE");
