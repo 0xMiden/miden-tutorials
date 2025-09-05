@@ -232,7 +232,7 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
     OutputNote,
   } = await import("@demox-labs/miden-sdk");
 
-  const client = await WebClient.createClient("http://0.0.0.0:57291");
+  const client = await WebClient.createClient("https://rpc.devnet.miden.io");
   const prover = TransactionProver.newRemoteProver(
     "https://tx-prover.testnet.miden.io",
   );

@@ -10,7 +10,7 @@ export async function createMintConsume(): Promise<void> {
     "@demox-labs/miden-sdk"
   );
 
-  const nodeEndpoint = "http://0.0.0.0:57291";
+  const nodeEndpoint = "https://rpc.devnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync and log block
@@ -47,6 +47,7 @@ export async function createMintConsume(): Promise<void> {
   );
 
   let txResult = await client.newTransaction(faucet.id(), mintTxRequest);
+
   await client.submitTransaction(txResult);
 
   console.log("Waiting 10 seconds for transaction confirmation...");

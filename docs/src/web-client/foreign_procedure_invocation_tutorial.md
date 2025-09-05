@@ -143,7 +143,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
     AccountStorageMode,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "http://0.0.0.0:57291";
+  const nodeEndpoint = "https://rpc.devnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 

@@ -43,7 +43,7 @@ To start the node run this command:
 ```bash
 miden-node bundled start \
   --data-directory data \
-  --rpc.url http://0.0.0.0:57291
+  --rpc.url https://rpc.devnet.miden.io
 ```
 
 Expected output:
