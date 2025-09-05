@@ -9,10 +9,12 @@ export.copy_count
     
     push.0
     # [index, count]
-    
-    exec.account::set_item
+
+    debug.stack
+
+    exec.account::set_item dropw
     # => []
-    
+
     exec.sys::truncate_stack
     # => []
 end
