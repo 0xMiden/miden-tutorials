@@ -17,15 +17,13 @@ export async function foreignProcedureInvocation(): Promise<void> {
     TransactionRequestBuilder,
     TransactionScript,
     TransactionScriptInputPairArray,
-    Felt,
-    StorageMap,
     ForeignAccount,
     AccountStorageRequirements,
     WebClient,
     AccountStorageMode,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.devnet.miden.io:443";
+  const nodeEndpoint = "http://0.0.0.0:57291";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
@@ -232,9 +230,9 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Build a transaction request with the custom script
   let txRequest = new TransactionRequestBuilder()
     .withCustomScript(txScript)
-    
+
     .withForeignAccounts([foreignAccount])
-    
+
     .build();
 
   console.log("HERE");

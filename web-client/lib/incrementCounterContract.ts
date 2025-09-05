@@ -9,15 +9,13 @@ export async function incrementCounterContract(): Promise<void> {
   const {
     AccountId,
     AssemblerUtils,
-    StorageSlot,
     TransactionKernel,
     TransactionRequestBuilder,
     TransactionScript,
-    TransactionScriptInputPairArray,
     WebClient,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.devnet.miden.io:443";
+  const nodeEndpoint = "http://0.0.0.0:57291";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 

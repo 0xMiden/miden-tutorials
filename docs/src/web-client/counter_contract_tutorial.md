@@ -39,7 +39,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.10.1
+   pnpm i @demox-labs/miden-sdk@0.11.1
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
@@ -116,61 +116,56 @@ export async function incrementCounterContract(): Promise<void> {
   const {
     AccountId,
     AssemblerUtils,
-    StorageSlot,
     TransactionKernel,
     TransactionRequestBuilder,
     TransactionScript,
-    TransactionScriptInputPairArray,
     WebClient,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = "http://0.0.0.0:57291";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
   // Counter contract code in Miden Assembly
   const counterContractCode = `
-      use.miden::account
-      use.std::sys
+    use.miden::account
+    use.std::sys
 
-      # => []
-      export.get_count
-          push.0
-          # => [index]
-          
-          # exec.account::get_item
-          # => [count]
-          
-          # exec.sys::truncate_stack
-          # => []
-      end
+    # => []
+    export.get_count
+        push.0
+        # => [index]
+        
+        exec.account::get_item
+        # => [count]
+        
+        exec.sys::truncate_stack
+        # => []
+    end
 
-      # => []
-      export.increment_count
-          push.0
-          # => [index]
-          
-          exec.account::get_item
-          # => [count]
-          
-          push.1 add
-          # => [count+1]
+    # => []
+    export.increment_count
+        push.0
+        # => [index]
+        
+        exec.account::get_item
+        # => [count]
+        
+        push.1 add
+        # => [count+1]
 
-          # debug statement with client
-          debug.stack
+        # debug statement with client
+        debug.stack
 
-          push.0
-          # [index, count+1]
-          
-          exec.account::set_item
-          # => []
-          
-          push.1 exec.account::incr_nonce
-          # => []
-          
-          exec.sys::truncate_stack
-          # => []
-      end
+        push.0
+        # [index, count+1]
+        
+        exec.account::set_item
+        # => []
+        
+        exec.sys::truncate_stack
+        # => []
+    end
     `;
 
   // Building the counter contract
