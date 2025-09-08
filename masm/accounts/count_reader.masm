@@ -12,8 +12,10 @@ export.copy_count
 
     debug.stack
 
-    exec.account::set_item dropw
+    exec.account::set_item 
     # => []
+
+    debug.stack
 
     exec.sys::truncate_stack
     # => []

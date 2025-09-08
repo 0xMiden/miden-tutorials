@@ -26,13 +26,15 @@ export.increment_count
     add.1
     # => [count+1]
 
-    debug.stack
-
     push.COUNTER_SLOT
     # [index, count+1]
 
+    debug.stack
+
     exec.account::set_item
     # => []
+
+    debug.stack
 
     exec.sys::truncate_stack
     # => []

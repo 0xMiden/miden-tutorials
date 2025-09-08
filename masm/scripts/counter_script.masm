@@ -2,4 +2,6 @@ use.external_contract::counter_contract
 
 begin
     call.counter_contract::increment_count
+
+    debug.stack
 end
