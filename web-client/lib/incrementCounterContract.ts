@@ -24,38 +24,39 @@ export async function incrementCounterContract(): Promise<void> {
     use.miden::account
     use.std::sys
 
+    const.COUNTER_SLOT=0
+
     # => []
     export.get_count
-        push.0
+        push.COUNTER_SLOT
         # => [index]
-        
+
         exec.account::get_item
         # => [count]
-        
+
         exec.sys::truncate_stack
         # => []
     end
 
     # => []
     export.increment_count
-        push.0
+        push.COUNTER_SLOT
         # => [index]
-        
+
         exec.account::get_item
         # => [count]
-        
-        push.1 add
+
+        add.1
         # => [count+1]
 
-        # debug statement with client
         debug.stack
 
-        push.0
+        push.COUNTER_SLOT
         # [index, count+1]
-        
+
         exec.account::set_item
         # => []
-        
+
         exec.sys::truncate_stack
         # => []
     end
@@ -66,7 +67,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Counter contract account id on testnet
   const counterContractId = AccountId.fromBech32(
-    "mtst1qz43ftxkrzcjsqz3hpw332qwny2ggsp0",
+    "mdev1qp6fj7lcqy9v5qrr2tscyynmhpcqqnpx3x7",
   );
 
   // Reading the public state of the counter contract from testnet,
@@ -124,7 +125,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Here we get the first Word from storage of the counter contract
   // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
-  let count = counter?.storage().getItem(1);
+  let count = counter?.storage().getItem(0);
 
   // Converting the Word represented as a hex to a single integer value
   const counterValue = Number(
