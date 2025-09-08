@@ -425,7 +425,7 @@ client.sync_state().await.unwrap();
 let account = client.get_account(counter_contract.id()).await.unwrap();
 println!(
     "counter contract storage: {:?}",
-    account.unwrap().account().storage().get_item(1)
+    account.unwrap().account().storage().get_item(0)
 );
 #     Ok(())
 # }
@@ -569,7 +569,7 @@ async fn main() -> Result<(), ClientError> {
     let account = client.get_account(counter_contract.id()).await.unwrap();
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(1)
+        account.unwrap().account().storage().get_item(0)
     );
     Ok(())
 }
