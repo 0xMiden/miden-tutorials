@@ -17,6 +17,15 @@ export.copy_count
 
     debug.stack
 
+    push.0
+    # => [index]
+
+    exec.account::get_item
+    # => [count]
+
+    # @dev this is what the storage contain at the end of the tx
+    debug.stack
+
     exec.sys::truncate_stack
     # => []
 end
