@@ -1,5 +1,6 @@
-use miden_lib::account::auth::NoAuth;
-use rand::RngCore;
+use miden_crypto::Word;
+use miden_lib::account::auth::AuthRpoFalcon512;
+use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{
@@ -7,19 +8,23 @@ use miden_assembly::{
     LibraryPath,
 };
 use miden_client::{
-    account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
+    account::{
+        component::BasicWallet, AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType,
+        Address, AddressInterface, StorageSlot,
+    },
+    auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::FeltRng,
+    crypto::{FeltRng, SecretKey},
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
+        NoteRecipient, NoteTag, NoteType,
     },
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder, TransactionScript},
-    ClientError, Felt,
+    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
+    Client, ClientError, Felt, ScriptBuilder,
 };
-use miden_client_tools::create_basic_account;
+use miden_lib::account::auth;
 use miden_objects::{
     account::{AccountComponent, NetworkId, StorageMap},
     assembly::Assembler,
@@ -41,6 +46,28 @@ fn create_library(
     Ok(library)
 }
 
+async fn create_basic_account(
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    keystore: FilesystemKeyStore<StdRng>,
+) -> Result<miden_client::account::Account, ClientError> {
+    let mut init_seed = [0_u8; 32];
+    client.rng().fill_bytes(&mut init_seed);
+
+    let key_pair = SecretKey::with_rng(client.rng());
+    let builder = AccountBuilder::new(init_seed)
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
+        .with_component(BasicWallet);
+    let (account, seed) = builder.build().unwrap();
+    client.add_account(&account, Some(seed), false).await?;
+    keystore
+        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .unwrap();
+
+    Ok(account)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
@@ -52,7 +79,7 @@ async fn main() -> Result<(), ClientError> {
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
         .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -66,11 +93,11 @@ async fn main() -> Result<(), ClientError> {
     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
         FilesystemKeyStore::new("./keystore".into()).unwrap();
 
-    let (alice_account, _) = create_basic_account(&mut client, keystore.clone())
+    let alice_account = create_basic_account(&mut client, keystore.clone())
         .await
         .unwrap();
 
-    let (bob_account, _) = create_basic_account(&mut client, keystore.clone())
+    let bob_account = create_basic_account(&mut client, keystore.clone())
         .await
         .unwrap();
 
@@ -79,14 +106,6 @@ async fn main() -> Result<(), ClientError> {
     println!("alice suffix: {:?}", alice_account.id().suffix());
     println!("bob prefix: {:?}", bob_account.id().prefix().as_felt());
     println!("bob suffix: {:?}", bob_account.id().suffix());
-    println!(
-        "alice id: {:?}",
-        alice_account.id().to_bech32(NetworkId::Testnet)
-    );
-    println!(
-        "bob id: {:?}",
-        bob_account.id().to_bech32(NetworkId::Testnet)
-    );
 
     // -------------------------------------------------------------------------
     // STEP 2: Create the tic tac toe game contract
@@ -100,7 +119,8 @@ async fn main() -> Result<(), ClientError> {
     let game_path = Path::new("../masm/accounts/tic_tac_toe.masm");
     let game_code = fs::read_to_string(game_path).unwrap();
 
-    let empty_storage_slot = StorageSlot::Value([Felt::new(0); 4]);
+    let empty_storage_slot =
+        StorageSlot::Value([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into());
 
     let storage_map = StorageMap::new();
     let storage_slot_map = StorageSlot::Map(storage_map.clone());
@@ -134,13 +154,17 @@ async fn main() -> Result<(), ClientError> {
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(game_component.clone())
-        .with_auth_component(NoAuth)
+        .with_auth_component(auth::NoAuth)
         .build()
         .unwrap();
 
     println!(
         "game_contract id: {:?}",
-        game_contract.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            game_contract.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
 
     client
@@ -173,19 +197,16 @@ async fn main() -> Result<(), ClientError> {
     )
     .unwrap();
 
-    let deployment_script = TransactionScript::compile(
-        deployment_script_code,
-        assembler
-            .clone()
-            .with_library(&account_component_lib)
-            .unwrap(),
-    )
-    .unwrap();
+    let deployment_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(deployment_script_code)
+        .unwrap();
 
     // Build a transaction request with the custom script
     let tx_game_deployment_request = TransactionRequestBuilder::new()
         .custom_script(deployment_script)
-        .script_arg(deployment_script_arg)
+        .script_arg(Word::new(deployment_script_arg.into()))
         .build()
         .unwrap();
 
@@ -194,12 +215,6 @@ async fn main() -> Result<(), ClientError> {
         .new_transaction(game_contract.id(), tx_game_deployment_request)
         .await
         .unwrap();
-
-    let tx_id = tx_result.executed_transaction().id();
-    println!(
-        "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-        tx_id
-    );
 
     // Submit transaction to the network
     let _ = client.submit_transaction(tx_result).await;
@@ -236,14 +251,11 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 4] Create 'make a move' note");
 
     let note_code = fs::read_to_string(Path::new("../masm/notes/make_a_move_note.masm")).unwrap();
-    let note_script = NoteScript::compile(
-        note_code,
-        assembler
-            .clone()
-            .with_library(&account_component_lib)
-            .unwrap(),
-    )
-    .unwrap();
+    let note_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_note_script(note_code)
+        .unwrap();
 
     let empty_assets = NoteAssets::new(vec![])?;
 
@@ -270,11 +282,11 @@ async fn main() -> Result<(), ClientError> {
 
     let end_game_note_code =
         fs::read_to_string(Path::new("../masm/notes/end_game_note.masm")).unwrap();
-    let end_game_note_script = NoteScript::compile(
-        end_game_note_code,
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let end_game_note_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_note_script(end_game_note_code)
+        .unwrap();
 
     let player_slot: u64 = 1;
     let end_game_note_inputs = NoteInputs::new(vec![Felt::new(player_slot)]).unwrap();
@@ -325,8 +337,8 @@ async fn main() -> Result<(), ClientError> {
 
     println!("Consuming note as beneficiary");
     let consume_custom_request = TransactionRequestBuilder::new()
-        // .unauthenticated_input_notes([(make_a_move_note, None)])
-        .unauthenticated_input_notes([(make_a_move_note, None), (end_game_note, None)])
+        .unauthenticated_input_notes([(make_a_move_note, None)])
+        // .unauthenticated_input_notes([(make_a_move_note, None), (end_game_note, None)])
         .build()
         .unwrap();
     let tx_result = client
