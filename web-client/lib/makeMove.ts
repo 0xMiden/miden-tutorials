@@ -1,8 +1,8 @@
-import ticTacToeCode from "contracts/tic_tac_toe_code";
-import { TIC_TAC_TOE_CONTRACT_ID, ALICE_ID, BOB_ID } from "constants";
+import makeMoveNoteCode from "./notes/make_a_move_code";
+import gameContractCode from "./contracts/tic_tac_toe_code";
 
 // lib/makeMove.ts
-export async function incrementCounterContract(): Promise<void> {
+export async function makeMove(gameContractIdBech32: string): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
@@ -12,86 +12,101 @@ export async function incrementCounterContract(): Promise<void> {
   const {
     AccountId,
     AssemblerUtils,
+    AccountStorageMode,
     StorageSlot,
     TransactionKernel,
-    TransactionRequestBuilder,
-    TransactionScript,
-    TransactionScriptInputPairArray,
+    NoteInputs,
+    NoteMetadata,
+    NoteScript,
+    FeltArray,
     WebClient,
+    NoteAssets,
+    Felt,
+    Word,
+    NoteTag,
+    NoteType,
+    NoteExecutionMode,
+    NoteExecutionHint,
+    NoteRecipient,
+    Note,
+    OutputNote,
+    OutputNotesArray,
+    TransactionRequestBuilder,
   } = await import("@demox-labs/miden-sdk");
 
   const nodeEndpoint = "https://rpc.testnet.miden.io:443";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
-  // Building the counter contract
-  let assembler = TransactionKernel.assembler();
+  // Generate alice and bob wallets
+  const alice = await client.newWallet(AccountStorageMode.public(), true);
+  const bob = await client.newWallet(AccountStorageMode.public(), true);
+
+  // Building the tic tac toe contract
+  const assembler = TransactionKernel.assembler();
+
+  const gameContractId = AccountId.fromBech32(gameContractIdBech32);
 
   // Reading the public state of the tic tac toe contract from testnet,
   // and importing it into the WebClient
-  let ticTacToeContractAccount = await client.getAccount(
-    TIC_TAC_TOE_CONTRACT_ID,
-  );
-  if (!ticTacToeContractAccount) {
-    await client.importAccountById(TIC_TAC_TOE_CONTRACT_ID);
+  let gameContractAccount = await client.getAccount(gameContractId);
+  if (!gameContractAccount) {
+    await client.importAccountById(gameContractId);
     await client.syncState();
-    ticTacToeContractAccount = await client.getAccount(TIC_TAC_TOE_CONTRACT_ID);
-    if (!ticTacToeContractAccount) {
+    gameContractAccount = await client.getAccount(gameContractId);
+    if (!gameContractAccount) {
       throw new Error(
-        `Account not found after import: ${TIC_TAC_TOE_CONTRACT_ID}`,
+        `Account not found after import: ${gameContractIdBech32}`,
       );
     }
   }
 
-  // Building the transaction script which will call the counter contract
-  let txScriptCode = `
-      use.external_contract::counter_contract
-      begin
-          call.counter_contract::increment_count
-      end
-    `;
-
   // Creating the library to call the counter contract
-  let counterComponentLib = AssemblerUtils.createAccountComponentLibrary(
+  const gameComponentLib = AssemblerUtils.createAccountComponentLibrary(
     assembler, // assembler
-    "external_contract::counter_contract", // library path to call the contract
-    counterContractCode, // account code of the contract
+    "external_contract::game_contract", // library path to call the contract
+    gameContractCode, // account code of the contract
   );
 
-  // Creating the transaction script
-  let txScript = TransactionScript.compile(
-    txScriptCode,
-    assembler.withLibrary(counterComponentLib),
-  );
+  // const noteScript = NoteScript.compile(makeMoveNoteCode, gameComponentLib);
+  const noteScript = client.compileNoteScript(makeMoveNoteCode);
 
-  // Creating a transaction request with the transaction script
-  let txIncrementRequest = new TransactionRequestBuilder()
-    .withCustomScript(txScript)
+  const emptyAssets = new NoteAssets([]);
+  const index: bigint = BigInt(5);
+  const noteInputs = new NoteInputs(new FeltArray([new Felt(index)]));
+  const serialNumberValues = generateRandomSerialNumber();
+  const serialNumber = Word.newFromFelts([
+    new Felt(serialNumberValues[0]),
+    new Felt(serialNumberValues[1]),
+    new Felt(serialNumberValues[2]),
+    new Felt(serialNumberValues[3]),
+  ]);
+  const recipient = new NoteRecipient(serialNumber, noteScript, noteInputs);
+  const noteTag = NoteTag.forPublicUseCase(0, 0, NoteExecutionMode.newLocal());
+  const metadata = new NoteMetadata(
+    alice.id(),
+    NoteType.Public,
+    noteTag,
+    NoteExecutionHint.always(),
+    new Felt(BigInt(0)),
+  );
+  const makeMoveNote = new Note(emptyAssets, metadata, recipient);
+
+  const noteRequest = new TransactionRequestBuilder()
+    .withOwnOutputNotes(new OutputNotesArray([OutputNote.full(makeMoveNote)]))
     .build();
 
-  // Executing the transaction script against the counter contract
-  let txResult = await client.newTransaction(
-    counterContractAccount.id(),
-    txIncrementRequest,
-  );
-
-  // Submitting the transaction result to the node
-  await client.submitTransaction(txResult);
+  // TODO: integrate wallet SDK to submit make move transaction
 
   // Sync state
   await client.syncState();
+}
 
-  // Logging the count of counter contract
-  let counter = await client.getAccount(counterContractAccount.id());
-
-  // Here we get the first Word from storage of the counter contract
-  // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
-  let count = counter?.storage().getItem(1);
-
-  // Converting the Word represented as a hex to a single integer value
-  const counterValue = Number(
-    BigInt("0x" + count!.toHex().slice(-16).match(/../g)!.reverse().join("")),
-  );
-
-  console.log("Count: ", counterValue);
+export function generateRandomSerialNumber(): bigint[] {
+  return [
+    BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
+    BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
+    BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
+    BigInt(Math.floor(Math.random() * 0x1_0000_0000)),
+  ];
 }
