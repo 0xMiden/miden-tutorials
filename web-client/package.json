@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@demox-labs/miden-sdk": "0.10.1",
+    "@demox-labs/miden-sdk": "0.11.1",
+    "@demox-labs/miden-wallet-adapter": "^0.3.3",
+    "@demox-labs/miden-wallet-adapter-react": "^0.3.0",
+    "@demox-labs/miden-wallet-adapter-reactui": "^0.3.0",
     "next": "15.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
