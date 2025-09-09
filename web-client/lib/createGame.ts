@@ -1,46 +1,51 @@
 import gameContractCode from "./contracts/tic_tac_toe_code";
+import {
+  AccountId,
+  AssemblerUtils,
+  AccountStorageMode,
+  AccountComponent,
+  AccountType,
+  AccountBuilder,
+  StorageSlot,
+  StorageMap,
+  TransactionKernel,
+  TransactionRequestBuilder,
+  TransactionScript,
+  WebClient,
+  Word,
+} from "@demox-labs/miden-sdk";
 
-// lib/makeMove.ts
-export async function createGame(): Promise<void> {
+const incrNonceAuthCode = `use.miden::account
+        export.auth__basic
+          exec.account::incr_nonce
+          drop
+        end`;
+
+// lib/createGame.ts
+export async function createGame(
+  alice: AccountId,
+  bob: AccountId,
+  client: WebClient,
+): Promise<string> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
-    return;
+    return "";
   }
 
-  // dynamic import → only in the browser, so WASM is loaded client‑side
-  const {
-    AccountId,
-    AssemblerUtils,
-    AccountStorageMode,
-    AccountComponent,
-    AccountBuilder,
-    AccountType,
-    StorageSlot,
-    StorageMap,
-    TransactionKernel,
-    TransactionRequestBuilder,
-    TransactionScript,
-    WebClient,
-    Felt,
-    Word,
-  } = await import("@demox-labs/miden-sdk");
+  await client.syncState();
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
-  const client = await WebClient.createClient(nodeEndpoint);
-  console.log("Current block number: ", (await client.syncState()).blockNum());
-
-  // Generate alice and bob wallets
-  const alice = await client.newWallet(AccountStorageMode.public(), true);
-  const bob = await client.newWallet(AccountStorageMode.public(), true);
+  console.log("Generated accounts");
 
   // Building the tic tac toe contract
-  const assembler = TransactionKernel.assembler();
+  let assembler = TransactionKernel.assembler().withDebugMode(true);
 
-  const emptyStorageSlot = StorageSlot.fromValue(Word.newFromFelts([]));
-  const storageMap = new StorageMap();
-  const storageSlotMap = StorageSlot.map(storageMap);
+  let emptyStorageSlot = StorageSlot.emptyValue();
+  let storageMap = new StorageMap();
+  let storageSlotMap = StorageSlot.map(storageMap);
 
-  const gameComponent = AccountComponent.compile(gameContractCode, assembler, [
+  console.log("before game component");
+
+  let gameComponent = AccountComponent.compile(gameContractCode, assembler, [
     // player1 storage slot
     emptyStorageSlot,
     // player2 storage slot
@@ -53,25 +58,37 @@ export async function createGame(): Promise<void> {
     storageSlotMap,
   ]).withSupportsAllTypes();
 
+  console.log("after game component");
+
   let seed = new Uint8Array(32);
-  seed = crypto.getRandomValues(seed);
+  crypto.getRandomValues(seed);
+
+  const noAuth = AccountComponent.compile(
+    incrNonceAuthCode,
+    assembler,
+    [],
+  ).withSupportsAllTypes();
 
   const gameContract = new AccountBuilder(seed)
     .accountType(AccountType.RegularAccountImmutableCode)
     .storageMode(AccountStorageMode.public())
     .withComponent(gameComponent)
-    .withAuthComponent(NoAuth)
+    .withAuthComponent(noAuth)
     .build();
+
+  console.log("Created game contract locally");
 
   await client.newAccount(gameContract.account, gameContract.seed, false);
 
+  console.log("Added game contract to client");
+
   // Building the transaction script which will call the counter contract
   const deploymentScriptCode = `
-    use.external_contract::game_contract
-    begin
-        call.game_contract::constructor
-    end
-    `;
+      use.external_contract::game_contract
+      begin
+          call.game_contract::constructor
+      end
+      `;
 
   // Creating the library to call the counter contract
   const gameComponentLib = AssemblerUtils.createAccountComponentLibrary(
@@ -87,10 +104,10 @@ export async function createGame(): Promise<void> {
   );
 
   const deploymentArg = Word.newFromFelts([
-    bob.id().suffix(),
-    bob.id().prefix(),
-    alice.id().suffix(),
-    alice.id().prefix(),
+    bob.suffix(),
+    bob.prefix(),
+    alice.suffix(),
+    alice.prefix(),
   ]);
 
   // Creating a transaction request with the transaction script
@@ -110,4 +127,7 @@ export async function createGame(): Promise<void> {
 
   // Sync state
   await client.syncState();
+
+  // Return the game contract account ID
+  return gameContract.account.id().toString();
 }

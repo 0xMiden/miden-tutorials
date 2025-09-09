@@ -1,26 +1,26 @@
 import endGameNoteCode from "./notes/end_game_code";
 import gameContractCode from "./contracts/tic_tac_toe_code";
+import { NODE_URL } from "./constants";
+import { TransactionRequest } from "@demox-labs/miden-sdk";
 
-// lib/makeMove.ts
-export async function endGame(
+// lib/endGame.ts
+export async function getEndGameTransactionRequest(
   gameContractIdBech32: string,
+  connectedWalletId: string,
   playerSlot: bigint,
-): Promise<void> {
+): Promise<TransactionRequest | null> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
-    return;
+    return null;
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const {
     AccountId,
     AssemblerUtils,
-    AccountStorageMode,
-    StorageSlot,
     TransactionKernel,
     NoteInputs,
     NoteMetadata,
-    NoteScript,
     FeltArray,
     WebClient,
     NoteAssets,
@@ -37,16 +37,12 @@ export async function endGame(
     TransactionRequestBuilder,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
-  const client = await WebClient.createClient(nodeEndpoint);
-  console.log("Current block number: ", (await client.syncState()).blockNum());
-
-  // Generate alice and bob wallets
-  const alice = await client.newWallet(AccountStorageMode.public(), true);
-  // TODO: replace with getting wallet from SDK
+  const client = await WebClient.createClient(NODE_URL);
+  const state = await client.syncState();
+  console.log("Current block number: ", state.blockNum());
 
   // Building the tic tac toe contract
-  const assembler = TransactionKernel.assembler();
+  let assembler = TransactionKernel.assembler();
 
   const gameContractId = AccountId.fromBech32(gameContractIdBech32);
 
@@ -71,8 +67,9 @@ export async function endGame(
     gameContractCode, // account code of the contract
   );
 
-  // const noteScript = NoteScript.compile(endGameNoteCode, gameComponentLib);
-  const noteScript = client.compileNoteScript(endGameNoteCode);
+  assembler = assembler.withDebugMode(true).withLibrary(gameComponentLib);
+
+  const noteScript = assembler.compileNoteScript(endGameNoteCode);
 
   const emptyAssets = new NoteAssets([]);
   const noteInputs = new NoteInputs(new FeltArray([new Felt(playerSlot)]));
@@ -86,7 +83,7 @@ export async function endGame(
   const recipient = new NoteRecipient(serialNumber, noteScript, noteInputs);
   const noteTag = NoteTag.forPublicUseCase(0, 0, NoteExecutionMode.newLocal());
   const metadata = new NoteMetadata(
-    alice.id(), // TODO: replace with getting wallet from SDK
+    AccountId.fromBech32(connectedWalletId),
     NoteType.Public,
     noteTag,
     NoteExecutionHint.always(),
@@ -98,10 +95,7 @@ export async function endGame(
     .withOwnOutputNotes(new OutputNotesArray([OutputNote.full(endGameNote)]))
     .build();
 
-  // TODO: integrate wallet SDK to submit make move transaction
-
-  // Sync state
-  await client.syncState();
+  return noteRequest;
 }
 
 export function generateRandomSerialNumber(): bigint[] {

@@ -1,51 +1,51 @@
 import makeMoveNoteCode from "./notes/make_a_move_code";
 import gameContractCode from "./contracts/tic_tac_toe_code";
+import {
+  AccountId,
+  AssemblerUtils,
+  TransactionKernel,
+  NoteInputs,
+  NoteMetadata,
+  FeltArray,
+  WebClient,
+  NoteAssets,
+  Felt,
+  Word,
+  NoteTag,
+  NoteType,
+  NoteExecutionMode,
+  NoteExecutionHint,
+  NoteRecipient,
+  Note,
+  OutputNote,
+  OutputNotesArray,
+  TransactionRequestBuilder,
+  AccountInterface,
+  NetworkId,
+} from "@demox-labs/miden-sdk";
+import {
+  CustomTransaction,
+  MidenTransaction,
+  TransactionType,
+} from "@demox-labs/miden-wallet-adapter";
 
 // lib/makeMove.ts
-export async function makeMove(gameContractIdBech32: string): Promise<void> {
+export async function makeMove(
+  gameContractId: AccountId,
+  connectedWalletId: AccountId,
+  client: WebClient,
+  requestTransaction: (transaction: MidenTransaction) => Promise<string>,
+): Promise<string | null> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
-    return;
+    return null;
   }
 
-  // dynamic import → only in the browser, so WASM is loaded client‑side
-  const {
-    AccountId,
-    AssemblerUtils,
-    AccountStorageMode,
-    StorageSlot,
-    TransactionKernel,
-    NoteInputs,
-    NoteMetadata,
-    NoteScript,
-    FeltArray,
-    WebClient,
-    NoteAssets,
-    Felt,
-    Word,
-    NoteTag,
-    NoteType,
-    NoteExecutionMode,
-    NoteExecutionHint,
-    NoteRecipient,
-    Note,
-    OutputNote,
-    OutputNotesArray,
-    TransactionRequestBuilder,
-  } = await import("@demox-labs/miden-sdk");
-
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
-  const client = await WebClient.createClient(nodeEndpoint);
-  console.log("Current block number: ", (await client.syncState()).blockNum());
-
-  // Generate alice and bob wallets
-  const alice = await client.newWallet(AccountStorageMode.public(), true);
-  const bob = await client.newWallet(AccountStorageMode.public(), true);
+  const state = await client.syncState();
+  console.log("Current block number: ", state.blockNum());
 
   // Building the tic tac toe contract
-  const assembler = TransactionKernel.assembler();
-
-  const gameContractId = AccountId.fromBech32(gameContractIdBech32);
+  let assembler = TransactionKernel.assembler();
 
   // Reading the public state of the tic tac toe contract from testnet,
   // and importing it into the WebClient
@@ -55,9 +55,7 @@ export async function makeMove(gameContractIdBech32: string): Promise<void> {
     await client.syncState();
     gameContractAccount = await client.getAccount(gameContractId);
     if (!gameContractAccount) {
-      throw new Error(
-        `Account not found after import: ${gameContractIdBech32}`,
-      );
+      throw new Error(`Account not found after import: ${gameContractId}`);
     }
   }
 
@@ -68,8 +66,9 @@ export async function makeMove(gameContractIdBech32: string): Promise<void> {
     gameContractCode, // account code of the contract
   );
 
-  // const noteScript = NoteScript.compile(makeMoveNoteCode, gameComponentLib);
-  const noteScript = client.compileNoteScript(makeMoveNoteCode);
+  assembler = assembler.withDebugMode(true).withLibrary(gameComponentLib);
+
+  const noteScript = assembler.compileNoteScript(makeMoveNoteCode);
 
   const emptyAssets = new NoteAssets([]);
   const index: bigint = BigInt(5);
@@ -84,7 +83,7 @@ export async function makeMove(gameContractIdBech32: string): Promise<void> {
   const recipient = new NoteRecipient(serialNumber, noteScript, noteInputs);
   const noteTag = NoteTag.forPublicUseCase(0, 0, NoteExecutionMode.newLocal());
   const metadata = new NoteMetadata(
-    alice.id(),
+    connectedWalletId,
     NoteType.Public,
     noteTag,
     NoteExecutionHint.always(),
@@ -96,10 +95,19 @@ export async function makeMove(gameContractIdBech32: string): Promise<void> {
     .withOwnOutputNotes(new OutputNotesArray([OutputNote.full(makeMoveNote)]))
     .build();
 
-  // TODO: integrate wallet SDK to submit make move transaction
+  const tx = new CustomTransaction(
+    connectedWalletId.toBech32(NetworkId.Testnet, AccountInterface.BasicWallet),
+    noteRequest,
+  );
 
-  // Sync state
+  const txId = await requestTransaction({
+    type: TransactionType.Custom,
+    payload: tx,
+  });
+
   await client.syncState();
+
+  return txId;
 }
 
 export function generateRandomSerialNumber(): bigint[] {
