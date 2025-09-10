@@ -1,4 +1,4 @@
-import gameContractCode from "./contracts/tic_tac_toe_code";
+// import gameContractCode from "./contracts/tic_tac_toe_code";
 import { instantiateClient } from "./utils";
 
 const incrNonceAuthCode = `use.miden::account
@@ -16,6 +16,36 @@ export async function createGame(
     console.warn("webClient() can only run in the browser");
     return "";
   }
+
+  const gameContractCode = `
+use.miden::account
+
+# => [player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+export.constructor
+    # store player1 ID by padding value to size of one word
+    push.0.0 push.0
+    # [player1_slot, 0, 0, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    exec.account::set_item
+    # [OLD_VALUE, player2_prefix, player2_suffix]
+
+    # drop old value from stack
+    dropw
+    # [player2_prefix, player2_suffix]
+
+    # pad to word
+    push.0.0 push.1
+    # [player2_slot, 0, 0, player2_prefix, player2_suffix]
+
+    # store player2 ID
+    exec.account::set_item
+    # [OLD_VALUE]
+
+    # Drop old value from stack (returned by set_item call)
+    dropw
+    # []
+end
+`;
 
   // Dynamic import to ensure client-side execution
   const {
@@ -60,7 +90,9 @@ export async function createGame(
 
   // Building the tic tac toe contract
   let assembler = TransactionKernel.assembler().withDebugMode(true);
-
+  // let emptyStorageSlot = StorageSlot.fromValue(
+  //   new Word(BigUint64Array.from([BigInt(0), BigInt(0), BigInt(0), BigInt(0)])),
+  // );
   let emptyStorageSlot = StorageSlot.emptyValue();
   let storageMap = new StorageMap();
   let storageSlotMap = StorageSlot.map(storageMap);
@@ -70,14 +102,10 @@ export async function createGame(
   let gameComponent = AccountComponent.compile(gameContractCode, assembler, [
     // player1 storage slot
     emptyStorageSlot,
+    emptyStorageSlot,
     // player2 storage slot
-    emptyStorageSlot,
-    // flag storage slot
-    emptyStorageSlot,
-    // winner storage slot
-    emptyStorageSlot,
-    // mapping storage slot
-    storageSlotMap,
+    // emptyStorageSlot,
+    // storageSlotMap,
   ]).withSupportsAllTypes();
 
   console.log("after game component");
