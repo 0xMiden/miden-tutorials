@@ -327,7 +327,7 @@ async fn main() -> Result<(), ClientError> {
     let digest = Hasher::hash_elements(&secret_vals);
     println!("digest: {:?}", digest);
 
-    let code = fs::read_to_string(Path::new("../masm/notes/hash_preimage_note.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("./masm/notes/hash_preimage_note.masm")).unwrap();
     let serial_num = client.rng().draw_word();
 
     let note_script = ScriptBuilder::new(true).compile_note_script(code).unwrap();
