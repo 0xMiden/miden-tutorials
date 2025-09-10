@@ -245,7 +245,7 @@ println!("\n[STEP 1] Reading data from public state");
 
 // Define the Counter Contract account id from counter contract deploy
 let (_network_id, address) =
-    Address::from_bech32("mtst1qzusgpvww6lz7qzguncjax7jefcqqthgja7").unwrap();
+    Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
 let counter_contract_id = match address {
     Address::AccountId(account_id_address) => account_id_address.id(),
     _ => panic!("Expected AccountId address"),
@@ -347,7 +347,7 @@ Add the following code snippet to the end of your `src/main.rs` function:
 
 #     // Define the Counter Contract account id from counter contract deploy
 #     let (_network_id, address) =
-#         Address::from_bech32("mtst1qzusgpvww6lz7qzguncjax7jefcqqthgja7").unwrap();
+#         Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
 #     let counter_contract_id = match address {
 #         Address::AccountId(account_id_address) => account_id_address.id(),
 #         _ => panic!("Expected AccountId address"),
@@ -435,7 +435,7 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust
+```rust,no_run
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{
@@ -492,7 +492,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_network_id, address) =
-        Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
+        Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
     let counter_contract_id = match address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),

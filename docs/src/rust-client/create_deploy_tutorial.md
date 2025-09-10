@@ -66,7 +66,7 @@ Before interacting with the Miden network, we must instantiate the client. In th
 
 Copy and paste the following code into your `src/main.rs` file.
 
-```rust
+```rust,no_run
 use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::RngCore;
 use std::sync::Arc;
@@ -358,7 +358,7 @@ _When tokens are minted from this faucet, each token batch is represented as a "
 
 Your updated `main()` function in `src/main.rs` should look like this:
 
-```rust
+```rust,no_run
 use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;

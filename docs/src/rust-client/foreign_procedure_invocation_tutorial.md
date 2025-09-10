@@ -364,7 +364,7 @@ println!("\n[STEP 2] Building counter contract from public state");
 
 // Define the Counter Contract account id from counter contract deploy
 let (_, counter_contract_address) =
-    Address::from_bech32("mtst1qzusgpvww6lz7qzguncjax7jefcqqthgja7").unwrap();
+    Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
 let counter_contract_id = match counter_contract_address {
     Address::AccountId(account_id_address) => account_id_address.id(),
     _ => panic!("Expected AccountId address"),
@@ -399,7 +399,7 @@ This step uses the logic we explained in the [Public Account Interaction Tutoria
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust
+```rust,no_run
 # use rand::RngCore;
 # use std::{fs, path::Path, sync::Arc, time::Duration};
 # use tokio::time::sleep;
@@ -520,7 +520,7 @@ Add this snippet to the end of your file in the `main()` function:
 #
 #     // Define the Counter Contract account id from counter contract deploy
 #     let (_, counter_contract_address) =
-#         Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
+#         Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
 #     let counter_contract_id = match counter_contract_address {
 #         Address::AccountId(account_id_address) => account_id_address.id(),
 #         _ => panic!("Expected AccountId address"),
