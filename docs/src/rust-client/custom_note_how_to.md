@@ -128,15 +128,17 @@ With the note created, Bob can now consume it—but only if he provides the corr
 
 The following Rust code demonstrates how to implement the steps outlined above using the Miden client library:
 
-```rust
+```rust,no_run
+use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 use tokio::time::{sleep, Duration};
 
 use miden_client::{
     account::{
-        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
-        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType,
+        component::{BasicFungibleFaucet, BasicWallet},
+        Account, AccountBuilder, AccountId, AccountIdAddress, AccountStorageMode, AccountType,
+        Address, AddressInterface,
     },
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
@@ -145,18 +147,18 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteRelevance, NoteScript, NoteTag, NoteType,
+        NoteRecipient, NoteRelevance, NoteTag, NoteType,
     },
     rpc::{Endpoint, TonicRpcClient},
     store::InputNoteRecord,
-    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt, Word,
+    transaction::{OutputNote, TransactionRequestBuilder},
+    Client, ClientError, Felt, ScriptBuilder,
 };
 use miden_objects::account::NetworkId;
 use miden_objects::Hasher;
 // Helper to create a basic account
 async fn create_basic_account(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     keystore: FilesystemKeyStore<StdRng>,
 ) -> Result<miden_client::account::Account, ClientError> {
     let mut init_seed = [0_u8; 32];
@@ -166,7 +168,7 @@ async fn create_basic_account(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicWallet);
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -178,7 +180,7 @@ async fn create_basic_account(
 }
 
 async fn create_basic_faucet(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     keystore: FilesystemKeyStore<StdRng>,
 ) -> Result<miden_client::account::Account, ClientError> {
     let mut init_seed = [0u8; 32];
@@ -190,7 +192,7 @@ async fn create_basic_faucet(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -202,7 +204,7 @@ async fn create_basic_faucet(
 
 // Helper to wait until an account has the expected number of consumable notes
 pub async fn wait_for_note(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     account_id: &Account,
     expected: &Note,
 ) -> Result<(), ClientError> {
@@ -232,10 +234,12 @@ async fn main() -> Result<(), ClientError> {
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -251,19 +255,31 @@ async fn main() -> Result<(), ClientError> {
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
     println!(
         "Alice's account ID: {:?}",
-        alice_account.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            alice_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
     println!(
         "Bob's account ID: {:?}",
-        bob_account.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            bob_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore).await?;
     println!(
         "Faucet account ID: {:?}",
-        faucet.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            faucet.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
     client.sync_state().await?;
 
@@ -311,10 +327,10 @@ async fn main() -> Result<(), ClientError> {
     let digest = Hasher::hash_elements(&secret_vals);
     println!("digest: {:?}", digest);
 
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let code = fs::read_to_string(Path::new("../masm/notes/hash_preimage_note.masm")).unwrap();
     let serial_num = client.rng().draw_word();
-    let note_script = NoteScript::compile(code, assembler).unwrap();
+
+    let note_script = ScriptBuilder::new(true).compile_note_script(code).unwrap();
     let note_inputs = NoteInputs::new(digest.to_vec()).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
     let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
@@ -351,7 +367,7 @@ async fn main() -> Result<(), ClientError> {
 
     let secret = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let consume_custom_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(custom_note, Some(secret))])
+        .unauthenticated_input_notes([(custom_note, Some(secret.into()))])
         .build()
         .unwrap();
     let tx_result = client

@@ -31,15 +31,16 @@ cd miden-defi-app
 Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
-miden-client = { version = "0.10.0", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.10.0", default-features = false }
-miden-objects = { version = "0.10.0", default-features = false }
-miden-crypto = { version = "0.15.0", features = ["executable"] }
-miden-assembly = "0.15.0"
+[dependencies]
+miden-client = { version = "0.11", features = ["testing", "tonic", "sqlite"] }
+miden-lib = { version = "0.11", default-features = false }
+miden-objects = { version = "0.11", default-features = false, features = ["testing"] }
+miden-crypto = { version = "0.15.9", features = ["executable"] }
+miden-assembly = "0.17.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
-tokio = { version = "1.40", features = ["rt-multi-thread", "net", "macros"] }
+tokio = { version = "1.46", features = ["rt-multi-thread", "net", "macros", "fs"] }
 rand_chacha = "0.9.0"
 miden-client-tools = "0.2.0"
 ```
@@ -49,32 +50,34 @@ miden-client-tools = "0.2.0"
 Copy and paste the following code into your `src/main.rs` file:
 
 ```rust
+use miden_assembly::{
+    ast::{Module, ModuleKind},
+    Assembler, DefaultSourceManager, LibraryPath,
+};
 use rand::RngCore;
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::{
         component::AccountComponent, AccountBuilder, AccountId, AccountStorageMode, AccountType,
-        StorageSlot,
+        Address, StorageSlot,
     },
+    builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{
         domain::account::{AccountStorageRequirements, StorageMapKey},
-        Endpoint,
+        Endpoint, TonicRpcClient,
     },
-    transaction::{
-        ForeignAccount, TransactionKernel, TransactionRequestBuilder, TransactionScript,
-    },
-    Client, ClientError, Felt, Word, ZERO,
+    transaction::{ForeignAccount, TransactionKernel, TransactionRequestBuilder},
+    Client, ClientError, Felt, ScriptBuilder, Word, ZERO,
 };
 use miden_lib::account::auth::NoAuth;
-
-use miden_client_tools::{create_library, instantiate_client};
 
 /// Import the oracle + its publishers and return the ForeignAccount list
 /// Due to Pragma's decentralized oracle architecture, we need to get the
 /// list of all data publisher accounts to read price from via a nested FPI call
 pub async fn get_oracle_foreign_accounts(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     oracle_account_id: AccountId,
     trading_pair: u64,
 ) -> Result<Vec<ForeignAccount>, ClientError> {
@@ -124,21 +127,49 @@ pub async fn get_oracle_foreign_accounts(
     Ok(foreign_accounts)
 }
 
+fn create_library(
+    assembler: Assembler,
+    library_path: &str,
+    source_code: &str,
+) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let module = Module::parser(ModuleKind::Library).parse_str(
+        LibraryPath::new(library_path)?,
+        source_code,
+        &source_manager,
+    )?;
+    let library = assembler.clone().assemble_library([module])?;
+    Ok(library)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // Initialize Client
     // -------------------------------------------------------------------------
     let endpoint = Endpoint::testnet();
-    let mut client = instantiate_client(endpoint, None).await.unwrap();
+    let timeout_ms = 10_000;
+    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
+    let mut client = ClientBuilder::new()
+        .rpc(rpc_api)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
+        .build()
+        .await?;
 
     println!("Latest block: {}", client.sync_state().await?.block_num);
 
     // -------------------------------------------------------------------------
     // Get all foreign accounts for oracle data
     // -------------------------------------------------------------------------
-    let (_, oracle_account_id) =
-        AccountId::from_bech32("mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99").unwrap();
+    let (_, oracle_address) =
+        Address::from_bech32("mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99").unwrap();
+    let oracle_account_id = match oracle_address {
+        Address::AccountId(account_id_address) => account_id_address.id(),
+        _ => panic!("Expected AccountId address"),
+    };
     let btc_usd_pair_id = 120195681;
     let foreign_accounts: Vec<ForeignAccount> =
         get_oracle_foreign_accounts(&mut client, oracle_account_id, btc_usd_pair_id).await?;
@@ -189,14 +220,14 @@ async fn main() -> Result<(), ClientError> {
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let library_path = "external_contract::oracle_reader";
-    let account_component_lib = create_library(contract_code, library_path).unwrap();
+    let account_component_lib =
+        create_library(assembler.clone(), library_path, &contract_code).unwrap();
 
-    let tx_script = TransactionScript::compile(
-        script_code,
-        [],
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(script_code)
+        .unwrap();
 
     let tx_increment_request = TransactionRequestBuilder::new()
         .foreign_accounts(foreign_accounts)

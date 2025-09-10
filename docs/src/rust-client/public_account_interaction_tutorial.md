@@ -32,15 +32,15 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.10.0", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.10.0", default-features = false }
-miden-objects = { version = "0.10.0", default-features = false }
-miden-crypto = { version = "0.15.0", features = ["executable"] }
-miden-assembly = "0.15.0"
+miden-client = { version = "0.11", features = ["testing", "tonic", "sqlite"] }
+miden-lib = { version = "0.11", default-features = false }
+miden-objects = { version = "0.11", default-features = false, features = ["testing"] }
+miden-crypto = { version = "0.15.9", features = ["executable"] }
+miden-assembly = "0.17.0"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
-tokio = { version = "1.40", features = ["rt-multi-thread", "net", "macros"] }
+tokio = { version = "1.46", features = ["rt-multi-thread", "net", "macros", "fs"] }
 rand_chacha = "0.9.0"
 ```
 
@@ -131,11 +131,12 @@ use miden_assembly::{
     LibraryPath,
 };
 use miden_client::{
-    account::AccountId,
+    account::Address,
     builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-    ClientError,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
+    ClientError, ScriptBuilder,
 };
 use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
 
@@ -160,11 +161,12 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -185,44 +187,69 @@ Add the following code snippet to the end of your `src/main.rs` function:
 
 ```rust,no_run
 # use std::{fs, path::Path, sync::Arc};
+
 # use miden_assembly::{
 #     ast::{Module, ModuleKind},
 #     LibraryPath,
 # };
 # use miden_client::{
-#     account::AccountId,
+#     account::Address,
 #     builder::ClientBuilder,
+#     keystore::FilesystemKeyStore,
 #     rpc::{Endpoint, TonicRpcClient},
-#     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-#     ClientError,
+#     transaction::{TransactionKernel, TransactionRequestBuilder},
+#     ClientError, ScriptBuilder,
 # };
 # use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
-#
+
+# fn create_library(
+#     assembler: Assembler,
+#     library_path: &str,
+#     source_code: &str,
+# ) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+#     let source_manager = Arc::new(DefaultSourceManager::default());
+#     let module = Module::parser(ModuleKind::Library).parse_str(
+#         LibraryPath::new(library_path)?,
+#         source_code,
+#         &source_manager,
+#     )?;
+#     let library = assembler.clone().assemble_library([module])?;
+#     Ok(library)
+# }
+
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
 #     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-#
+#     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
 #     let mut client = ClientBuilder::new()
 #         .rpc(rpc_api)
-#         .filesystem_keystore("./keystore")
-#         .in_debug_mode(true)
+#         .authenticator(keystore)
+#         .in_debug_mode(true.into())
 #         .build()
 #         .await?;
-#
+
 #     let sync_summary = client.sync_state().await.unwrap();
+#     println!("Latest block: {}", sync_summary.block_num);
+
+
+
+
 // -------------------------------------------------------------------------
 // STEP 1: Read the Public State of the Counter Contract
 // -------------------------------------------------------------------------
 println!("\n[STEP 1] Reading data from public state");
 
-// Define the Counter Contract `AccountId`.
-// Below is the ID of the contract deployed to testnet, but you can replace with the `AccountId`
-// from your own counter contract deploy tutorial.
-let (_, counter_contract_id) =
-    AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
+// Define the Counter Contract account id from counter contract deploy
+let (_network_id, address) =
+    Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+let counter_contract_id = match address {
+    Address::AccountId(account_id_address) => account_id_address.id(),
+    _ => panic!("Expected AccountId address"),
+};
 
 client
     .import_account_by_id(counter_contract_id)
@@ -265,19 +292,21 @@ Add the following code snippet to the end of your `src/main.rs` function:
 
 ```rust,no_run
 # use std::{fs, path::Path, sync::Arc};
+
 # use miden_assembly::{
 #     ast::{Module, ModuleKind},
 #     LibraryPath,
 # };
 # use miden_client::{
-#     account::AccountId,
+#     account::Address,
 #     builder::ClientBuilder,
+#     keystore::FilesystemKeyStore,
 #     rpc::{Endpoint, TonicRpcClient},
-#     transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-#     ClientError,
+#     transaction::{TransactionKernel, TransactionRequestBuilder},
+#     ClientError, ScriptBuilder,
 # };
-# use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager, account::Account};
-#
+# use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
+
 # fn create_library(
 #     assembler: Assembler,
 #     library_path: &str,
@@ -292,44 +321,67 @@ Add the following code snippet to the end of your `src/main.rs` function:
 #     let library = assembler.clone().assemble_library([module])?;
 #     Ok(library)
 # }
-#
+
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
 #     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-#
+#     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
 #     let mut client = ClientBuilder::new()
 #         .rpc(rpc_api)
-#         .filesystem_keystore("./keystore")
-#         .in_debug_mode(true)
+#         .authenticator(keystore)
+#         .in_debug_mode(true.into())
 #         .build()
 #         .await?;
-#
+
 #     let sync_summary = client.sync_state().await.unwrap();
-#
-#     let (_, counter_contract_id) =
-#         AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
+#     println!("Latest block: {}", sync_summary.block_num);
+
+#     // -------------------------------------------------------------------------
+#     // STEP 1: Read the Public State of the Counter Contract
+#     // -------------------------------------------------------------------------
+#     println!("\n[STEP 1] Reading data from public state");
+
+#     // Define the Counter Contract account id from counter contract deploy
+#     let (_network_id, address) =
+#         Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+#     let counter_contract_id = match address {
+#         Address::AccountId(account_id_address) => account_id_address.id(),
+#         _ => panic!("Expected AccountId address"),
+#     };
+
 #     client
 #         .import_account_by_id(counter_contract_id)
 #         .await
 #         .unwrap();
+
 #     let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
+
 #     let counter_contract = if let Some(account_record) = counter_contract_details {
-#         account_record.account().clone()
+#         // Clone the account to get an owned instance
+#         let account = account_record.account().clone();
+#         println!(
+#             "Account details: {:?}",
+#             account.storage().slots().first().unwrap()
+#         );
+#         account // Now returns an owned account
 #     } else {
 #         panic!("Counter contract not found!");
 #     };
+
+#
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
 
 // Load the MASM script referencing the increment procedure
-let script_path = Path::new("./masm/scripts/counter_script.masm");
+let script_path = Path::new("../masm/scripts/counter_script.masm");
 let script_code = fs::read_to_string(script_path).unwrap();
 
-let counter_path = Path::new("./masm/accounts/counter.masm");
+let counter_path = Path::new("../masm/accounts/counter.masm");
 let counter_code = fs::read_to_string(counter_path).unwrap();
 
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -340,11 +392,11 @@ let account_component_lib = create_library(
 )
 .unwrap();
 
-let tx_script = TransactionScript::compile(
-    script_code,
-    assembler.with_library(&account_component_lib).unwrap(),
-)
-.unwrap();
+let tx_script = ScriptBuilder::new(true)
+    .with_dynamically_linked_library(&account_component_lib)
+    .unwrap()
+    .compile_tx_script(script_code)
+    .unwrap();
 
 // Build a transaction request with the custom script
 let tx_increment_request = TransactionRequestBuilder::new()
@@ -383,7 +435,7 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust
+```rust,no_run
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{
@@ -391,11 +443,12 @@ use miden_assembly::{
     LibraryPath,
 };
 use miden_client::{
-    account::AccountId,
+    account::Address,
     builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-    ClientError,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
+    ClientError, ScriptBuilder,
 };
 use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
 
@@ -420,11 +473,12 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -437,8 +491,12 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Reading data from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let (_, counter_contract_id) =
-        AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
+    let (_network_id, address) =
+        Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+    let counter_contract_id = match address {
+        Address::AccountId(account_id_address) => account_id_address.id(),
+        _ => panic!("Expected AccountId address"),
+    };
 
     client
         .import_account_by_id(counter_contract_id)
@@ -464,10 +522,10 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
 
     // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("./masm/scripts/counter_script.masm");
+    let script_path = Path::new("../masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
-    let counter_path = Path::new("./masm/accounts/counter.masm");
+    let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -478,11 +536,11 @@ async fn main() -> Result<(), ClientError> {
     )
     .unwrap();
 
-    let tx_script = TransactionScript::compile(
-        script_code,
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(script_code)
+        .unwrap();
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -513,7 +571,6 @@ async fn main() -> Result<(), ClientError> {
         "counter contract storage: {:?}",
         account.unwrap().account().storage().get_item(0)
     );
-
     Ok(())
 }
 ```

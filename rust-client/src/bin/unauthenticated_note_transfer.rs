@@ -4,8 +4,9 @@ use tokio::time::{Duration, Instant};
 
 use miden_client::{
     account::{
-        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
-        AccountBuilder, AccountStorageMode, AccountType,
+        component::{BasicFungibleFaucet, BasicWallet},
+        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
+        AddressInterface,
     },
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
@@ -18,6 +19,7 @@ use miden_client::{
     utils::{Deserializable, Serializable},
     ClientError, Felt,
 };
+use miden_lib::account::auth::AuthRpoFalcon512;
 use miden_objects::account::NetworkId;
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
@@ -26,10 +28,12 @@ async fn main() -> Result<(), ClientError> {
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -59,7 +63,7 @@ async fn main() -> Result<(), ClientError> {
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
 
     let (faucet_account, seed) = builder.build().unwrap();
@@ -70,7 +74,11 @@ async fn main() -> Result<(), ClientError> {
         .await?;
     println!(
         "Faucet account ID: {}",
-        faucet_account.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            faucet_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
 
     // Add the key pair to the keystore
@@ -97,7 +105,7 @@ async fn main() -> Result<(), ClientError> {
         let builder = AccountBuilder::new(init_seed)
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+            .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
             .with_component(BasicWallet);
 
         let (account, seed) = builder.build().unwrap();
@@ -105,7 +113,11 @@ async fn main() -> Result<(), ClientError> {
         println!(
             "account id {:?}: {}",
             i,
-            account.id().to_bech32(NetworkId::Testnet)
+            Address::from(AccountIdAddress::new(
+                account.id(),
+                AddressInterface::Unspecified
+            ))
+            .to_bech32(NetworkId::Testnet)
         );
         client.add_account(&account, Some(seed), true).await?;
 
@@ -169,10 +181,21 @@ async fn main() -> Result<(), ClientError> {
     for i in 0..number_of_accounts - 1 {
         let loop_start = Instant::now();
         println!("\nunauthenticated tx {:?}", i + 1);
-        println!("sender: {}", accounts[i].id().to_bech32(NetworkId::Testnet));
+        println!(
+            "sender: {}",
+            Address::from(AccountIdAddress::new(
+                accounts[i].id(),
+                AddressInterface::Unspecified
+            ))
+            .to_bech32(NetworkId::Testnet)
+        );
         println!(
             "target: {}",
-            accounts[i + 1].id().to_bech32(NetworkId::Testnet)
+            Address::from(AccountIdAddress::new(
+                accounts[i + 1].id(),
+                AddressInterface::Unspecified
+            ))
+            .to_bech32(NetworkId::Testnet)
         );
 
         // Time the creation of the p2id note
@@ -258,7 +281,11 @@ async fn main() -> Result<(), ClientError> {
             .unwrap();
         println!(
             "Account: {} balance: {}",
-            account.id().to_bech32(NetworkId::Testnet),
+            Address::from(AccountIdAddress::new(
+                account.id(),
+                AddressInterface::Unspecified
+            ))
+            .to_bech32(NetworkId::Testnet),
             balance
         );
     }

@@ -5,11 +5,12 @@ use miden_assembly::{
     LibraryPath,
 };
 use miden_client::{
-    account::AccountId,
+    account::Address,
     builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-    ClientError,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
+    ClientError, ScriptBuilder,
 };
 use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
 
@@ -34,11 +35,12 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -51,8 +53,12 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Reading data from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let (_, counter_contract_id) =
-        AccountId::from_bech32("mtst1qr94p4ra70tzqqpzlw05erhpdyydgzuz").unwrap();
+    let (_network_id, address) =
+        Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+    let counter_contract_id = match address {
+        Address::AccountId(account_id_address) => account_id_address.id(),
+        _ => panic!("Expected AccountId address"),
+    };
 
     client
         .import_account_by_id(counter_contract_id)
@@ -92,11 +98,11 @@ async fn main() -> Result<(), ClientError> {
     )
     .unwrap();
 
-    let tx_script = TransactionScript::compile(
-        script_code,
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(script_code)
+        .unwrap();
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -125,7 +131,7 @@ async fn main() -> Result<(), ClientError> {
     let account = client.get_account(counter_contract.id()).await.unwrap();
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(1)
+        account.unwrap().account().storage().get_item(0)
     );
     Ok(())
 }

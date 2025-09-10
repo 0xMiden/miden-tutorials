@@ -135,7 +135,7 @@ The script calls the `write_to_map` procedure in the account which writes the ke
 
 Below is the Rust code that deploys the smart contract, creates the transaction script, and submits a transaction to update the mapping in the account:
 
-```rust
+```rust,no_run
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
@@ -146,9 +146,10 @@ use miden_assembly::{
 use miden_client::{
     account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
     builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-    ClientError, Felt,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
+    ClientError, Felt, ScriptBuilder,
 };
 use miden_lib::account::auth::NoAuth;
 use miden_objects::{
@@ -178,11 +179,12 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -195,7 +197,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Deploy a smart contract with a mapping");
 
     // Load the MASM file for the counter contract
-    let file_path = Path::new("./masm/accounts/mapping_example_contract.masm");
+    let file_path = Path::new("../masm/accounts/mapping_example_contract.masm");
     let account_code = fs::read_to_string(file_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -242,7 +244,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Mapping Contract With Script");
 
     let script_code =
-        fs::read_to_string(Path::new("./masm/scripts/mapping_example_script.masm")).unwrap();
+        fs::read_to_string(Path::new("../masm/scripts/mapping_example_script.masm")).unwrap();
 
     // Create the library from the account source code using the helper function.
     let account_component_lib = create_library(
@@ -253,11 +255,11 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     // Compile the transaction script with the library.
-    let tx_script = TransactionScript::compile(
-        script_code,
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(script_code)
+        .unwrap();
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -287,7 +289,7 @@ async fn main() -> Result<(), ClientError> {
         .await
         .unwrap();
     let index = 1;
-    let key = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)];
+    let key = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into();
     println!(
         "Mapping state\n Index: {:?}\n Key: {:?}\n Value: {:?}",
         index,

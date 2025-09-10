@@ -8,17 +8,16 @@ use std::{fs, path::Path, sync::Arc};
 use miden_client::{
     account::{
         component::AccountComponent, AccountBuilder, AccountId, AccountStorageMode, AccountType,
-        StorageSlot,
+        Address, StorageSlot,
     },
     builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{
         domain::account::{AccountStorageRequirements, StorageMapKey},
         Endpoint, TonicRpcClient,
     },
-    transaction::{
-        ForeignAccount, TransactionKernel, TransactionRequestBuilder, TransactionScript,
-    },
-    Client, ClientError, Felt, Word, ZERO,
+    transaction::{ForeignAccount, TransactionKernel, TransactionRequestBuilder},
+    Client, ClientError, Felt, ScriptBuilder, Word, ZERO,
 };
 use miden_lib::account::auth::NoAuth;
 
@@ -26,7 +25,7 @@ use miden_lib::account::auth::NoAuth;
 /// Due to Pragma's decentralized oracle architecture, we need to get the
 /// list of all data publisher accounts to read price from via a nested FPI call
 pub async fn get_oracle_foreign_accounts(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     oracle_account_id: AccountId,
     trading_pair: u64,
 ) -> Result<Vec<ForeignAccount>, ClientError> {
@@ -99,10 +98,12 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -111,8 +112,12 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // Get all foreign accounts for oracle data
     // -------------------------------------------------------------------------
-    let (_, oracle_account_id) =
-        AccountId::from_bech32("mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99").unwrap();
+    let (_, oracle_address) =
+        Address::from_bech32("mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99").unwrap();
+    let oracle_account_id = match oracle_address {
+        Address::AccountId(account_id_address) => account_id_address.id(),
+        _ => panic!("Expected AccountId address"),
+    };
     let btc_usd_pair_id = 120195681;
     let foreign_accounts: Vec<ForeignAccount> =
         get_oracle_foreign_accounts(&mut client, oracle_account_id, btc_usd_pair_id).await?;
@@ -166,11 +171,11 @@ async fn main() -> Result<(), ClientError> {
     let account_component_lib =
         create_library(assembler.clone(), library_path, &contract_code).unwrap();
 
-    let tx_script = TransactionScript::compile(
-        script_code,
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(script_code)
+        .unwrap();
 
     let tx_increment_request = TransactionRequestBuilder::new()
         .foreign_accounts(foreign_accounts)

@@ -90,11 +90,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     OutputNote,
   } = await import("@demox-labs/miden-sdk");
 
-  const client = await WebClient.createClient(
-    "https://rpc.testnet.miden.io:443",
-  );
+  const client = await WebClient.createClient("https://rpc.testnet.miden.io");
   const prover = TransactionProver.newRemoteProver(
-    "https://tx-prover.testnet.miden.io",
+    "https://tx-prover.devnet.miden.io",
   );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
@@ -159,7 +157,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const metadata = new NoteMetadata(
     alice.id(),
     NoteType.Public,
-    NoteTag.fromAccountId(alice.id(), NoteExecutionMode.newLocal()),
+    NoteTag.fromAccountId(alice.id()),
     NoteExecutionHint.always(),
   );
 

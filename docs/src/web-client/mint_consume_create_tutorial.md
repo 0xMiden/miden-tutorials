@@ -144,26 +144,25 @@ Here's the complete `lib/createMintConsume.ts` file:
 
 ```ts
 // lib/createMintConsume.ts
-import { NoteType } from "@demox-labs/miden-sdk";
-
 export async function createMintConsume(): Promise<void> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return;
   }
 
+  // dynamic import → only in the browser, so WASM is loaded client‑side
   const { WebClient, AccountStorageMode, AccountId, NoteType } = await import(
     "@demox-labs/miden-sdk"
   );
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = "https://rpc.testnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
 
-  // 1. Sync with the latest blockchain state
+  // 1. Sync and log block
   const state = await client.syncState();
   console.log("Latest block number:", state.blockNum());
 
-  // 2. Create Alice's account
+  // 2. Create Alice’s account
   console.log("Creating account for Alice…");
   const alice = await client.newWallet(AccountStorageMode.public(), true);
   console.log("Alice ID:", alice.id().toString());
@@ -181,43 +180,46 @@ export async function createMintConsume(): Promise<void> {
 
   await client.syncState();
 
-  // 4. Mint tokens from the faucet to Alice
-  console.log("Minting 1000 tokens to Alice...");
-  const mintTxRequest = client.newMintTransactionRequest(
+  // 4. Mint tokens to Alice
+  await client.syncState();
+
+  console.log("Minting tokens to Alice...");
+  let mintTxRequest = client.newMintTransactionRequest(
     alice.id(),
     faucet.id(),
     NoteType.Public,
     BigInt(1000),
   );
 
-  const mintTx = await client.newTransaction(faucet.id(), mintTxRequest);
-  await client.submitTransaction(mintTx);
+  let txResult = await client.newTransaction(faucet.id(), mintTxRequest);
+  await client.submitTransaction(txResult);
 
   console.log("Waiting 10 seconds for transaction confirmation...");
   await new Promise((resolve) => setTimeout(resolve, 10000));
   await client.syncState();
 
-  // 5. Find notes available for consumption
-  const consumableNotes = await client.getConsumableNotes(alice.id());
-  const noteIds = consumableNotes.map((note) =>
-    note.inputNoteRecord().id().toString(),
+  // 5. Fetch minted notes
+  const mintedNotes = await client.getConsumableNotes(alice.id());
+  const mintedNoteIds = mintedNotes.map((n) =>
+    n.inputNoteRecord().id().toString(),
   );
-  console.log("Consumable note IDs:", noteIds);
+  console.log("Minted note IDs:", mintedNoteIds);
 
-  // 6. Consume the notes
-  console.log("Consuming notes...");
-  const consumeTxRequest = client.newConsumeTransactionRequest(noteIds);
-  const consumeTx = await client.newTransaction(alice.id(), consumeTxRequest);
-  await client.submitTransaction(consumeTx);
+  // 6. Consume minted notes
+  console.log("Consuming minted notes...");
+  let consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
+
+  let txResult_2 = await client.newTransaction(alice.id(), consumeTxRequest);
+
+  await client.submitTransaction(txResult_2);
 
   await client.syncState();
   console.log("Notes consumed.");
 
   // 7. Send tokens to Bob
   const bobAccountId = "0x599a54603f0cf9000000ed7a11e379";
-  console.log("Sending 100 tokens to Bob...");
-
-  const sendTxRequest = client.newSendTransactionRequest(
+  console.log("Sending tokens to Bob's account...");
+  let sendTxRequest = client.newSendTransactionRequest(
     alice.id(),
     AccountId.fromHex(bobAccountId),
     faucet.id(),
@@ -225,10 +227,9 @@ export async function createMintConsume(): Promise<void> {
     BigInt(100),
   );
 
-  const sendTx = await client.newTransaction(alice.id(), sendTxRequest);
-  await client.submitTransaction(sendTx);
+  let txResult_3 = await client.newTransaction(alice.id(), sendTxRequest);
 
-  console.log("Tokens sent successfully!");
+  await client.submitTransaction(txResult_3);
 }
 ```
 

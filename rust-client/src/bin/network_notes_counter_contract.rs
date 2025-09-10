@@ -1,7 +1,10 @@
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
-    account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
+    account::{
+        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
+        AddressInterface, StorageSlot,
+    },
     auth::AuthSecretKey,
     builder::ClientBuilder,
     crypto::SecretKey,
@@ -16,7 +19,7 @@ use miden_client::{
     Client, ClientError, Felt, Word,
 };
 use miden_lib::account::{
-    auth::{self, RpoFalcon512},
+    auth::{self, AuthRpoFalcon512},
     wallets::BasicWallet,
 };
 use miden_lib::transaction::TransactionKernel;
@@ -30,7 +33,10 @@ use rand::RngCore;
 use tokio::time::{sleep, Duration};
 
 /// Waits for a specific transaction to be committed.
-async fn wait_for_tx(client: &mut Client, tx_id: TransactionId) -> Result<(), ClientError> {
+async fn wait_for_tx(
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    tx_id: TransactionId,
+) -> Result<(), ClientError> {
     loop {
         client.sync_state().await?;
 
@@ -39,7 +45,7 @@ async fn wait_for_tx(client: &mut Client, tx_id: TransactionId) -> Result<(), Cl
             .get_transactions(TransactionFilter::Ids(vec![tx_id]))
             .await?;
         let tx_committed = if !txs.is_empty() {
-            matches!(txs[0].status, TransactionStatus::Committed(_))
+            matches!(txs[0].status, TransactionStatus::Committed { .. })
         } else {
             false
         };
@@ -81,10 +87,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -108,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicWallet);
 
     let (alice_account, seed) = builder.build().unwrap();
@@ -125,7 +133,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "Alice's account ID: {:?}",
-        alice_account.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            alice_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
 
     // -------------------------------------------------------------------------
@@ -141,7 +153,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let counter_component = AccountComponent::compile(
         counter_code.to_string(),
         assembler.clone(),
-        vec![StorageSlot::Value([Felt::new(0); 4])], // Initialize counter storage to 0
+        vec![StorageSlot::Value([Felt::new(0); 4].into())], // Initialize counter storage to 0
     )
     .unwrap()
     .with_supports_all_types();
@@ -166,7 +178,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "contract id: {:?}",
-        counter_contract.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            counter_contract.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
 
     // -------------------------------------------------------------------------
