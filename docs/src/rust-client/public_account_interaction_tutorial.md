@@ -70,39 +70,41 @@ Inside of the `masm/accounts/` directory, create the `counter.masm` file:
 use.miden::account
 use.std::sys
 
+const.COUNTER_SLOT=0
+# => []
 export.get_count
-    # => []
-    push.0
-
+    push.COUNTER_SLOT
     # => [index]
-    exec.account::get_item
 
+    exec.account::get_item
     # => [count]
+
     exec.sys::truncate_stack
+    # => [count]
 end
 
 # => []
 export.increment_count
-    # => []
-    push.0
-
+    push.COUNTER_SLOT
     # => [index]
-    exec.account::get_item
 
+    exec.account::get_item
     # => [count]
+
     push.1 add
+    # => [count+1]
 
     # debug statement with client
     debug.stack
 
-    # => [count+1]
-    push.0
-
+    push.COUNTER_SLOT
     # [index, count+1]
-    exec.account::set_item
 
+    exec.account::set_item
     # => []
+
     exec.sys::truncate_stack
+    # => []
 end
 ```
 
@@ -376,12 +378,13 @@ Add the following code snippet to the end of your `src/main.rs` function:
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
+println!("\n[STEP 2] Call the increment_count procedure in the counter contract");
 
 // Load the MASM script referencing the increment procedure
-let script_path = Path::new("../masm/scripts/counter_script.masm");
+let script_path = Path::new("./masm/scripts/counter_script.masm");
 let script_code = fs::read_to_string(script_path).unwrap();
 
-let counter_path = Path::new("../masm/accounts/counter.masm");
+let counter_path = Path::new("./masm/accounts/counter.masm");
 let counter_code = fs::read_to_string(counter_path).unwrap();
 
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -522,10 +525,10 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
 
     // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("../masm/scripts/counter_script.masm");
+    let script_path = Path::new("./masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
-    let counter_path = Path::new("../masm/accounts/counter.masm");
+    let counter_path = Path::new("./masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -637,4 +640,4 @@ cargo run --release --bin counter_contract_increment
 
 ### Continue learning
 
-Next tutorial: [Foreign Procedure Invocation](foreign_procedure_invocation_tutorial.md)
+Next tutorial: [Network Transactions on Miden](network_transactions_tutorial.md)
