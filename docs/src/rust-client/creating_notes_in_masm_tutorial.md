@@ -400,7 +400,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 3] Create iterative output note");
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../masm/notes/iterative_output_note.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("./masm/notes/iterative_output_note.masm")).unwrap();
     let rng = client.rng();
     let serial_num = rng.draw_word();
 

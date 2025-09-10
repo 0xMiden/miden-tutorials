@@ -98,11 +98,11 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let keystore: FilesystemKeyStore<rand::prelude::StdRng> = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .authenticator(keystore)
+        .authenticator(keystore.clone().into())
         .in_debug_mode(true.into())
         .build()
         .await?;
