@@ -69,7 +69,7 @@ mkdir -p masm/accounts masm/scripts masm/notes
 
 We'll use the same counter contract MASM code as the regular counter tutorial. The key difference is in the Rust configuration, not the MASM code.
 
-Create `masm/accounts/counter.masm`:
+Create `masm/accounts/network_counter.masm`:
 
 ```masm
 use.miden::account
@@ -883,9 +883,15 @@ Add this code to your `main()` function:
 #     // STEP 2: Create Network Counter Smart Contract
 #     // -------------------------------------------------------------------------
 #     println!("\n[STEP 2] Creating a network counter smart contract");
+<<<<<<< HEAD
 #
 #     let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 #
+=======
+
+#     let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
+
+>>>>>>> c150bd2 (fix network transactions on Miden)
 #     // Create the network counter smart contract account
 #     // First, compile the MASM code into an account component
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -928,9 +934,15 @@ Add this code to your `main()` function:
 #     // STEP 3: Deploy Network Account with Transaction Script
 #     // -------------------------------------------------------------------------
 #     println!("\n[STEP 3] Deploy network counter smart contract");
+<<<<<<< HEAD
 #
 #     let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
 #
+=======
+
+#     let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
+
+>>>>>>> c150bd2 (fix network transactions on Miden)
 #     let account_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 #     let library_path = "external_contract::counter_contract";
 #
@@ -971,8 +983,15 @@ let network_note_code =
 let account_code =
     fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
 
+<<<<<<< HEAD
 let library_path = "external_contract::counter_contract";
 let library = create_library(account_code, library_path).unwrap();
+=======
+    let network_note_code =
+        fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
+    let account_code =
+        fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
+>>>>>>> c150bd2 (fix network transactions on Miden)
 
 // Create and submit the network note that will increment the counter
 // Generate a random serial number for the note
