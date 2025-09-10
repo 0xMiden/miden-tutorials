@@ -34,7 +34,7 @@ export async function readBoard(gameContractIdBech32: string): Promise<void> {
     TransactionRequestBuilder,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = "http://localhost:57291";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 

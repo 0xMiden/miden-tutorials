@@ -1,11 +1,9 @@
-import { AccountId } from "@demox-labs/miden-sdk";
-import { WebClient } from "@demox-labs/miden-sdk";
+import { NODE_URL } from "./constants";
 
 // lib/findGame.ts
 export async function findGame(
-  gameAccountId: AccountId,
-  connectedWalletId: AccountId,
-  client: WebClient,
+  gameAccountIdString: string,
+  connectedWalletIdString: string,
 ): Promise<boolean> {
   if (typeof window === "undefined") {
     console.warn("findGame() can only run in the browser");
@@ -13,6 +11,15 @@ export async function findGame(
   }
 
   try {
+    // Dynamic import to ensure client-side execution
+    const { AccountId, WebClient } = await import("@demox-labs/miden-sdk");
+
+    // Convert string IDs to AccountId objects
+    const gameAccountId = AccountId.fromBech32(gameAccountIdString);
+    const connectedWalletId = AccountId.fromBech32(connectedWalletIdString);
+
+    // Create client instance
+    const client = await WebClient.createClient(NODE_URL);
     await client.syncState();
 
     console.log("Connected wallet ID:", connectedWalletId);

@@ -1,19 +1,5 @@
 import gameContractCode from "./contracts/tic_tac_toe_code";
-import {
-  AccountId,
-  AssemblerUtils,
-  AccountStorageMode,
-  AccountComponent,
-  AccountType,
-  AccountBuilder,
-  StorageSlot,
-  StorageMap,
-  TransactionKernel,
-  TransactionRequestBuilder,
-  TransactionScript,
-  WebClient,
-  Word,
-} from "@demox-labs/miden-sdk";
+import { instantiateClient } from "./utils";
 
 const incrNonceAuthCode = `use.miden::account
         export.auth__basic
@@ -23,14 +9,50 @@ const incrNonceAuthCode = `use.miden::account
 
 // lib/createGame.ts
 export async function createGame(
-  alice: AccountId,
-  bob: AccountId,
-  client: WebClient,
+  player1IdString: string,
+  player2IdString: string,
 ): Promise<string> {
   if (typeof window === "undefined") {
     console.warn("webClient() can only run in the browser");
     return "";
   }
+
+  // Dynamic import to ensure client-side execution
+  const {
+    AccountId,
+    AssemblerUtils,
+    AccountStorageMode,
+    AccountComponent,
+    AccountType,
+    AccountBuilder,
+    StorageSlot,
+    StorageMap,
+    TransactionKernel,
+    TransactionRequestBuilder,
+    TransactionScript,
+    Word,
+  } = await import("@demox-labs/miden-sdk");
+
+  // Convert string IDs to AccountId objects
+
+  // Create client instance
+  const client = await instantiateClient({
+    accountsToImport: [],
+  });
+
+  const player1Wallet = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+  );
+  const player2Wallet = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+  );
+
+  const player1Id = player1Wallet.id();
+  const player2Id = player2Wallet.id();
+  // const player1Id = AccountId.fromBech32(player1IdString);
+  // const player2Id = AccountId.fromBech32(player2IdString);
 
   await client.syncState();
 
@@ -104,10 +126,10 @@ export async function createGame(
   );
 
   const deploymentArg = Word.newFromFelts([
-    bob.suffix(),
-    bob.prefix(),
-    alice.suffix(),
-    alice.prefix(),
+    player2Id.suffix(),
+    player2Id.prefix(),
+    player1Id.suffix(),
+    player1Id.prefix(),
   ]);
 
   // Creating a transaction request with the transaction script

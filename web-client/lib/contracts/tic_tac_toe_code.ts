@@ -42,9 +42,9 @@ export.constructor
     # []
 end
 
-# => [caller_prefix, caller_suffix, field_index]
+# => [field_index]
 export.make_a_move
-    dup push.8 lt assert.err=ERR_WRONG_FIELD_INDEX
+    dup push.9 lt assert.err=ERR_WRONG_FIELD_INDEX
     # [field_index]
 
     exec.note::get_sender
@@ -121,6 +121,8 @@ export.make_a_move
 
     dropw dropw
     # []
+
+    debug.stack
 end
 
 # => [player_slot]
@@ -163,7 +165,7 @@ export.end_game
 
         swap add.1 swap
         # [i, expected_player_value]
-        
+
         dup movdn.2 padw
         # [0, 0, 0, 0, i, player_slot, i]
 
@@ -208,7 +210,7 @@ export.end_game
         # [true/false, i-1, player_slot]
     end
     # [i-1, player_slot OR 3]
-    
+
     drop
     # [player_slot OR 3]
 
@@ -221,7 +223,7 @@ export.end_game
 
         if.true
             # store 2 at winner_slot
-            
+
             push.2.0.0.0 push.WINNER_SLOT
             # [winner_slot, 0, 0, 0, 2]
 
@@ -253,7 +255,7 @@ proc.check_draw
     while.true
         dup
         # [i, i, 0]
-        
+
         # check field value
         exec.retrieve_board_value
         # [value, i, 0]
@@ -354,7 +356,7 @@ proc.retrieve_board_value
     exec.account::get_map_item
 
     # remove trailing empty fields
-    drop drop drop  
+    drop drop drop
 end
 `;
 

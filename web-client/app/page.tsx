@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { AccountId, WebClient } from "@demox-labs/miden-sdk";
+import React, { useState, useEffect } from "react";
 import { useWallet } from "@demox-labs/miden-wallet-adapter-react";
 import { WalletMultiButton } from "@demox-labs/miden-wallet-adapter-reactui";
 import { createGame } from "../lib/createGame";
@@ -14,13 +13,10 @@ import {
   TransactionType,
 } from "@demox-labs/miden-wallet-adapter";
 
-import { instantiateClient } from "../lib/utils";
-
 type Player = "X" | "O";
 type BoardState = (Player | null)[];
 
 export default function Home() {
-  const [client, setClient] = useState<WebClient | undefined>(undefined);
   const [board, setBoard] = useState<BoardState>(() => Array(9).fill(null));
   const [currentPlayer, setCurrentPlayer] = useState<Player>("X");
   const [gameId, setGameId] = useState<string | null>(null);
@@ -36,33 +32,16 @@ export default function Home() {
 
   const {
     wallet,
-    // accountId: rawAccountId,
+    accountId: rawAccountId,
     connected,
     requestTransaction,
   } = useWallet();
-  const accountId = useMemo(() => {
-    if (connected && wallet?.adapter?.accountId != null) {
-      console.log("🧑‍💼 rawAccountId", wallet.adapter.accountId);
-      return AccountId.fromBech32(wallet.adapter.accountId);
-    } else return undefined;
-  }, [connected, wallet]);
 
   useEffect(() => {
-    console.log("🧑‍💼 accountId", accountId);
+    console.log("🧑‍💼 rawAccountId", rawAccountId);
     console.log("🧑‍💼 connected", connected);
     console.log("🧑‍💼 wallet", wallet);
-  }, [accountId, connected, wallet]);
-
-  useEffect(() => {
-    if (client == null && accountId != null) {
-      (async () => {
-        const client = await instantiateClient({
-          accountsToImport: [accountId],
-        });
-        setClient(client);
-      })();
-    }
-  }, [accountId]);
+  }, [rawAccountId, connected, wallet]);
 
   // Check if there's a winning line for the given player
   const checkWinningLine = (board: BoardState, player: Player): boolean => {
@@ -95,26 +74,32 @@ export default function Home() {
     setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
   };
 
+  // Internal function to handle making a move
+  const executeMove = async (
+    gameId: string,
+    accountIdString: string,
+    requestTransaction: any,
+  ) => {
+    try {
+      await makeMove(gameId, accountIdString, requestTransaction);
+    } catch (error) {
+      console.error("Failed to make move:", error);
+      alert("Failed to make move. Please try again.");
+    }
+  };
+
   const handleSquareClick = async (index: number) => {
-    if (board[index] || !gameId || !accountId || !client || !requestTransaction)
-      return;
+    if (board[index] || !gameId || !rawAccountId || !requestTransaction) return;
+
+    // Only run on client side
+    if (typeof window === "undefined") return;
 
     const newBoard = [...board];
     newBoard[index] = currentPlayer;
     setBoard(newBoard);
     setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
 
-    try {
-      await makeMove(
-        AccountId.fromBech32(gameId),
-        accountId,
-        client,
-        requestTransaction,
-      );
-    } catch (error) {
-      console.error("Failed to make move:", error);
-      alert("Failed to make move. Please try again.");
-    }
+    await executeMove(gameId, rawAccountId, requestTransaction);
   };
 
   const handleEndGame = async () => {
@@ -157,14 +142,15 @@ export default function Home() {
     }
   };
 
-  const handleGeneratePlayer2 = async () => {
-    setIsGeneratingPlayer2(true);
+  // Internal function to generate a new wallet
+  const generateNewWallet = async () => {
     try {
-      const { WebClient, AccountStorageMode, NetworkId, AccountInterface } =
+      const { AccountStorageMode, NetworkId, AccountInterface, WebClient } =
         await import("@demox-labs/miden-sdk");
 
-      const nodeEndpoint = "http://localhost:57291";
-      const client = await WebClient.createClient(nodeEndpoint);
+      // Create a temporary client for wallet generation
+      const { NODE_URL } = await import("../lib/constants");
+      const client = await WebClient.createClient(NODE_URL);
 
       const randomWallet = await client.newWallet(
         AccountStorageMode.public(),
@@ -177,53 +163,57 @@ export default function Home() {
         .toString();
 
       setPlayer2Id(id);
-
       console.log("Generated Player 2 wallet:", id);
     } catch (error) {
       console.error("Failed to generate wallet:", error);
       alert("Failed to generate wallet. Please try again.");
-    } finally {
-      setIsGeneratingPlayer2(false);
     }
   };
 
+  const handleGeneratePlayer2 = async () => {
+    setIsGeneratingPlayer2(true);
+
+    // Only run on client side
+    if (typeof window === "undefined") {
+      setIsGeneratingPlayer2(false);
+      return;
+    }
+
+    await generateNewWallet();
+    setIsGeneratingPlayer2(false);
+  };
+
   const handleCreateGame = async () => {
-    if (!player1Id || !player2Id || !client) {
+    if (!player1Id || !player2Id) {
       alert("Please provide both player account IDs");
       return;
     }
 
+    // Only run on client side
+    if (typeof window === "undefined") return;
+
     setIsCreatingGame(true);
+
     try {
-      const newGameId = await createGame(
-        AccountId.fromBech32(player1Id),
-        AccountId.fromBech32(player2Id),
-        client,
-      );
+      const newGameId = await createGame(player1Id, player2Id);
       setGameId(newGameId);
       setShowCreateGameForm(false);
       console.log("Game created with ID:", newGameId);
     } catch (error) {
       console.error("Failed to create game:", error);
       alert("Failed to create game. Please try again.");
-    } finally {
-      setIsCreatingGame(false);
     }
+
+    setIsCreatingGame(false);
   };
 
-  const handleFindGame = async () => {
-    if (!gameAccountId || !accountId || !client) {
-      alert("Please provide a game account ID and connect your wallet");
-      return;
-    }
-
-    setIsFindingGame(true);
+  // Internal function to find and join a game
+  const findAndJoinGame = async (
+    gameAccountId: string,
+    accountIdString: string,
+  ) => {
     try {
-      const isPlayerInGame = await findGame(
-        AccountId.fromBech32(gameAccountId),
-        accountId,
-        client,
-      );
+      const isPlayerInGame = await findGame(gameAccountId, accountIdString);
 
       if (isPlayerInGame) {
         setGameId(gameAccountId);
@@ -235,13 +225,25 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to find game:", error);
       alert("Failed to find game. Please check the account ID and try again.");
-    } finally {
-      setIsFindingGame(false);
     }
   };
 
+  const handleFindGame = async () => {
+    if (!gameAccountId || !rawAccountId) {
+      alert("Please provide a game account ID and connect your wallet");
+      return;
+    }
+
+    // Only run on client side
+    if (typeof window === "undefined") return;
+
+    setIsFindingGame(true);
+    await findAndJoinGame(gameAccountId, rawAccountId);
+    setIsFindingGame(false);
+  };
+
   const handleConnectWallet = async () => {
-    if (wallet && connected && accountId) {
+    if (wallet && connected) {
       try {
         const accountIdString = wallet.adapter.accountId;
         if (accountIdString) {
@@ -289,7 +291,7 @@ export default function Home() {
             {isEndingGame ? "Ending..." : "End Game"}
           </button>
         )}
-        <WalletMultiButton>Connect Wallet</WalletMultiButton>
+        <WalletMultiButton />
         {!gameId && (
           <button
             onClick={togglePlayer}

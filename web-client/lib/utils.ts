@@ -1,17 +1,17 @@
-import type { AccountId, WebClient } from "@demox-labs/miden-sdk";
 import { NODE_URL } from "./constants";
 
 export const instantiateClient = async ({
   accountsToImport,
 }: {
-  accountsToImport: AccountId[];
+  accountsToImport: string[];
 }) => {
-  const { WebClient } = await import("@demox-labs/miden-sdk");
+  const { WebClient, AccountId } = await import("@demox-labs/miden-sdk");
   const nodeEndpoint = NODE_URL;
   const client = await WebClient.createClient(nodeEndpoint);
-  for (const acc of accountsToImport) {
+  for (const accString of accountsToImport) {
     try {
-      await safeAccountImport(client, acc);
+      const accountId = AccountId.fromBech32(accString);
+      await safeAccountImport(client, accountId);
     } catch {}
   }
   await client.syncState();
@@ -19,8 +19,8 @@ export const instantiateClient = async ({
 };
 
 export const safeAccountImport = async (
-  client: WebClient,
-  accountId: AccountId,
+  client: any, // WebClient
+  accountId: any, // AccountId
 ) => {
   if ((await client.getAccount(accountId)) == null) {
     try {

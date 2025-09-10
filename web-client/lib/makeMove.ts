@@ -1,39 +1,16 @@
 import makeMoveNoteCode from "./notes/make_a_move_code";
 import gameContractCode from "./contracts/tic_tac_toe_code";
+import { NODE_URL } from "./constants";
 import {
-  AccountId,
-  AssemblerUtils,
-  TransactionKernel,
-  NoteInputs,
-  NoteMetadata,
-  FeltArray,
-  WebClient,
-  NoteAssets,
-  Felt,
-  Word,
-  NoteTag,
-  NoteType,
-  NoteExecutionMode,
-  NoteExecutionHint,
-  NoteRecipient,
-  Note,
-  OutputNote,
-  OutputNotesArray,
-  TransactionRequestBuilder,
-  AccountInterface,
-  NetworkId,
-} from "@demox-labs/miden-sdk";
-import {
-  CustomTransaction,
   MidenTransaction,
   TransactionType,
+  CustomTransaction,
 } from "@demox-labs/miden-wallet-adapter";
 
 // lib/makeMove.ts
 export async function makeMove(
-  gameContractId: AccountId,
-  connectedWalletId: AccountId,
-  client: WebClient,
+  gameContractIdString: string,
+  connectedWalletIdString: string,
   requestTransaction: (transaction: MidenTransaction) => Promise<string>,
 ): Promise<string | null> {
   if (typeof window === "undefined") {
@@ -41,6 +18,37 @@ export async function makeMove(
     return null;
   }
 
+  // Dynamic import to ensure client-side execution
+  const {
+    AccountId,
+    AssemblerUtils,
+    TransactionKernel,
+    NoteInputs,
+    NoteMetadata,
+    FeltArray,
+    WebClient,
+    NoteAssets,
+    Felt,
+    Word,
+    NoteTag,
+    NoteType,
+    NoteExecutionMode,
+    NoteExecutionHint,
+    NoteRecipient,
+    Note,
+    OutputNote,
+    OutputNotesArray,
+    TransactionRequestBuilder,
+    AccountInterface,
+    NetworkId,
+  } = await import("@demox-labs/miden-sdk");
+
+  // Convert string IDs to AccountId objects
+  const gameContractId = AccountId.fromBech32(gameContractIdString);
+  const connectedWalletId = AccountId.fromBech32(connectedWalletIdString);
+
+  // Create client instance
+  const client = await WebClient.createClient(NODE_URL);
   const state = await client.syncState();
   console.log("Current block number: ", state.blockNum());
 
