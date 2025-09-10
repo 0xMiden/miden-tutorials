@@ -82,6 +82,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // STEP 2: Call the Counter Contract with a script
     // -------------------------------------------------------------------------
+    println!("\n[STEP 2] Call the increment_count procedure in the counter contract");
 
     // Load the MASM script referencing the increment procedure
     let script_path = Path::new("../masm/scripts/counter_script.masm");
