@@ -32,7 +32,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -54,7 +54,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_network_id, address) =
-        Address::from_bech32("mdev1qp6fj7lcqy9v5qrr2tscyynmhpcqqnpx3x7").unwrap();
+        Address::from_bech32("mtst1qzusgpvww6lz7qzguncjax7jefcqqthgja7").unwrap();
     let counter_contract_id = match address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),

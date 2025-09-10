@@ -43,9 +43,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11.2", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11.1", default-features = false }
-miden-objects = { version = "0.11.1", default-features = false, features = ["testing"] }
+miden-client = { version = "0.11.3", features = ["testing", "tonic", "sqlite"] }
+miden-lib = { version = "0.11.2", default-features = false }
+miden-objects = { version = "0.11.2", default-features = false, features = ["testing"] }
 miden-crypto = { version = "0.15.9", features = ["executable"] }
 miden-assembly = "0.17.0"
 rand = { version = "0.9" }
@@ -95,7 +95,7 @@ use miden_objects::account::{AccountIdVersion, NetworkId};
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -166,7 +166,7 @@ Add this snippet to the end of your file in the `main()` function:
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client & keystore
-#     let endpoint = Endpoint::devnet();
+#     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 #     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
@@ -256,7 +256,7 @@ Add this snippet to the end of your file in the `main()` function:
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client & keystore
-#     let endpoint = Endpoint::devnet();
+#     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 #     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
@@ -385,7 +385,7 @@ use miden_objects::account::{AccountIdVersion, NetworkId};
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore: FilesystemKeyStore<rand::prelude::StdRng> =

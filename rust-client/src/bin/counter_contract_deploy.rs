@@ -41,7 +41,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -102,7 +102,7 @@ async fn main() -> Result<(), ClientError> {
             counter_contract.id(),
             AddressInterface::Unspecified
         ))
-        .to_bech32(NetworkId::Devnet)
+        .to_bech32(NetworkId::Testnet)
     );
     println!("counter_contract storage: {:?}", counter_contract.storage());
 

@@ -32,9 +32,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11.2", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11.1", default-features = false }
-miden-objects = { version = "0.11.1", default-features = false, features = ["testing"] }
+miden-client = { version = "0.11.3", features = ["testing", "tonic", "sqlite"] }
+miden-lib = { version = "0.11.2", default-features = false }
+miden-objects = { version = "0.11.2", default-features = false, features = ["testing"] }
 miden-crypto = { version = "0.15.9", features = ["executable"] }
 miden-assembly = "0.17.0"
 rand = { version = "0.9" }
@@ -94,7 +94,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -281,7 +281,7 @@ To build the counter contract copy and paste the following code at the end of yo
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
-#     let endpoint = Endpoint::devnet();
+#     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 #     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -332,10 +332,6 @@ let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .build()
     .unwrap();
 
-println!(
-    "counter_contract commitment: {:?}",
-    counter_contract.commitment()
-);
 println!(
     "counter_contract id: {:?}",
     Address::from(AccountIdAddress::new(
@@ -420,7 +416,7 @@ Paste the following code at the end of your `src/main.rs` file:
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
-#     let endpoint = Endpoint::devnet();
+#     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 #     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -599,7 +595,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();

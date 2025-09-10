@@ -15,7 +15,7 @@ export async function incrementCounterContract(): Promise<void> {
     WebClient,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.devnet.miden.io";
+  const nodeEndpoint = "https://rpc.testnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 

@@ -32,9 +32,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11.2", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11.1", default-features = false }
-miden-objects = { version = "0.11.1", default-features = false, features = ["testing"] }
+miden-client = { version = "0.11.3", features = ["testing", "tonic", "sqlite"] }
+miden-lib = { version = "0.11.2", default-features = false }
+miden-objects = { version = "0.11.2", default-features = false, features = ["testing"] }
 miden-crypto = { version = "0.15.9", features = ["executable"] }
 miden-assembly = "0.17.0"
 rand = { version = "0.9" }
@@ -158,7 +158,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -220,7 +220,7 @@ Add the following code snippet to the end of your `src/main.rs` function:
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
-#     let endpoint = Endpoint::devnet();
+#     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 #     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -245,7 +245,7 @@ println!("\n[STEP 1] Reading data from public state");
 
 // Define the Counter Contract account id from counter contract deploy
 let (_network_id, address) =
-    Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
+    Address::from_bech32("mtst1qzusgpvww6lz7qzguncjax7jefcqqthgja7").unwrap();
 let counter_contract_id = match address {
     Address::AccountId(account_id_address) => account_id_address.id(),
     _ => panic!("Expected AccountId address"),
@@ -325,7 +325,7 @@ Add the following code snippet to the end of your `src/main.rs` function:
 # #[tokio::main]
 # async fn main() -> Result<(), ClientError> {
 #     // Initialize client
-#     let endpoint = Endpoint::devnet();
+#     let endpoint = Endpoint::testnet();
 #     let timeout_ms = 10_000;
 #     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 #     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
@@ -347,7 +347,7 @@ Add the following code snippet to the end of your `src/main.rs` function:
 
 #     // Define the Counter Contract account id from counter contract deploy
 #     let (_network_id, address) =
-#         Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
+#         Address::from_bech32("mtst1qzusgpvww6lz7qzguncjax7jefcqqthgja7").unwrap();
 #     let counter_contract_id = match address {
 #         Address::AccountId(account_id_address) => account_id_address.id(),
 #         _ => panic!("Expected AccountId address"),
@@ -470,7 +470,7 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();

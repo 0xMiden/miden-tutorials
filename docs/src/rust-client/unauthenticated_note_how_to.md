@@ -47,7 +47,7 @@ Alice ➡ Bob ➡ Charlie ➡ Dave ➡ Eve ➡ Frank ➡ ...
 
 ## Full Rust code example
 
-```rust, no-run
+```rust,no_run
 use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::{Duration, Instant};
@@ -74,7 +74,7 @@ use miden_objects::account::NetworkId;
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client & keystore
-    let endpoint = Endpoint::devnet();
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
