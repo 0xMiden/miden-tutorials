@@ -16,7 +16,7 @@ FPI is useful for developing smart contracts that extend the functionality of ex
 
 ## What We Will Build
 
-![count copy FPI diagram](../assets/count_copy_fpi_diagram.png)
+![count copy FPI diagram](./assets/count_copy_fpi_diagram.png)
 
 The diagram above depicts the "count copy" smart contract using foreign procedure invocation to read the count state of the counter contract. After reading the state via FPI, the "count copy" smart contract writes the value returned from the counter contract to storage.
 
@@ -1006,4 +1006,4 @@ cargo run --release --bin counter_contract_fpi
 
 ### Continue learning
 
-Next tutorial: [How to Create Notes with Custom Logic](custom_note_how_to.md)
+Next tutorial: [How to Use Unauthenticated Notes](unauthenticated_note_how_to.md)
