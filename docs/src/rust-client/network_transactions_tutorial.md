@@ -69,7 +69,7 @@ mkdir -p masm/accounts masm/scripts masm/notes
 
 We'll use the same counter contract MASM code as the regular counter tutorial. The key difference is in the Rust configuration, not the MASM code.
 
-Create `masm/accounts/counter.masm`:
+Create `masm/accounts/network_counter.masm`:
 
 ```masm
 use.miden::account
@@ -450,7 +450,7 @@ Add this code to your `main()` function:
     // -------------------------------------------------------------------------
     println!("\n[STEP 2] Creating a network counter smart contract");
 
-    let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+    let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 
     // Create the network counter smart contract account
     // First, compile the MASM code into an account component
@@ -653,7 +653,7 @@ Add this code to your `main()` function:
 #     // -------------------------------------------------------------------------
 #     println!("\n[STEP 2] Creating a network counter smart contract");
 #
-#     let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+#     let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 #
 #     // Create the network counter smart contract account
 #     // First, compile the MASM code into an account component
@@ -697,9 +697,9 @@ Add this code to your `main()` function:
 // -------------------------------------------------------------------------
 println!("\n[STEP 3] Deploy network counter smart contract");
 
-let script_code = fs::read_to_string(Path::new("../masm/scripts/counter_script.masm")).unwrap();
+let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
 
-let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+let account_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 let library_path = "external_contract::counter_contract";
 
 let library = create_library(account_code, library_path).unwrap();
@@ -889,7 +889,7 @@ Add this code to your `main()` function:
 #     // -------------------------------------------------------------------------
 #     println!("\n[STEP 2] Creating a network counter smart contract");
 
-#     let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+#     let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 
 #     // Create the network counter smart contract account
 #     // First, compile the MASM code into an account component
@@ -934,9 +934,9 @@ Add this code to your `main()` function:
 #     // -------------------------------------------------------------------------
 #     println!("\n[STEP 3] Deploy network counter smart contract");
 
-#     let script_code = fs::read_to_string(Path::new("../masm/scripts/counter_script.masm")).unwrap();
+#     let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
 
-#     let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+#     let account_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 #     let library_path = "external_contract::counter_contract";
 
 #     let library = create_library(account_code, library_path).unwrap();
@@ -972,9 +972,9 @@ Add this code to your `main()` function:
     println!("\n[STEP 4] Creating a network note for network counter contract");
 
     let network_note_code =
-        fs::read_to_string(Path::new("../masm/notes/network_increment_note.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
     let account_code =
-        fs::read_to_string(Path::new("../masm/accounts/network_counter.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
 
     let library_path = "external_contract::counter_contract";
     let library = create_library(account_code, library_path).unwrap();
@@ -1201,7 +1201,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 2] Creating a network counter smart contract");
 
-    let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+    let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 
     // Create the network counter smart contract account
     // First, compile the MASM code into an account component
@@ -1246,9 +1246,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Deploy network counter smart contract");
 
-    let script_code = fs::read_to_string(Path::new("../masm/scripts/counter_script.masm")).unwrap();
+    let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
 
-    let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+    let account_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
     let library_path = "external_contract::counter_contract";
 
     let library = create_library(account_code, library_path).unwrap();
@@ -1284,9 +1284,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n[STEP 4] Creating a network note for network counter contract");
 
     let network_note_code =
-        fs::read_to_string(Path::new("../masm/notes/network_increment_note.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
     let account_code =
-        fs::read_to_string(Path::new("../masm/accounts/network_counter.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
 
     let library_path = "external_contract::counter_contract";
     let library = create_library(account_code, library_path).unwrap();
