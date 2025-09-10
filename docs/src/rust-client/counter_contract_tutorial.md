@@ -181,7 +181,7 @@ export.get_count
     # => [count]
 
     exec.sys::truncate_stack
-    # => []
+    # => [count]
 end
 
 # => []
@@ -361,7 +361,6 @@ After the program executes, you should see the counter contract hash and contrac
 
 ```text
 [STEP 1] Creating counter contract.
-counter_contract commitment: RpoDigest([3700134472268167470, 14878091556015233722, 3335592073702485043, 16978997897830363420])
 counter_contract id: "mtst1qql030hpsp0yyqra494lcwazxsym7add"
 counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0]), Value([0, 0, 0, 0])] }
 ```
@@ -501,15 +500,12 @@ let account_component_lib = create_library(
     &counter_code,
 )
 .unwrap();
-println!("here");
 
 let tx_script = ScriptBuilder::new(true)
     .with_dynamically_linked_library(&account_component_lib)
     .unwrap()
     .compile_tx_script(script_code)
     .unwrap();
-
-println!("here");
 
 // Build a transaction request with the custom script
 let tx_increment_request = TransactionRequestBuilder::new()
@@ -681,15 +677,12 @@ async fn main() -> Result<(), ClientError> {
         &counter_code,
     )
     .unwrap();
-    println!("here");
 
     let tx_script = ScriptBuilder::new(true)
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(script_code)
         .unwrap();
-
-    println!("here");
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -731,7 +724,6 @@ The output of our program will look something like this:
 Latest block: 226717
 
 [STEP 1] Creating counter contract.
-counter_contract commitment: RpoDigest([10854804595308759734, 11034759279878416408, 15662010127375823242, 9560626040625797366])
 counter_contract id: "mtst1qpj0g3ke67tg5qqqqd2z4ffm9g8ezpf6"
 counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0])] }
 
