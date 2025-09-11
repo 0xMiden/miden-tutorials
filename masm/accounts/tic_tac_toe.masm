@@ -40,9 +40,9 @@ export.constructor
     # []
 end
 
-# => [caller_prefix, caller_suffix, field_index]
+# => [field_index]
 export.make_a_move
-    dup push.8 lt assert.err=ERR_WRONG_FIELD_INDEX
+    dup push.9 lt assert.err=ERR_WRONG_FIELD_INDEX
     # [field_index]
 
     exec.note::get_sender
