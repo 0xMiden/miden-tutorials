@@ -107,6 +107,15 @@ async fn main() -> Result<(), ClientError> {
     println!("bob prefix: {:?}", bob_account.id().prefix().as_felt());
     println!("bob suffix: {:?}", bob_account.id().suffix());
 
+    println!(
+        "alice_account id: {:?}",
+        Address::from(AccountIdAddress::new(
+            alice_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
+    );
+
     // -------------------------------------------------------------------------
     // STEP 2: Create the tic tac toe game contract
     // -------------------------------------------------------------------------
@@ -119,8 +128,9 @@ async fn main() -> Result<(), ClientError> {
     let game_path = Path::new("../masm/accounts/tic_tac_toe.masm");
     let game_code = fs::read_to_string(game_path).unwrap();
 
-    let empty_storage_slot =
-        StorageSlot::Value([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into());
+    // let empty_storage_slot =
+    //     StorageSlot::Value([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into());
+    let empty_storage_slot = StorageSlot::empty_value();
 
     let storage_map = StorageMap::new();
     let storage_slot_map = StorageSlot::Map(storage_map.clone());
