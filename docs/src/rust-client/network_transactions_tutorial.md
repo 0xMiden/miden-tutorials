@@ -69,7 +69,7 @@ mkdir -p masm/accounts masm/scripts masm/notes
 
 We'll use the same counter contract MASM code as the regular counter tutorial. The key difference is in the Rust configuration, not the MASM code.
 
-Create `masm/accounts/network_counter.masm`:
+Create `masm/accounts/counter.masm`:
 
 ```masm
 use.miden::account
@@ -84,9 +84,6 @@ export.get_count
 
     exec.account::get_item
     # => [count]
-
-    exec.sys::truncate_stack
-    # => []
 end
 
 # => []
@@ -974,7 +971,7 @@ Add this code to your `main()` function:
     let network_note_code =
         fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
     let account_code =
-        fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 
     let library_path = "external_contract::counter_contract";
     let library = create_library(account_code, library_path).unwrap();
@@ -1286,7 +1283,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let network_note_code =
         fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
     let account_code =
-        fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 
     let library_path = "external_contract::counter_contract";
     let library = create_library(account_code, library_path).unwrap();

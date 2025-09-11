@@ -179,9 +179,6 @@ export.get_count
 
     exec.account::get_item
     # => [count]
-
-    exec.sys::truncate_stack
-    # => [count]
 end
 
 # => []

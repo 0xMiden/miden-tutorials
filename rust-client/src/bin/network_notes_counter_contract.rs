@@ -229,8 +229,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let network_note_code =
         fs::read_to_string(Path::new("../masm/notes/network_increment_note.masm")).unwrap();
-    let account_code =
-        fs::read_to_string(Path::new("../masm/accounts/network_counter.masm")).unwrap();
+    let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
 
     let library_path = "external_contract::counter_contract";
     let library = create_library(account_code, library_path).unwrap();
