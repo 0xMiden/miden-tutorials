@@ -93,7 +93,7 @@ end
   // let emptyStorageSlot = StorageSlot.fromValue(
   //   new Word(BigUint64Array.from([BigInt(0), BigInt(0), BigInt(0), BigInt(0)])),
   // );
-  let emptyStorageSlot = StorageSlot.emptyValue();
+  // let emptyStorageSlot = StorageSlot.emptyValue();
   let storageMap = new StorageMap();
   let storageSlotMap = StorageSlot.map(storageMap);
 
@@ -101,8 +101,8 @@ end
 
   let gameComponent = AccountComponent.compile(gameContractCode, assembler, [
     // player1 storage slot
-    emptyStorageSlot,
-    emptyStorageSlot,
+    StorageSlot.emptyValue(),
+    StorageSlot.emptyValue(),
     // player2 storage slot
     // emptyStorageSlot,
     // storageSlotMap,
