@@ -286,7 +286,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     OutputNote,
   } = await import("@demox-labs/miden-sdk");
 
-  const client = await WebClient.createClient("https://rpc.testnet.miden.io");
+  const client = await WebClient.createClient(
+    "https://rpc.testnet.miden.io:443",
+  );
   const prover = TransactionProver.newRemoteProver(
     "https://tx-prover.testnet.miden.io",
   );
