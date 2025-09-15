@@ -288,7 +288,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   const client = await WebClient.createClient("https://rpc.testnet.miden.io");
   const prover = TransactionProver.newRemoteProver(
-    "https://tx-prover.devnet.miden.io",
+    "https://tx-prover.testnet.miden.io",
   );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
