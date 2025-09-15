@@ -184,7 +184,7 @@ async fn main() -> Result<(), ClientError> {
     // Create Oracle Reader contract
     // -------------------------------------------------------------------------
     let contract_code =
-        fs::read_to_string(Path::new("../masm/accounts/oracle_reader.masm")).unwrap();
+        fs::read_to_string(Path::new("./masm/accounts/oracle_reader.masm")).unwrap();
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
 
@@ -215,7 +215,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // Build the script that calls our `get_price` procedure
     // -------------------------------------------------------------------------
-    let script_path = Path::new("../masm/scripts/oracle_reader_script.masm");
+    let script_path = Path::new("./masm/scripts/oracle_reader_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);

@@ -305,7 +305,7 @@ println!("\n[STEP 1] Creating counter contract.");
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
 // Load the MASM file for the counter contract
-let counter_path = Path::new("../masm/accounts/counter.masm");
+let counter_path = Path::new("./masm/accounts/counter.masm");
 let counter_code = fs::read_to_string(counter_path).unwrap();
 
 // Compile the account code into `AccountComponent` with one storage slot
@@ -440,7 +440,7 @@ Paste the following code at the end of your `src/main.rs` file:
 #     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 #
 #     // Load the MASM file for the counter contract
-#     let counter_path = Path::new("../masm/accounts/counter.masm");
+#     let counter_path = Path::new("./masm/accounts/counter.masm");
 #     let counter_code = fs::read_to_string(counter_path).unwrap();
 #
 #     // Compile the account code into `AccountComponent` with one storage slot
@@ -491,7 +491,7 @@ Paste the following code at the end of your `src/main.rs` file:
 println!("\n[STEP 2] Call Counter Contract With Script");
 
 // Load the MASM script referencing the increment procedure
-let script_path = Path::new("../masm/scripts/counter_script.masm");
+let script_path = Path::new("./masm/scripts/counter_script.masm");
 let script_code = fs::read_to_string(script_path).unwrap();
 
 let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -619,7 +619,7 @@ async fn main() -> Result<(), ClientError> {
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
     // Load the MASM file for the counter contract
-    let counter_path = Path::new("../masm/accounts/counter.masm");
+    let counter_path = Path::new("./masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     // Compile the account code into `AccountComponent` with one storage slot
@@ -671,7 +671,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Counter Contract With Script");
 
     // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("../masm/scripts/counter_script.masm");
+    let script_path = Path::new("./masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
