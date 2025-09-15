@@ -116,7 +116,7 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
       receiverAccountId,
       assets,
       NoteType.Public,
-      new Felt(BigInt(0)),
+      new Felt(BigInt(0)), // aux value
     );
 
     let outputP2ID = OutputNote.full(p2idNote);
