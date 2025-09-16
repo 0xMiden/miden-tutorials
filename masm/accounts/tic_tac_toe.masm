@@ -130,12 +130,12 @@ export.make_a_move
     dupw mem_storew.0 dropw
     # => [NONCE, field_index]
     
-    dupw
-    # => [NONCE, NONCE, field_index]
+    dupw dupw
+    # => [NONCE, NONCE, NONCE, field_index]
     
     # Verify sender is part of game at particular nonce
     exec.verify_and_get_player_slot
-    # => [other_player_values_mapping_slot, player_values_mapping_slot, NONCE, field_index]
+    # => [other_player_values_mapping_slot, player_values_mapping_slot, NONCE, NONCE, field_index]
 
     movdn.5
     # => [player_values_mapping_slot, NONCE, other_player_values_mapping_slot, NONCE, field_index]
@@ -273,8 +273,6 @@ export.make_a_move
 
         movup.8
         # => [player_values_mapping_slot, NONCE, NEW_PLAYER_VALUES]
-
-        push.111 debug.stack drop
         
         # Store new values
         exec.account::set_map_item
@@ -418,12 +416,11 @@ proc.verify_and_get_player_slot
         # => []
 
         push.PLAYER2_VALUES_MAPPING_SLOT.PLAYER1_VALUES_MAPPING_SLOT
-        # => [other_player_values_mapping_slot, player_values_mapping_slot]
     else
         drop drop
         # => []
 
         push.PLAYER1_VALUES_MAPPING_SLOT.PLAYER2_VALUES_MAPPING_SLOT
-        # => [other_player_values_mapping_slot, player_values_mapping_slot]
     end
+    # => [other_player_values_mapping_slot, player_values_mapping_slot]
 end
