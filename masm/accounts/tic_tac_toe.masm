@@ -2,355 +2,428 @@ use.miden::account
 use.miden::note
 use.miden::account_id
 
-const.ERR_WRONG_FIELD_INDEX="Wrong field index to make move"
 const.ERR_WRONG_PLAYER="Wrong player trying to make move"
-const.ERR_FIELD_USED="Field has already been used"
-const.ERR_WRONG_PLAYER_SLOT="Wrong player slot supplied"
-const.ERR_NO_WINNER="There is no winner or draw"
+const.ERR_FIELD_PLAYED="Field has already been played on"
 
-const.PLAYER1_SLOT=0
-const.PLAYER2_SLOT=1
-const.FLAG_SLOT=2
-const.WINNER_SLOT=3
-const.MAPPING_SLOT=4
+# Stores game nonce
+const.NONCE_SLOT=0
 
-# => [player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+# Nonce => Player1 ID + Player2 ID
+const.PLAYER_IDS_MAPPING_SLOT=1
+
+# Nonce => Player1 board values
+const.PLAYER1_VALUES_MAPPING_SLOT=2
+
+# Nonce => Player2 board values
+const.PLAYER2_VALUES_MAPPING_SLOT=3
+
+# Nonce => Winner
+const.WINNERS_MAPPING_SLOT=4
+
+# Line (X, Y, Z, 0) => True (1,0,0,0)
+const.WINNING_LINES_MAPPING_SLOT=5
+
+# Inputs: []
 export.constructor
-    # store player1 ID by padding value to size of one word
-    push.0.0 push.PLAYER1_SLOT
-    # [player1_slot, 0, 0, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
-
-    exec.account::set_item
-    # [OLD_VALUE, player2_prefix, player2_suffix]
-
-    # drop old value from stack
-    dropw
-    # [player2_prefix, player2_suffix]
-
-    # pad to word
-    push.0.0 push.PLAYER2_SLOT
-    # [player2_slot, 0, 0, player2_prefix, player2_suffix]
-
-    # store player2 ID
-    exec.account::set_item
-    # [OLD_VALUE]
-
-    # Drop old value from stack (returned by set_item call)
-    dropw
-    # []
-end
-
-# => [caller_prefix, caller_suffix, field_index]
-export.make_a_move
-    dup push.8 lt assert.err=ERR_WRONG_FIELD_INDEX
-    # [field_index]
-
-    exec.note::get_sender
-    # [caller_prefix, caller_suffix, field_index]
-
-    # verify caller ID is in line with current player
-    push.FLAG_SLOT exec.account::get_item
-    # [FLAG, caller_prefix, caller_suffix, field_index]
-
-    # Push zero (to compare to zero)
-    padw
-    # [0WORD, FLAG, caller_prefix, caller_suffix, field_index]
-
-    # Check if equal
-    eqw
-    # [is_true, 0WORD, FLAG, caller_prefix, caller_suffix, field_index]
-
-    if.true
-        # delete 0WORD & FLAG
-        dropw dropw
-        # [caller_prefix, caller_suffix, field_index]
-
-        push.PLAYER1_SLOT push.1
-        # [1, player1_slot, caller_prefix, caller_suffix, field_index]
-        movdn.4
-        # [player1_slot, caller_prefix, caller_suffix, field_index, 1]
-    else
-        # delete 0WORD & FLAG
-        dropw dropw
-        # [caller_prefix, caller_suffix, field_index]
-
-        push.PLAYER2_SLOT push.2
-        # [2, player2_slot, caller_prefix, caller_suffix, field_index]
-        movdn.4
-        # [player2_slot, caller_prefix, caller_suffix, field_index, 2]
-    end
-
-    exec.account::get_item
-    # [0, 0, player_prefix, player_suffix, caller_prefix, caller_suffix, field_index, move_value]
-
-    # Remove trailing zero's of word
-    drop drop
-    # [player_prefix, player_suffix, caller_prefix, caller_suffix, field_index, move_value]
-
-    exec.account_id::is_equal assert.err=ERR_WRONG_PLAYER
-    # [field_index, move_value]
-
-    dup dup dup
-    # [FIELD_INDEX, move_value]
-
-    dup.4 dup.5 dup.6 movup.7
-    # [MOVE_VALUE, FIELD_INDEX]
-
-    swapw
-    # [FIELD_INDEX, MOVE_VALUE]
-
-    push.MAPPING_SLOT
-    # [mapping_slot, FIELD_INDEX, MOVE_VALUE]
-
-    exec.account::set_map_item
-    # [OLD_MAP_ROOT, OLD_MAP_VALUE]
-
-    dropw
-    # [OLD_MAP_VALUE]
-
-    padw
-    # [EMPTY_WORD, OLD_MAP_VALUE]
-
-    eqw
-    # [is_equal, EMPTY_WORD, OLD_MAP_VALUE]
-
-    assert.err=ERR_FIELD_USED
-    # [EMPTY_WORD, OLD_MAP_VALUE]
-
-    dropw dropw
-    # []
-end
-
-# => [player_slot]
-export.end_game
-    dup push.3 lt assert.err=ERR_WRONG_PLAYER_SLOT
-    # [player_slot]
-
     # Store all possible winning lines in memory
-    push.2.1.0.0 # 0 1 2
+    push.0.2.1.0 # 0 1 2
     mem_storew.4 dropw
 
-    push.5.4.3.0 # 3 4 5
+    push.0.5.4.3 # 3 4 5
     mem_storew.8 dropw
 
-    push.8.7.6.0 # 6 7 8
+    push.0.8.7.6 # 6 7 8
     mem_storew.12 dropw
 
-    push.6.3.0.0 # 0 3 6
+    push.0.6.3.0 # 0 3 6
     mem_storew.16 dropw
 
-    push.7.4.1.0 # 1 4 7
+    push.0.7.4.1 # 1 4 7
     mem_storew.20 dropw
 
-    push.8.5.2.0 # 2 5 8
+    push.0.8.5.2 # 2 5 8
     mem_storew.24 dropw
 
-    push.8.4.0.0 # 0 4 8
+    push.0.8.4.0 # 0 4 8
     mem_storew.28 dropw
 
-    push.6.4.2.0 # 2 4 6
+    push.0.6.4.2 # 2 4 6
     mem_storew.32 dropw
 
-    # push i for loop
     push.8
     dup neq.0
-    # [true, i, player_slot]
+    # => [true, i]
 
     while.true
-        # [i, player_slot]
+        dup mul.4
+        # => [i*4, i]
 
-        swap add.1 swap
-        # [i, expected_player_value]
-        
-        dup movdn.2 padw
-        # [0, 0, 0, 0, i, player_slot, i]
+        padw movup.4
+        # => [i*8, 0, 0, 0, 0, i]
 
-        movup.4 mul.4 mem_loadw
-        # [0, index, index, index, expected_player_value, i]
+        mem_loadw
+        # => [WINNING_LINE, i]
 
-        drop
-        # [index, index, index, expected_player_value, i]
+        push.0.0.0.1
+        # => [TRUE, WINNING_LINE, i]
 
-        exec.check_line
-        # [is_win, expected_player_value, i]
+        swapw
+        # => [WINNING_LINE, TRUE, i]
 
-        if.true
-            swap drop sub.1
-            # [player_slot]
+        push.WINNING_LINES_MAPPING_SLOT
+        # => [winning_lines_mapping_slot, WINNING_LINE, TRUE, i]
 
-            push.0.0.0 push.WINNER_SLOT
-            # [winner_slot, 0, 0, 0, player_slot]
+        exec.account::set_map_item
+        # => [OLD_MAP_ROOT, OLD_VALUE, i]
 
-            exec.account::set_item
-            # [OLD_VALUE]
-
-            dropw
-            # []
-
-            # Push 1 to exit loop
-            push.1
-            # [1]
-
-            # Push 3 to indicate win
-            push.3
-            # [3, 1]
-        end
-
-        swap
-        # [i, player_slot]
+        dropw dropw
+        # => [i]
 
         sub.1
-        # [i-1, player_slot]
+        # => [i-1]
 
         dup neq.0
-        # [true/false, i-1, player_slot]
+        # => [true/false, i-1]
     end
-    # [i-1, player_slot OR 3]
-    
+
     drop
-    # [player_slot OR 3]
+    # => []
+end
 
-    neq.3
-    # [not_win]
+# Inputs: [player2_prefix, player2_suffix]
+export.create_game
+    # get first player ID (sender)
+    exec.note::get_sender
+    # => [player1_prefix, player1_suffix, player2_prefix, player2_suffix]
 
+    # get nonce
+    push.NONCE_SLOT exec.account::get_item
+
+    # Increment nonce
+    add.1
+    # => [NEW_NONCE, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    dupw
+    # => [NEW_NONCE, NEW_NONCE, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    # Store nonce
+    push.NONCE_SLOT exec.account::set_item
+    # => [OLD_NONCE, NEW_NONCE, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    dropw
+    # => [NEW_NONCE, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    # Store player IDs
+    push.PLAYER_IDS_MAPPING_SLOT
+    # => [mapping_slot, NEW_NONCE, player1_prefix, player1_suffix, player2_prefix, player2_suffix]
+
+    exec.account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    
+    dropw dropw
+    # => []
+end
+
+# => [NONCE, field_index]
+export.make_a_move
+    # Store NONCE in memory to use later
+    dupw mem_storew.0 dropw
+    # => [NONCE, field_index]
+    
+    dupw
+    # => [NONCE, NONCE, field_index]
+    
+    # Verify sender is part of game at particular nonce
+    exec.verify_and_get_player_slot
+    # => [other_player_values_mapping_slot, player_values_mapping_slot, NONCE, field_index]
+
+    movdn.5
+    # => [player_values_mapping_slot, NONCE, other_player_values_mapping_slot, NONCE, field_index]
+
+    dup.10 movdn.5
+    # => [player_values_mapping_slot, NONCE, field_index, other_player_values_mapping_slot, NONCE, field_index]
+
+    dup movdn.12
+    # => [player_values_mapping_slot, NONCE, field_index, other_player_values_mapping_slot, NONCE, field_index, player_values_mapping_slot]
+
+    dup.11 movdn.13
+    # => [player_values_mapping_slot, NONCE, field_index, other_player_values_mapping_slot, NONCE, field_index, player_values_mapping_slot, field_index]
+
+    dup.12 movdn.14
+    # => [player_values_mapping_slot, NONCE, field_index, other_player_values_mapping_slot, NONCE, field_index, player_values_mapping_slot, field_index, player_values_mapping_slot]
+
+    exec.check_player_values
+    # => [own_index_is_equal, own_num_of_values, other_player_values_mapping_slot, NONCE, field_index, player_values_mapping_slot, field_index, player_values_mapping_slot]
+
+    movdn.7 movdn.7
+    # => [other_player_values_mapping_slot, NONCE, field_index, own_index_is_equal, own_num_of_values, player_values_mapping_slot, field_index, player_values_mapping_slot]
+
+    exec.check_player_values
+    # => [other_index_is_equal, other_num_of_values, own_index_is_equal, own_num_of_values, player_values_mapping_slot, field_index, player_values_mapping_slot]
+
+    movup.2
+    # => [own_index_is_equal, other_index_is_equal, other_num_of_values, own_num_of_values, player_values_mapping_slot, field_index, player_values_mapping_slot]
+
+    neq.1 assert.err=ERR_FIELD_PLAYED
+    # => [other_index_is_equal, other_num_of_values, own_num_of_values, player_values_mapping_slot, field_index, player_values_mapping_slot]
+    neq.1 assert.err=ERR_FIELD_PLAYED
+    # => [other_num_of_values, own_num_of_values, player_values_mapping_slot, field_index, player_values_mapping_slot]
+
+    movup.2
+    # => [player_values_mapping_slot, other_num_of_values, own_num_of_values, field_index, player_values_mapping_slot]
+
+    # Compare number of non-zero items between the two (to verify who is on the move)
+    push.PLAYER1_VALUES_MAPPING_SLOT eq
     if.true
-        exec.check_draw
-        # [is_draw]
+        # (if ID=1 => other player num has to be equal)
+        dup.1 eq assert.err=ERR_WRONG_PLAYER
+    else
+        # (if ID=2 => other player num has to be lower)
+        dup.1 lt assert.err=ERR_WRONG_PLAYER
+    end
+    # => [own_num_of_values, field_index, player_values_mapping_slot]
 
+    # Check if player is making final move
+    dup push.4 eq
+    if.true
+        # Final move (no storage, directly checking win)
+        # if final move (use additional stack items to cast winning line)
+        # call cast_win
+        push.888 debug.stack drop
+    else
+        # => [own_num_of_values, field_index, player_values_mapping_slot]
+        # Normal move
+
+        padw mem_loadw.0
+        # => [NONCE, own_num_of_values, field_index, player_values_mapping_slot]
+
+        dup.6
+        # => [player_values_mapping_slot, NONCE, own_num_of_values, field_index, player_values_mapping_slot]
+        exec.account::get_map_item
+        # => [PLAYER_VALUES, own_num_of_values, field_index, player_values_mapping_slot]
+
+        movup.4
+        # => [own_num_of_values, PLAYER_VALUES, field_index, player_values_mapping_slot]
+
+        dup push.0 eq
         if.true
-            # store 2 at winner_slot
-            
-            push.2.0.0.0 push.WINNER_SLOT
-            # [winner_slot, 0, 0, 0, 2]
+            # is zero
+            drop
+            # => [PLAYER_VALUES, field_index, player_values_mapping_slot]
 
-            exec.account::set_item
-            # [OLD_VALUE]
+            # drop index
+            drop
 
-            dropw
-            # []
+            # move field_index to top
+            movup.3
         else
-            push.0.1
-            eq assert.err=ERR_NO_WINNER
+            dup push.1 eq
+            if.true
+                # is 1
+                drop
+                # => [PLAYER_VALUES, field_index, player_values_mapping_slot]
+
+                # move index that needs to be replaced to top
+                swap
+
+                # drop index
+                drop
+
+                # move field_index to top
+                movup.3
+
+                # move new index to correct position
+                swap
+            else
+                dup push.2 eq
+                if.true
+                    drop
+                    # => [PLAYER_VALUES, field_index, player_values_mapping_slot]
+
+                    # move index that needs to be replaced to top
+                    movup.2
+
+                    # drop index
+                    drop
+
+                    # move field_index to top
+                    movup.3
+
+                    # move new index to correct position
+                    movdn.2
+                else
+                    dup push.3 eq
+                    if.true
+                        drop
+                        # => [PLAYER_VALUES, field_index, player_values_mapping_slot]
+
+                        # move index that needs to be replaced to top
+                        movup.3
+
+                        # drop index
+                        drop
+                    end
+                end
+            end
         end
+        # => [NEW_PLAYER_VALUES, player_values_mapping_slot]
+
+        padw mem_loadw.0
+        # => [NONCE, NEW_PLAYER_VALUES, player_values_mapping_slot]
+
+        movup.8
+        # => [player_values_mapping_slot, NONCE, NEW_PLAYER_VALUES]
+
+        push.111 debug.stack drop
+        
+        # Store new values
+        exec.account::set_map_item
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+        dropw dropw
+        # => []
     end
 end
 
-# []
-proc.check_draw
-    # check that each item of mapping has equal value except zero (=> win)
+# Inputs: [NONCE, WINNING_LINE]
+# cast_win procedure for "casting win" (throws error if no valid win)
+# procedure for casting win game (calls check_win, calls check_draw, if both fail => error)
+export.cast_win
+    push.111 debug.stack drop
+end
 
-    # Add empty zero word (expected value)
+# Inputs: [slot, NONCE, field_index]
+# Outputs: [has_field_index, num_of_non_zero_values]
+proc.check_player_values
+    exec.account::get_map_item
+    # => [PLAYER_VALUES, field_index]
+
+    mem_storew.4 dropw
+    # => [field_index]
+
+    push.0.0
+    # => [has_field_index, num_of_non_zero_values, field_index]
+
+    movup.2
+    # => [field_index, has_field_index, num_of_non_zero_values]
+
     push.0
-    # [0]
-
-    # push i for loop
-    push.9
-    dup neq.0
-    # [true, i, 0]
+    dup neq.4
+    # [true, i, field_index, has_field_index, num_of_non_zero_values]
 
     while.true
-        dup
-        # [i, i, 0]
-        
-        # check field value
-        exec.retrieve_board_value
-        # [value, i, 0]
+        # get current player_value
+        padw mem_loadw.4
+        # => [PLAYER_VALUES, i, field_index, has_field_index, num_of_non_zero_values]
 
-        # if not zero => break out of loop and return false
+        # TODO: Depending on i, determine the correct player value item of PLAYER_VALUES
+        dup.4
+        # => [i, PLAYER_VALUES, i, field_index, has_field_index, num_of_non_zero_values]
+
+        # Move correct player_value to top
         neq.0
-        # [is_zero, i, 0]
+        if.true
+            # If 1, swap
+            dup.4 eq.1
+            if.true
+                swap
+            else
+                # If 2 or more, use movup 
+                dup.4 eq.2
+                if.true
+                    movup.2
+                else
+                    movup.3
+                end
+            end
+        end
+
+        movdn.3
+        # => [PLAYER_VALUES-1, player_value, i, field_index, has_field_index, num_of_non_zero_values]
+
+        drop drop drop
+        # => [player_value, i, field_index, has_field_index, num_of_non_zero_values]
+
+        dup
+        # => [player_value, player_value, i, field_index, has_field_index, num_of_non_zero_values]
+
+        dup.3
+        # => [field_index, player_value, player_value, i, field_index, has_field_index, num_of_non_zero_values]
+
+        eq
+        # => [is_equal, player_value, i, field_index, has_field_index, num_of_non_zero_values]
 
         if.true
-            swap drop
-            # [0]
-
-            add.1
-            # [1] <- indicator that not a draw
-
-            # make loop exit by pushing i=1
-            push.1
-            # [1 (i), 1]
+            drop
+            # => [i, field_index, has_field_index, num_of_non_zero_values]
+            
+            drop swap add.1
+            # => [true, field_index, num_of_non_zero_values]
 
             swap
-            # [1, 1 (i)]
+            # => [field_index, true, num_of_non_zero_values]
+
+            push.3
+            # => [3, field_index, true, num_of_non_zero_values]
+        else
+            # Check for non zero
+            push.0 neq
+            # => [is_zero, i, field_index, has_field_index, num_of_non_zero_values]
+
+            if.true
+                # Store counter for num_of_non_zero_values (if not zero)
+
+                movup.3 add.1
+                # => [num_of_non_zero_values+1, i, field_index, has_field_index]
+
+                movdn.3
+                # => [i, field_index, has_field_index, num_of_non_zero_values+1]
+            end
         end
+        # => [i, field_index, has_field_index, num_of_non_zero_values]
 
-        swap
-        # [i, 0 OR 1]
-
-        sub.1
-        # [i-1, 0 OR 1]
-
-        dup neq.0
-        # [true/false, i-1, 0 OR 1]
+        add.1
+        dup neq.4
+        # [true/false, i-1]
     end
-    # [0, 0 OR 1]
-
-    drop
-    # [0 OR 1]
-
-    if.true
-        push.0
-    else
-        push.1
-    end
-    # [true_or_false]
+    # => [last_i, field_index, has_field_index, num_of_non_zero_values]
+    
+    drop drop
+    # => [has_field_index, num_of_non_zero_values]
 end
 
-# => [key1, key2, key3, player_value]
-proc.check_line
-    # add i to stack
-    push.3
-    # [i, key1, key2, key3, player_value]
-    dup neq.0
-    # [true, i, key1, key2, key3, player_value]
-
-    while.true
-        sub.1
-        # [i-1, key_or_value, key_or_value, key_or_value, player_value]
-
-        # Move index to end
-        movdn.4
-        # [key_or_value, key_or_value, key_or_value, player_value, i-1]
-
-        exec.retrieve_board_value movdn.2
-        # [key_or_value, key_or_value, value, player_value, i-1]
-
-        # move index to top
-        movup.4
-        # [i-1, key_or_value, key_or_value, value, player_value]
-
-        dup neq.0
-    end
-    # [0, value3, value2, value1, player_value]
-
-    drop
-    # [value3, value2, value1, player_value]
-
-    swap.3
-    # [player_value, value3, value2, value1]
-
-    dup dup dup dup dup
-    # [player_value, PLAYER_VALUE, player_value, value3, value2, value1]
-
-    movdn.8
-    # [PLAYER_VALUE, player_value, value3, value2, value1, player_value]
-
-    eqw
-    # [is_equal, PLAYER_VALUE, player_value, value3, value2, value1, player_value]
-
-    movdn.8 dropw dropw
-    # [is_equal, player_value]
-end
-
-# [key]
-proc.retrieve_board_value
-    dup dup dup
-
-    push.MAPPING_SLOT
-
+# Inputs: [NONCE]
+# Outputs: [other_player_slot, player_slot]
+proc.verify_and_get_player_slot
+    push.PLAYER_IDS_MAPPING_SLOT
+    # => [player_ids_slot, NONCE]
+    
     exec.account::get_map_item
+    # => [PLAYER_IDS]
 
-    # remove trailing empty fields
-    drop drop drop  
+    exec.note::get_sender
+    # => [caller_prefix, caller_suffix, PLAYER_IDS]
+
+    exec.account_id::is_equal
+    # => [is_player1, player2_prefix, player2_suffix]
+
+    if.false
+        exec.note::get_sender
+        # => [caller_prefix, caller_suffix, player2_prefix, player2_suffix]
+
+        exec.account_id::is_equal
+        # => [is_player2]
+
+        assert.err=ERR_WRONG_PLAYER
+        # => []
+
+        push.PLAYER2_VALUES_MAPPING_SLOT.PLAYER1_VALUES_MAPPING_SLOT
+        # => [other_player_values_mapping_slot, player_values_mapping_slot]
+    else
+        drop drop
+        # => []
+
+        push.PLAYER1_VALUES_MAPPING_SLOT.PLAYER2_VALUES_MAPPING_SLOT
+        # => [other_player_values_mapping_slot, player_values_mapping_slot]
+    end
 end

@@ -1,5 +1,6 @@
 use.external_contract::game_contract
 
+# Inputs: []
 begin
     call.game_contract::constructor
 end
