@@ -1,7 +1,8 @@
 use miden_crypto::Word;
 use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::{rngs::StdRng, RngCore};
-use std::{fs, path::Path, sync::Arc};
+use std::{fs, path::Path, sync::Arc, time::Duration};
+use tokio::time::sleep;
 
 use miden_assembly::{
     ast::{Module, ModuleKind},
@@ -71,8 +72,8 @@ async fn create_basic_account(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::new("http".to_string(), "localhost".to_string(), Some(57291));
-    // let endpoint = Endpoint::testnet();
+    // let endpoint = Endpoint::new("http".to_string(), "localhost".to_string(), Some(57291));
+    let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
@@ -406,7 +407,17 @@ async fn main() -> Result<(), ClientError> {
         .new_transaction(game_contract.id(), consume_make_a_move_note_request)
         .await
         .unwrap();
-    let _ = client.submit_transaction(tx_result.clone()).await;
+    let _ = client.submit_transaction(tx_result.clone()).await.unwrap();
+
+    let make_a_move_note_tx_id = tx_result.executed_transaction().id();
+    println!(
+        "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
+        make_a_move_note_tx_id
+    );
+
+    println!("{:?}", tx_result.account_delta());
+
+    sleep(Duration::from_secs(6)).await;
     client.sync_state().await.unwrap();
 
     println!("Consumed make a move note");
