@@ -201,7 +201,7 @@ With the Miden assembly note script written, we can move on to writing the Rust 
 
 Copy and paste the following code into your `src/main.rs` file.
 
-```rust,no_run
+```rust
 use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::{prelude::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};

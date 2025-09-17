@@ -551,7 +551,7 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust,no_run
+```rust
 use miden_lib::account::auth::NoAuth;
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};

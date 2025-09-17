@@ -128,7 +128,7 @@ With the note created, Bob can now consume it—but only if he provides the corr
 
 The following Rust code demonstrates how to implement the steps outlined above using the Miden client library:
 
-```rust,no_run
+```rust
 use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};

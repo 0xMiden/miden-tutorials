@@ -435,7 +435,7 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust,no_run
+```rust
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{

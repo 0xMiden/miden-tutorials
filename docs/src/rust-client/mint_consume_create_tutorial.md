@@ -984,7 +984,7 @@ Note: _In a production environment do not use `AccountId::new_dummy()`, this is 
 
 Your `src/main.rs` function should now look like this:
 
-```rust,no_run
+```rust
 use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;
