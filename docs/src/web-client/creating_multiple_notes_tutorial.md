@@ -378,3 +378,28 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   console.log("All notes created ✅");
 }
 ```
+
+### Running the example
+
+To run a full working example navigate to the `web-client` directory in the [miden-tutorials](https://github.com/0xMiden/miden-tutorials/) repository and run the web application example:
+
+```bash
+cd web-client
+pnpm i
+pnpm run start
+```
+
+### Resetting the `MidenClientDB`
+
+The Miden webclient stores account and note data in the browser. To clear the account and node data in the browser, paste this code snippet into the browser console:
+
+```javascript
+(async () => {
+  const dbs = await indexedDB.databases(); // Get all database names
+  for (const db of dbs) {
+    await indexedDB.deleteDatabase(db.name);
+    console.log(`Deleted database: ${db.name}`);
+  }
+  console.log("All databases deleted.");
+})();
+```
