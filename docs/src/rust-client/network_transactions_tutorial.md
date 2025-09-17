@@ -1048,7 +1048,7 @@ This step creates a public note that the network operator can consume to execute
 
 Your complete `main()` function should look like this:
 
-```rust,no_run
+```rust
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{

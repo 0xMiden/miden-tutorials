@@ -358,7 +358,7 @@ _When tokens are minted from this faucet, each token batch is represented as a "
 
 Your updated `main()` function in `src/main.rs` should look like this:
 
-```rust,no_run
+```rust
 use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;

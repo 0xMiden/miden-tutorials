@@ -47,7 +47,7 @@ Alice ➡ Bob ➡ Charlie ➡ Dave ➡ Eve ➡ Frank ➡ ...
 
 ## Full Rust code example
 
-```rust,no_run
+```rust
 use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::{Duration, Instant};

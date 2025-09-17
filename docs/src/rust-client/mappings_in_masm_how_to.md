@@ -135,7 +135,7 @@ The script calls the `write_to_map` procedure in the account which writes the ke
 
 Below is the Rust code that deploys the smart contract, creates the transaction script, and submits a transaction to update the mapping in the account:
 
-```rust,no_run
+```rust
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 

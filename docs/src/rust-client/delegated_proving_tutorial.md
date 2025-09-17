@@ -57,7 +57,7 @@ rand_chacha = "0.9.0"
 Similarly to previous tutorials, we must instantiate the client.
 We construct a `RemoteTransactionProver` that points to our delegated-proving service running at https://tx-prover.testnet.miden.io.
 
-```rust,no_run
+```rust
 use miden_client::auth::AuthSecretKey;
 use std::sync::Arc;
 
