@@ -18,11 +18,14 @@ use miden_client::{
     crypto::{FeltRng, SecretKey},
     keystore::FilesystemKeyStore,
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteTag, NoteType,
+        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
+        NoteType,
     },
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
+    store::TransactionFilter,
+    transaction::{
+        OutputNote, TransactionId, TransactionKernel, TransactionRequestBuilder, TransactionStatus,
+    },
     Client, ClientError, Felt, ScriptBuilder,
 };
 use miden_lib::account::auth;
@@ -31,6 +34,38 @@ use miden_objects::{
     assembly::Assembler,
     assembly::DefaultSourceManager,
 };
+
+/// Waits for a specific transaction to be committed.
+async fn wait_for_tx(
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    tx_id: TransactionId,
+) -> Result<(), ClientError> {
+    loop {
+        client.sync_state().await?;
+
+        // Check transaction status
+        let txs = client
+            .get_transactions(TransactionFilter::Ids(vec![tx_id]))
+            .await?;
+        let tx_committed = if !txs.is_empty() {
+            matches!(txs[0].status, TransactionStatus::Committed { .. })
+        } else {
+            false
+        };
+
+        if tx_committed {
+            println!("✅ transaction {} committed", tx_id.to_hex());
+            break;
+        }
+
+        println!(
+            "Transaction {} not yet committed. Waiting...",
+            tx_id.to_hex()
+        );
+        sleep(Duration::from_secs(2)).await;
+    }
+    Ok(())
+}
 
 fn create_library(
     assembler: Assembler,
@@ -72,7 +107,6 @@ async fn create_basic_account(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    // let endpoint = Endpoint::new("http".to_string(), "localhost".to_string(), Some(57291));
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
@@ -155,7 +189,7 @@ async fn main() -> Result<(), ClientError> {
     // Build the new `Account` with the component
     let (game_contract, game_seed) = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
-        .storage_mode(AccountStorageMode::Public)
+        .storage_mode(AccountStorageMode::Network)
         .with_component(game_component.clone())
         .with_auth_component(auth::NoAuth)
         .build()
@@ -211,9 +245,16 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await;
+    let _ = client.submit_transaction(tx_result.clone()).await;
 
-    client.sync_state().await.unwrap();
+    let tx_id = tx_result.executed_transaction().id();
+    println!(
+        "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
+        tx_id
+    );
+
+    // Wait for the transaction to be committed
+    wait_for_tx(&mut client, tx_id).await.unwrap();
 
     // Retrieve updated contract data to see the incremented game
     let account = client.get_account(game_contract.id()).await.unwrap();
@@ -275,7 +316,7 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
     let serial_num = client.rng().draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(game_contract.id());
     let metadata = NoteMetadata::new(
         alice_account.id(),
         NoteType::Public,
@@ -304,23 +345,22 @@ async fn main() -> Result<(), ClientError> {
     let _ = client.submit_transaction(tx_result.clone()).await;
     client.sync_state().await?;
 
-    println!("Submitted create game note");
+    let note_tx_id = tx_result.executed_transaction().id();
+    println!(
+        "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
+        note_tx_id
+    );
 
-    // -------------------------------------------------------------------------
-    // STEP 6: Call Game Contract with create game note
-    // -------------------------------------------------------------------------
-    println!("\n[STEP 6] Call Game Contract with create game note");
+    client.sync_state().await?;
 
-    println!("Consuming create game note as beneficiary");
-    let consume_custom_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(create_game_note, None)])
-        .build()
-        .unwrap();
-    let tx_result = client
-        .new_transaction(game_contract.id(), consume_custom_request)
-        .await
-        .unwrap();
-    let _ = client.submit_transaction(tx_result.clone()).await;
+    println!("network increment note creation tx submitted, waiting for onchain commitment");
+
+    // Wait for the note transaction to be committed
+    wait_for_tx(&mut client, note_tx_id).await.unwrap();
+
+    // Waiting for network note to be picked up by the network transaction builder
+    sleep(Duration::from_secs(6)).await;
+
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -344,15 +384,21 @@ async fn main() -> Result<(), ClientError> {
         .compile_note_script(make_a_move_note_code)
         .unwrap();
 
-    let make_a_move_note_inputs = NoteInputs::new(vec![Felt::new(1), Felt::new(7)]).unwrap();
+    let make_a_move_note_inputs = NoteInputs::new(vec![
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(0),
+        Felt::new(1),
+        Felt::new(7),
+    ])
+    .unwrap();
     let make_a_move_note_serial_num = client.rng().draw_word();
     let make_a_move_note_recipient = NoteRecipient::new(
         make_a_move_note_serial_num,
         make_a_move_note_script,
         make_a_move_note_inputs,
     );
-    let make_a_move_note_tag =
-        NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
+    let make_a_move_note_tag = NoteTag::from_account_id(game_contract.id());
     let make_a_move_note_metadata = NoteMetadata::new(
         alice_account.id(),
         NoteType::Public,
@@ -385,35 +431,25 @@ async fn main() -> Result<(), ClientError> {
     let _ = client.submit_transaction(tx_result.clone()).await;
     client.sync_state().await?;
 
-    println!("Submitted make a move note");
-
-    // -------------------------------------------------------------------------
-    // STEP 9: Consume the make a move note
-    // -------------------------------------------------------------------------
-    println!("\n[STEP 9] Consume the make a move note");
-
-    let consume_make_a_move_note_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(make_a_move_note, None)])
-        .build()
-        .unwrap();
-    let tx_result = client
-        .new_transaction(game_contract.id(), consume_make_a_move_note_request)
-        .await
-        .unwrap();
-    let _ = client.submit_transaction(tx_result.clone()).await.unwrap();
-
     let make_a_move_note_tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         make_a_move_note_tx_id
     );
 
-    println!("{:?}", tx_result.account_delta());
+    client.sync_state().await?;
 
+    println!("network make a move note creation tx submitted, waiting for onchain commitment");
+
+    // Wait for the note transaction to be committed
+    wait_for_tx(&mut client, make_a_move_note_tx_id)
+        .await
+        .unwrap();
+
+    // Waiting for network note to be picked up by the network transaction builder
     sleep(Duration::from_secs(6)).await;
-    client.sync_state().await.unwrap();
 
-    println!("Consumed make a move note");
+    client.sync_state().await?;
 
     println!(
         "player1 values mapping storage slot: {:?}",

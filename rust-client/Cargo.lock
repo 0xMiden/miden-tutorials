@@ -2195,6 +2195,7 @@ dependencies = [
 name = "rust-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "miden-assembly",
  "miden-client",
  "miden-crypto",
