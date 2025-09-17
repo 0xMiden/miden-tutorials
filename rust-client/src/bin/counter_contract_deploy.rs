@@ -7,11 +7,15 @@ use miden_assembly::{
     LibraryPath,
 };
 use miden_client::{
-    account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
+    account::{
+        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
+        AddressInterface, StorageSlot,
+    },
     builder::ClientBuilder,
+    keystore::FilesystemKeyStore,
     rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder, TransactionScript},
-    ClientError, Felt,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
+    ClientError, Felt, ScriptBuilder,
 };
 use miden_objects::{
     account::{AccountComponent, NetworkId},
@@ -40,11 +44,12 @@ async fn main() -> Result<(), ClientError> {
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
 
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -67,12 +72,9 @@ async fn main() -> Result<(), ClientError> {
     let counter_component = AccountComponent::compile(
         counter_code.clone(),
         assembler,
-        vec![StorageSlot::Value([
-            Felt::new(0),
-            Felt::new(0),
-            Felt::new(0),
-            Felt::new(0),
-        ])],
+        vec![StorageSlot::Value(
+            [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into(),
+        )],
     )
     .unwrap()
     .with_supports_all_types();
@@ -96,7 +98,11 @@ async fn main() -> Result<(), ClientError> {
     );
     println!(
         "counter_contract id: {:?}",
-        counter_contract.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            counter_contract.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
     println!("counter_contract storage: {:?}", counter_contract.storage());
 
@@ -121,12 +127,15 @@ async fn main() -> Result<(), ClientError> {
         &counter_code,
     )
     .unwrap();
+    println!("here");
 
-    let tx_script = TransactionScript::compile(
-        script_code,
-        assembler.with_library(&account_component_lib).unwrap(),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&account_component_lib)
+        .unwrap()
+        .compile_tx_script(script_code)
+        .unwrap();
+
+    println!("here");
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()

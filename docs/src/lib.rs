@@ -8,3 +8,4 @@
 #![doc = include_str!("rust-client/mappings_in_masm_how_to.md")]
 #![doc = include_str!("rust-client/creating_notes_in_masm_tutorial.md")]
 #![doc = include_str!("rust-client/delegated_proving_tutorial.md")]
+#![doc = include_str!("rust-client/network_transactions_tutorial.md")]

@@ -1,11 +1,13 @@
+use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::{prelude::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 use tokio::time::{sleep, Duration};
 
 use miden_client::{
     account::{
-        component::{BasicFungibleFaucet, BasicWallet, RpoFalcon512},
-        AccountBuilder, AccountStorageMode, AccountType,
+        component::{BasicFungibleFaucet, BasicWallet},
+        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
+        AddressInterface,
     },
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
@@ -26,7 +28,7 @@ use miden_objects::note::NoteDetails;
 
 // Helper to create a basic account
 async fn create_basic_account(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     keystore: FilesystemKeyStore<StdRng>,
 ) -> Result<miden_client::account::Account, ClientError> {
     let mut init_seed = [0u8; 32];
@@ -35,7 +37,7 @@ async fn create_basic_account(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicWallet);
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -46,7 +48,7 @@ async fn create_basic_account(
 }
 
 async fn create_basic_faucet(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     keystore: FilesystemKeyStore<StdRng>,
 ) -> Result<miden_client::account::Account, ClientError> {
     let mut init_seed = [0u8; 32];
@@ -58,7 +60,7 @@ async fn create_basic_faucet(
     let builder = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(RpoFalcon512::new(key_pair.public_key()))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
     let (account, seed) = builder.build().unwrap();
     client.add_account(&account, Some(seed), false).await?;
@@ -70,7 +72,7 @@ async fn create_basic_faucet(
 
 // Helper to wait until an account has the expected number of consumable notes
 async fn wait_for_notes(
-    client: &mut Client,
+    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     account_id: &miden_client::account::Account,
     expected: usize,
 ) -> Result<(), ClientError> {
@@ -83,7 +85,11 @@ async fn wait_for_notes(
         println!(
             "{} consumable notes found for account {}. Waiting...",
             notes.len(),
-            account_id.id().to_bech32(NetworkId::Testnet)
+            Address::from(AccountIdAddress::new(
+                account_id.id(),
+                AddressInterface::Unspecified
+            ))
+            .to_bech32(NetworkId::Testnet)
         );
         sleep(Duration::from_secs(3)).await;
     }
@@ -96,10 +102,12 @@ async fn main() -> Result<(), ClientError> {
     let timeout_ms = 10_000;
     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
 
+    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+
     let mut client = ClientBuilder::new()
         .rpc(rpc_api)
-        .filesystem_keystore("./keystore")
-        .in_debug_mode(true)
+        .authenticator(keystore)
+        .in_debug_mode(true.into())
         .build()
         .await?;
 
@@ -116,19 +124,31 @@ async fn main() -> Result<(), ClientError> {
     let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
     println!(
         "Alice's account ID: {:?}",
-        alice_account.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            alice_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
     let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
     println!(
         "Bob's account ID: {:?}",
-        bob_account.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            bob_account.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
 
     println!("\nDeploying a new fungible faucet.");
     let faucet = create_basic_faucet(&mut client, keystore.clone()).await?;
     println!(
         "Faucet account ID: {:?}",
-        faucet.id().to_bech32(NetworkId::Testnet)
+        Address::from(AccountIdAddress::new(
+            faucet.id(),
+            AddressInterface::Unspecified
+        ))
+        .to_bech32(NetworkId::Testnet)
     );
     client.sync_state().await?;
 
@@ -189,7 +209,8 @@ async fn main() -> Result<(), ClientError> {
         NoteExecutionHint::always(),
         Felt::new(0),
     )?;
-    let note_script = NoteScript::compile(code, assembler.clone()).unwrap();
+    let program = assembler.clone().assemble_program(code).unwrap();
+    let note_script = NoteScript::new(program);
     let note_inputs = NoteInputs::new(vec![
         alice_account.id().prefix().as_felt(),
         alice_account.id().suffix(),
@@ -228,7 +249,8 @@ async fn main() -> Result<(), ClientError> {
         serial_num[1],
         serial_num[2],
         Felt::new(serial_num[3].as_int() + 1),
-    ];
+    ]
+    .into();
 
     // Reuse the note_script and note_inputs
     let recipient = NoteRecipient::new(serial_num_1, note_script, note_inputs);

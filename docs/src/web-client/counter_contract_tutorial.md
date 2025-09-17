@@ -39,7 +39,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.10.1
+   pnpm i @demox-labs/miden-sdk@0.11.1
    ```
 
 **NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
@@ -116,61 +116,57 @@ export async function incrementCounterContract(): Promise<void> {
   const {
     AccountId,
     AssemblerUtils,
-    StorageSlot,
     TransactionKernel,
     TransactionRequestBuilder,
     TransactionScript,
-    TransactionScriptInputPairArray,
     WebClient,
   } = await import("@demox-labs/miden-sdk");
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = "https://rpc.testnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
   console.log("Current block number: ", (await client.syncState()).blockNum());
 
   // Counter contract code in Miden Assembly
   const counterContractCode = `
-      use.miden::account
-      use.std::sys
+    use.miden::account
+    use.std::sys
 
-      # => []
-      export.get_count
-          push.0
-          # => [index]
-          
-          # exec.account::get_item
-          # => [count]
-          
-          # exec.sys::truncate_stack
-          # => []
-      end
+    const.COUNTER_SLOT=0
 
-      # => []
-      export.increment_count
-          push.0
-          # => [index]
-          
-          exec.account::get_item
-          # => [count]
-          
-          push.1 add
-          # => [count+1]
+    # => []
+    export.get_count
+        push.COUNTER_SLOT
+        # => [index]
 
-          # debug statement with client
-          debug.stack
+        exec.account::get_item
+        # => [count]
 
-          push.0
-          # [index, count+1]
-          
-          exec.account::set_item
-          # => []
-          
-          push.1 exec.account::incr_nonce
-          # => []
-          
-          exec.sys::truncate_stack
-          # => []
-      end
+        exec.sys::truncate_stack
+        # => []
+    end
+
+    # => []
+    export.increment_count
+        push.COUNTER_SLOT
+        # => [index]
+
+        exec.account::get_item
+        # => [count]
+
+        add.1
+        # => [count+1]
+
+        debug.stack
+
+        push.COUNTER_SLOT
+        # [index, count+1]
+
+        exec.account::set_item
+        # => []
+
+        exec.sys::truncate_stack
+        # => []
+    end
     `;
 
   // Building the counter contract
@@ -178,7 +174,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Counter contract account id on testnet
   const counterContractId = AccountId.fromBech32(
-    "mtst1qz43ftxkrzcjsqz3hpw332qwny2ggsp0",
+    "mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy",
   );
 
   // Reading the public state of the counter contract from testnet,
@@ -236,7 +232,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Here we get the first Word from storage of the counter contract
   // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
-  let count = counter?.storage().getItem(1);
+  let count = counter?.storage().getItem(0);
 
   // Converting the Word represented as a hex to a single integer value
   const counterValue = Number(
@@ -266,19 +262,19 @@ incrementCounterContract.ts:153 Count:  3
 
 #### Here's a breakdown of what the `get_count` procedure does:
 
-1. Pushes `0` onto the stack, representing the index of the storage slot to read.
+1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
 2. Calls `account::get_item` with the index of `0`.
 3. Calls `sys::truncate_stack` to truncate the stack to size 16.
 4. The value returned from `account::get_item` is still on the stack and will be returned when this procedure is called.
 
 #### Here's a breakdown of what the `increment_count` procedure does:
 
-1. Pushes `0` onto the stack, representing the index of the storage slot to read.
+1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
 2. Calls `account::get_item` with the index of `0`.
 3. Pushes `1` onto the stack.
 4. Adds `1` to the count value returned from `account::get_item`.
 5. _For demonstration purposes_, calls `debug.stack` to see the state of the stack
-6. Pushes `0` onto the stack, which is the index of the storage slot we want to write to.
+6. Pushes `0` (COUNTER_SLOT) onto the stack, which is the index of the storage slot we want to write to.
 7. Calls `account::set_item` which saves the incremented count to storage at index `0`
 8. Calls `sys::truncate_stack` to truncate the stack to size 16.
 
@@ -286,9 +282,11 @@ incrementCounterContract.ts:153 Count:  3
 use.miden::account
 use.std::sys
 
+const.COUNTER_SLOT=0
+
 # => []
 export.get_count
-    push.0
+    push.COUNTER_SLOT
     # => [index]
 
     exec.account::get_item
@@ -300,25 +298,21 @@ end
 
 # => []
 export.increment_count
-    push.0
+    push.COUNTER_SLOT
     # => [index]
 
     exec.account::get_item
     # => [count]
 
-    push.1 add
+    add.1
     # => [count+1]
 
-    # debug statement with client
     debug.stack
 
-    push.0
+    push.COUNTER_SLOT
     # [index, count+1]
 
     exec.account::set_item
-    # => []
-
-    push.1 exec.account::incr_nonce
     # => []
 
     exec.sys::truncate_stack

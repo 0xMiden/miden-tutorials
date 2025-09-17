@@ -10,7 +10,7 @@ export async function createMintConsume(): Promise<void> {
     "@demox-labs/miden-sdk"
   );
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = "https://rpc.testnet.miden.io";
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync and log block
