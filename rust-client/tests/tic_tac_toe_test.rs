@@ -51,18 +51,15 @@ async fn create_game_contract(
     client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
     game_code: &str,
 ) -> Result<miden_client::account::Account, ClientError> {
-    println!("  - Preparing assembler...");
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-    println!("  - Creating storage slots...");
     let empty_storage_slot =
         StorageSlot::Value([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into());
 
     let storage_map = StorageMap::new();
     let storage_slot_map = StorageSlot::Map(storage_map.clone());
 
-    println!("  - Compiling account component...");
     // Compile the account code into `AccountComponent` with storage slots
     let game_component = AccountComponent::compile(
         game_code.to_string(),
@@ -85,12 +82,10 @@ async fn create_game_contract(
     .unwrap()
     .with_supports_all_types();
 
-    println!("  - Generating seed...");
     // Init seed for the game contract
     let mut seed = [0_u8; 32];
     client.rng().fill_bytes(&mut seed);
 
-    println!("  - Building account...");
     // Build the new `Account` with the component
     let (game_contract, game_seed) = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
@@ -100,13 +95,10 @@ async fn create_game_contract(
         .build()
         .unwrap();
 
-    println!("  - Adding account to client...");
     client
         .add_account(&game_contract.clone(), Some(game_seed), false)
         .await
         .unwrap();
-
-    println!("  - Game contract created successfully!");
     Ok(game_contract)
 }
 
@@ -332,7 +324,6 @@ async fn test_tic_tac_toe_game() -> Result<()> {
     let game_code = fs::read_to_string(game_path).unwrap();
 
     // Try to create the game contract with error handling
-    println!("About to create game contract...");
     let game_contract = match create_game_contract(&mut client, &game_code).await {
         Ok(contract) => {
             println!("Successfully created game contract");
@@ -448,7 +439,7 @@ async fn test_tic_tac_toe_game() -> Result<()> {
         );
 
         // Consume the make_a_move note
-        consume_note(&mut client, &game_contract, make_a_move_note, false).await?;
+        consume_note(&mut client, &game_contract, make_a_move_note, true).await?;
         println!("    Consumed make a move note for field {}", field_index);
 
         // Small delay to ensure proper state synchronization
@@ -489,39 +480,7 @@ async fn test_tic_tac_toe_game() -> Result<()> {
     // -------------------------------------------------------------------------
     // STEP 5: Check final game state
     // -------------------------------------------------------------------------
-    // // println!("\n[STEP 5] Checking final game state");
-
-    // // // Retrieve updated contract data
-    // // let account = client.get_account(game_contract.id()).await.unwrap();
-    // // let account_data = account.unwrap().account().clone();
-
-    // // println!(
-    // //     "nonce storage slot: {:?}",
-    // //     account_data.storage().get_item(0)
-    // // );
-    // // println!(
-    // //     "player ids mapping storage slot: {:?}",
-    // //     account_data.storage().get_map_item(
-    // //         1,
-    // //         Word::new([Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(1)].into())
-    // //     )
-    // // );
-    // // println!(
-    // //     "player1 values mapping storage slot: {:?}",
-    // //     account_data.storage().get_item(2)
-    // // );
-    // // println!(
-    // //     "player2 values mapping storage slot: {:?}",
-    // //     account_data.storage().get_item(3)
-    // // );
-    // // println!(
-    // //     "winners mapping storage slot: {:?}",
-    // //     account_data.storage().get_item(4)
-    // // );
-    // // println!(
-    // //     "winner lines mapping storage slot: {:?}",
-    // //     account_data.storage().get_item(5)
-    // // );
+    println!("\n[STEP 5] Checking final game state");
 
     // Check specific player moves
     println!(

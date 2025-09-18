@@ -384,14 +384,7 @@ async fn main() -> Result<(), ClientError> {
         .compile_note_script(make_a_move_note_code)
         .unwrap();
 
-    let make_a_move_note_inputs = NoteInputs::new(vec![
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(0),
-        Felt::new(1),
-        Felt::new(7),
-    ])
-    .unwrap();
+    let make_a_move_note_inputs = NoteInputs::new(vec![Felt::new(1), Felt::new(7)]).unwrap();
     let make_a_move_note_serial_num = client.rng().draw_word();
     let make_a_move_note_recipient = NoteRecipient::new(
         make_a_move_note_serial_num,
