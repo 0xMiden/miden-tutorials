@@ -37,28 +37,28 @@ const.WINNING_LINES_MAPPING_SLOT=5
 # Inputs: []
 export.constructor
     # Store all possible winning lines in memory
-    push.0.2.1.0 # 0 1 2
+    push.0.3.2.1 # 1 2 3
     mem_storew.4 dropw
 
-    push.0.5.4.3 # 3 4 5
+    push.0.6.5.4 # 4 5 6
     mem_storew.8 dropw
 
-    push.0.8.7.6 # 6 7 8
+    push.0.9.8.7 # 7 8 9
     mem_storew.12 dropw
 
-    push.0.6.3.0 # 0 3 6
+    push.0.7.4.1 # 1 4 7
     mem_storew.16 dropw
 
-    push.0.7.4.1 # 1 4 7
+    push.0.8.5.2 # 2 5 8
     mem_storew.20 dropw
 
-    push.0.8.5.2 # 2 5 8
+    push.0.9.6.3 # 3 6 9
     mem_storew.24 dropw
 
-    push.0.8.4.0 # 0 4 8
+    push.0.9.5.1 # 1 5 9
     mem_storew.28 dropw
 
-    push.0.6.4.2 # 2 4 6
+    push.0.7.5.3 # 3 5 7
     mem_storew.32 dropw
 
     push.8
@@ -135,7 +135,7 @@ export.create_game
     # => []
 end
 
-# => [nonce, field_index, ...3_winning_line_indexes?]
+# Inputs: [nonce, field_index, ...2_winning_line_indexes?]
 export.make_a_move
     # Store nonce in memory to use later
     mem_store.NONCE_MEMORY_ADDR
@@ -178,11 +178,13 @@ export.make_a_move
 
     push.PLAYER1_VALUES_MAPPING_SLOT eq
     if.true
+        # => [other_num_of_non_zero_values, own_num_of_non_zero_values]
         # (if ID=1 => other player num has to be equal)
         dup.1 eq assert.err=ERR_WRONG_TURN
     else
-        # (if ID=2 => other player num has to be lower)
-        dup.1 lt assert.err=ERR_WRONG_TURN
+        # => [other_num_of_non_zero_values, own_num_of_non_zero_values]
+        # (if ID=2 => other player (player1) num has to be greater)
+        dup.1 gt assert.err=ERR_WRONG_TURN
     end
     # => [own_num_of_values]
 
@@ -194,7 +196,13 @@ export.make_a_move
         # call cast_win
         
         mem_load.FIELD_INDEX_MEMORY_ADDR
-        # => [WINNING_LINE]
+        # => [field_index, winning_line_index1, winning_line_index2]
+
+        push.0 movdn.2
+        # => [UNORDERED_WINNING_LINE]
+
+        # Pass unordered winning line, where first index is the new field_index
+        exec.internal_cast_win
     else
         # Making normal move
         # => []
@@ -269,37 +277,43 @@ export.cast_win
     # Write to winners mapping
     exec.store_winner
     # => []
+
+    push.888 debug.stack drop
 end
 
 # Inputs: [WINNING_LINE]
 # Memory requirements: nonce & own_player_values_slot
 proc.internal_cast_win
-    dupw
-    # => [WINNING_LINE, WINNING_LINE]
-
-    exec.check_if_winning_line
-    # => [true_or_false, WINNING_LINE]
-
-    assert.err=ERR_NOT_WINNING_LINE
-    # => [WINNING_LINE]
-
     # Check if player actually has all values contained in WINNING_LINE (except first one)
 
+    dupw
+    # => [WINNING_LINE, WINNING_LINE]
+    
     # Move first value (non-stored FIELD_INDEX) to last index in word
-    movdn.3
-    # => [WINNING_LINE]
+    movdn.2
+    # => [WINNING_LINE, ORIGINAL_WINNING_LINE]
 
-    # Push n to stack (2 = checking 2 values of the line)
+    # Push n to stack (2 = checking first 2 values of the line)
     push.2
-    # => [n, WINNING_LINE]
+    # => [n, WINNING_LINE, ORIGINAL_WINNING_LINE]
 
     mem_load.OWN_PLAYER_VALUES_SLOT_MEMORY_ADDR
-    # => [own_player_values_slot, n, WINNING_LINE]
+    # => [own_player_values_slot, n, WINNING_LINE, ORIGINAL_WINNING_LINE]
 
     exec.check_player_values
-    # => [true_or_false]
+    # => [true_or_false, ORIGINAL_WINNING_LINE]
 
     assert.err=ERR_PLAYER_DOES_NOT_HAVE_VALUES
+    # => [ORIGINAL_WINNING_LINE]
+
+    # TODO: Convert to ordered winning line
+
+    # Check if supplied line is a winning line
+
+    exec.check_if_winning_line
+    # => [true_or_false]
+
+    assert.err=ERR_NOT_WINNING_LINE
     # => []
 
     # Write to winners mapping
@@ -473,14 +487,21 @@ proc.has_field_index.1
         end
         # => [PLAYER_VALUES, i, has_field_index, num_of_non_zero_values]
 
+        # Delete first element and replace by 0
+        drop
+        # => [PLAYER_VALUES-1, i, has_field_index, num_of_non_zero_values]
+
+        push.0 movdn.3
+        # => [MODIFIED_PLAYER_VALUES, i, has_field_index, num_of_non_zero_values]
+
         movup.4 add.1
-        # => [i+1, PLAYER_VALUES, has_field_index, num_of_non_zero_values]
+        # => [i+1, MODIFIED_PLAYER_VALUES, has_field_index, num_of_non_zero_values]
 
         movdn.4
-        # => [PLAYER_VALUES, i+1, has_field_index, num_of_non_zero_values]
+        # => [MODIFIED_PLAYER_VALUES, i+1, has_field_index, num_of_non_zero_values]
 
         dup.4 neq.4
-        # => [true/false, PLAYER_VALUES, i+1, has_field_index, num_of_non_zero_values]
+        # => [true/false, MODIFIED_PLAYER_VALUES, i+1, has_field_index, num_of_non_zero_values]
     end
     # => [EMPTY_WORD, last_i, has_field_index, num_of_non_zero_values]
 
@@ -530,6 +551,30 @@ proc.verify_and_get_player_slot
     # => [other_player_values_mapping_slot, player_values_mapping_slot]
 end
 
+# Inputs: [WINNING_LINE]
+# Outputs: [true_or_false]
+proc.check_if_winning_line
+    push.WINNING_LINES_MAPPING_SLOT
+    # => [slot, WINNING_LINE]
+
+    exec.account::get_map_item
+    # => [TRUE_OR_FALSE]
+
+    # Check if supplied line is a winning line
+    # Push zero word to stack and compare it to EMPTY_WORD (to determine if supplied line is valid)
+    padw eqw
+    # => [not_winning_line, EMPTY_WORD, TRUE_OR_FALSE]
+
+    movdn.8
+    # => [EMPTY_WORD, TRUE_OR_FALSE, not_winning_line]
+
+    dropw dropw
+    # => [not_winning_line]
+
+    push.0 eq
+    # => [is_winning_line]
+end
+
 # Inputs: [slot, nonce]
 # Outputs: [VALUE]
 proc.get_map_value_from_nonce
@@ -554,19 +599,4 @@ proc.felt_to_word
 
     movup.3
     # => [WORD]
-end
-
-# Inputs: [WINNING_LINE]
-# Outputs: [true_or_false]
-proc.check_if_winning_line
-    push.WINNING_LINES_MAPPING_SLOT
-    # => [slot, WINNING_LINE]
-
-    exec.account::get_map_item
-    # => [TRUE_OR_FALSE]
-
-    # Check if supplied line is a winning line
-    # Push zero word to stack and compare it to TRUE_OR_FALSE (to determine if supplied line is valid)
-    padw eqw
-    # => [true_or_false]
 end

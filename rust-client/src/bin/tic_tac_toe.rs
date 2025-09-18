@@ -408,7 +408,7 @@ async fn main() -> Result<(), ClientError> {
         make_a_move_note_tx_id
     );
 
-    println!("{:?}", tx_result.account_delta());
+    println!("Transaction account delta: {:?}", tx_result.account_delta());
 
     sleep(Duration::from_secs(6)).await;
     client.sync_state().await.unwrap();
