@@ -925,15 +925,9 @@ Add this code to your `main()` function:
 #     // STEP 3: Deploy Network Account with Transaction Script
 #     // -------------------------------------------------------------------------
 #     println!("\n[STEP 3] Deploy network counter smart contract");
-<<<<<<< HEAD
-#
-#     let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
-#
-=======
 
 #     let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
 
->>>>>>> c150bd2 (fix network transactions on Miden)
 #     let account_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 #     let library_path = "external_contract::counter_contract";
 #
@@ -972,21 +966,10 @@ println!("\n[STEP 4] Creating a network note for network counter contract");
 let network_note_code =
     fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
 let account_code =
-    fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
+    fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
 
-<<<<<<< HEAD
 let library_path = "external_contract::counter_contract";
 let library = create_library(account_code, library_path).unwrap();
-=======
-    let network_note_code =
-        fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
-    let account_code =
-<<<<<<< HEAD
-        fs::read_to_string(Path::new("./masm/accounts/network_counter.masm")).unwrap();
->>>>>>> c150bd2 (fix network transactions on Miden)
-=======
-        fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
->>>>>>> baa62c0 (remove all truncate stack and remove network_counter.masm)
 
 // Create and submit the network note that will increment the counter
 // Generate a random serial number for the note
