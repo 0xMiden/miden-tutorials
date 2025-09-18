@@ -36,32 +36,123 @@ const.WINNING_LINES_MAPPING_SLOT=5
 
 # Inputs: []
 export.constructor
-    # Store all possible winning lines in memory
+    # Store all possible winning lines and their permutations in memory
+    # Each winning line has 6 permutations (3! = 6)
+    # We'll store them in groups of 6 consecutive memory addresses
+    
+    # Winning line 1: 1 2 3 (row 1)
     push.0.3.2.1 # 1 2 3
     mem_storew.4 dropw
-
-    push.0.6.5.4 # 4 5 6
+    push.0.3.1.2 # 1 3 2
     mem_storew.8 dropw
-
-    push.0.9.8.7 # 7 8 9
+    push.0.2.3.1 # 2 1 3
     mem_storew.12 dropw
-
-    push.0.7.4.1 # 1 4 7
+    push.0.2.1.3 # 2 3 1
     mem_storew.16 dropw
-
-    push.0.8.5.2 # 2 5 8
+    push.0.1.3.2 # 3 1 2
     mem_storew.20 dropw
-
-    push.0.9.6.3 # 3 6 9
+    push.0.1.2.3 # 3 2 1
     mem_storew.24 dropw
 
-    push.0.9.5.1 # 1 5 9
+    # Winning line 2: 4 5 6 (row 2)
+    push.0.6.5.4 # 4 5 6
     mem_storew.28 dropw
-
-    push.0.7.5.3 # 3 5 7
+    push.0.6.4.5 # 4 6 5
     mem_storew.32 dropw
+    push.0.5.6.4 # 5 4 6
+    mem_storew.36 dropw
+    push.0.5.4.6 # 5 6 4
+    mem_storew.40 dropw
+    push.0.4.6.5 # 6 4 5
+    mem_storew.44 dropw
+    push.0.4.5.6 # 6 5 4
+    mem_storew.48 dropw
 
-    push.8
+    # Winning line 3: 7 8 9 (row 3)
+    push.0.9.8.7 # 7 8 9
+    mem_storew.52 dropw
+    push.0.9.7.8 # 7 9 8
+    mem_storew.56 dropw
+    push.0.8.9.7 # 8 7 9
+    mem_storew.60 dropw
+    push.0.8.7.9 # 8 9 7
+    mem_storew.64 dropw
+    push.0.7.9.8 # 9 7 8
+    mem_storew.68 dropw
+    push.0.7.8.9 # 9 8 7
+    mem_storew.72 dropw
+
+    # Winning line 4: 1 4 7 (column 1)
+    push.0.7.4.1 # 1 4 7
+    mem_storew.76 dropw
+    push.0.7.1.4 # 1 7 4
+    mem_storew.80 dropw
+    push.0.4.7.1 # 4 1 7
+    mem_storew.84 dropw
+    push.0.4.1.7 # 4 7 1
+    mem_storew.88 dropw
+    push.0.1.7.4 # 7 1 4
+    mem_storew.92 dropw
+    push.0.1.4.7 # 7 4 1
+    mem_storew.96 dropw
+
+    # Winning line 5: 2 5 8 (column 2)
+    push.0.8.5.2 # 2 5 8
+    mem_storew.100 dropw
+    push.0.8.2.5 # 2 8 5
+    mem_storew.104 dropw
+    push.0.5.8.2 # 5 2 8
+    mem_storew.108 dropw
+    push.0.5.2.8 # 5 8 2
+    mem_storew.112 dropw
+    push.0.2.8.5 # 8 2 5
+    mem_storew.116 dropw
+    push.0.2.5.8 # 8 5 2
+    mem_storew.120 dropw
+
+    # Winning line 6: 3 6 9 (column 3)
+    push.0.9.6.3 # 3 6 9
+    mem_storew.124 dropw
+    push.0.9.3.6 # 3 9 6
+    mem_storew.128 dropw
+    push.0.6.9.3 # 6 3 9
+    mem_storew.132 dropw
+    push.0.6.3.9 # 6 9 3
+    mem_storew.136 dropw
+    push.0.3.9.6 # 9 3 6
+    mem_storew.140 dropw
+    push.0.3.6.9 # 9 6 3
+    mem_storew.144 dropw
+
+    # Winning line 7: 1 5 9 (diagonal 1)
+    push.0.9.5.1 # 1 5 9
+    mem_storew.148 dropw
+    push.0.9.1.5 # 1 9 5
+    mem_storew.152 dropw
+    push.0.5.9.1 # 5 1 9
+    mem_storew.156 dropw
+    push.0.5.1.9 # 5 9 1
+    mem_storew.160 dropw
+    push.0.1.9.5 # 9 1 5
+    mem_storew.164 dropw
+    push.0.1.5.9 # 9 5 1
+    mem_storew.168 dropw
+
+    # Winning line 8: 3 5 7 (diagonal 2)
+    push.0.7.5.3 # 3 5 7
+    mem_storew.172 dropw
+    push.0.7.3.5 # 3 7 5
+    mem_storew.176 dropw
+    push.0.5.7.3 # 5 3 7
+    mem_storew.180 dropw
+    push.0.5.3.7 # 5 7 3
+    mem_storew.184 dropw
+    push.0.3.7.5 # 7 3 5
+    mem_storew.188 dropw
+    push.0.3.5.7 # 7 5 3
+    mem_storew.192 dropw
+
+    push.48
     dup neq.0
     # => [true, i]
 
@@ -70,7 +161,7 @@ export.constructor
         # => [i*4, i]
 
         padw movup.4
-        # => [i*8, 0, 0, 0, 0, i]
+        # => [i*4, 0, 0, 0, 0, i]
 
         mem_loadw
         # => [WINNING_LINE, i]
@@ -198,8 +289,8 @@ export.make_a_move
         mem_load.FIELD_INDEX_MEMORY_ADDR
         # => [field_index, winning_line_index1, winning_line_index2]
 
-        push.0 movdn.2
-        # => [UNORDERED_WINNING_LINE]
+        push.0 movdn.3
+        # => [WINNING_LINE]
 
         # Pass unordered winning line, where first index is the new field_index
         exec.internal_cast_win
@@ -277,8 +368,6 @@ export.cast_win
     # Write to winners mapping
     exec.store_winner
     # => []
-
-    push.888 debug.stack drop
 end
 
 # Inputs: [WINNING_LINE]
@@ -305,8 +394,6 @@ proc.internal_cast_win
 
     assert.err=ERR_PLAYER_DOES_NOT_HAVE_VALUES
     # => [ORIGINAL_WINNING_LINE]
-
-    # TODO: Convert to ordered winning line
 
     # Check if supplied line is a winning line
 
