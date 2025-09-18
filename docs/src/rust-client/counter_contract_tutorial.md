@@ -179,9 +179,6 @@ export.get_count
 
     exec.account::get_item
     # => [count]
-
-    exec.sys::truncate_stack
-    # => []
 end
 
 # => []
@@ -333,6 +330,10 @@ let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .unwrap();
 
 println!(
+        "counter_contract commitment: {:?}",
+        counter_contract.commitment()
+    );
+println!(
     "counter_contract id: {:?}",
     Address::from(AccountIdAddress::new(
         counter_contract.id(),
@@ -466,7 +467,7 @@ Paste the following code at the end of your `src/main.rs` file:
 #         .with_auth_component(NoAuth)
 #         .build()
 #         .unwrap();
-#
+#     
 #     println!(
 #         "counter_contract commitment: {:?}",
 #         counter_contract.commitment()
@@ -501,15 +502,12 @@ let account_component_lib = create_library(
     &counter_code,
 )
 .unwrap();
-println!("here");
 
 let tx_script = ScriptBuilder::new(true)
     .with_dynamically_linked_library(&account_component_lib)
     .unwrap()
     .compile_tx_script(script_code)
     .unwrap();
-
-println!("here");
 
 // Build a transaction request with the custom script
 let tx_increment_request = TransactionRequestBuilder::new()
@@ -681,15 +679,12 @@ async fn main() -> Result<(), ClientError> {
         &counter_code,
     )
     .unwrap();
-    println!("here");
 
     let tx_script = ScriptBuilder::new(true)
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(script_code)
         .unwrap();
-
-    println!("here");
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
