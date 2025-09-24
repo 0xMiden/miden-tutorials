@@ -216,8 +216,8 @@ async fn main() -> Result<(), ClientError> {
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented game
-    let account = client.get_account(game_contract.id()).await.unwrap();
-    let account_data = account.unwrap().account().clone();
+    let mut account = client.get_account(game_contract.id()).await.unwrap();
+    let mut account_data = account.unwrap().account().clone();
     println!(
         "nonce storage slot: {:?}",
         account_data.storage().get_item(0)
@@ -412,6 +412,9 @@ async fn main() -> Result<(), ClientError> {
 
     sleep(Duration::from_secs(6)).await;
     client.sync_state().await.unwrap();
+
+    account = client.get_account(game_contract.id()).await.unwrap();
+    account_data = account.unwrap().account().clone();
 
     println!("Consumed make a move note");
 
