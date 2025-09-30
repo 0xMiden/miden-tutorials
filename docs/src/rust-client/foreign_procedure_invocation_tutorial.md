@@ -105,7 +105,7 @@ end
 
 ### Step 3: Set up your `src/main.rs` file:
 
-```rust,no_run
+```rust
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 use tokio::time::sleep;
@@ -243,7 +243,7 @@ contract id: "mtst1qp3ca3adt34euqqqqwt488x34qnnd495"
 
 Add this snippet to the end of your file in the `main()` function that we created in the previous step:
 
-```rust,no_run
+```rust
 # use rand::RngCore;
 # use std::{fs, path::Path, sync::Arc, time::Duration};
 # use tokio::time::sleep;
@@ -399,7 +399,7 @@ This step uses the logic we explained in the [Public Account Interaction Tutoria
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,no_run
+```rust
 # use rand::RngCore;
 # use std::{fs, path::Path, sync::Arc, time::Duration};
 # use tokio::time::sleep;
@@ -631,7 +631,7 @@ Add this snippet to the end of your file in the `main()` function:
     );
 
     // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await;
+    let _ = client.submit_transaction(tx_result).await?;
     client.sync_state().await.unwrap();
 
     sleep(Duration::from_secs(5)).await;
@@ -786,7 +786,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_address) =
-        Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
+        Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
     let counter_contract_id = match counter_contract_address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),
@@ -898,7 +898,7 @@ async fn main() -> Result<(), ClientError> {
     );
 
     // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await;
+    let _ = client.submit_transaction(tx_result).await?;
     client.sync_state().await.unwrap();
 
     sleep(Duration::from_secs(5)).await;
