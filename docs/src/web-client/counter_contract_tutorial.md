@@ -1,3 +1,8 @@
+---
+title: "Incrementing the Count of the Counter Contract"
+sidebar_position: 5
+---
+
 # Incrementing the Count of the Counter Contract
 
 _Using the Miden WebClient to interact with a custom smart contract_

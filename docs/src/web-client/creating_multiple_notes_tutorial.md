@@ -1,3 +1,8 @@
+---
+title: "Creating Multiple Notes in a Single Transaction"
+sidebar_position: 4
+---
+
 # Creating Multiple Notes in a Single Transaction
 
 _Using the Miden WebClient in TypeScript to create several P2ID notes in a single transaction_

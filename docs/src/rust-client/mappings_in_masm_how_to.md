@@ -1,3 +1,8 @@
+---
+title: "How to Use Mappings in Miden Assembly"
+sidebar_position: 10
+---
+
 # How to Use Mappings in Miden Assembly
 
 _Using mappings in Miden assembly for storing key value pairs_

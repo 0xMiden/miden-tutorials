@@ -1,3 +1,8 @@
+---
+title: "How To Create Notes with Custom Logic"
+sidebar_position: 7
+---
+
 # How to Create a Custom Note
 
 _Creating notes with custom logic_

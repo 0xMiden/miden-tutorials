@@ -1,3 +1,8 @@
+---
+title: Tutorials
+sidebar_position: 1
+---
+
 # Introduction
 
 Basic tutorials and examples of how to build applications on Miden.

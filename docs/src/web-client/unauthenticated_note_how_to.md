@@ -1,3 +1,8 @@
+---
+title: "How to Use Unauthenticated Notes"
+sidebar_position: 6
+---
+
 # How to Use Unauthenticated Notes
 
 _Using unauthenticated notes for optimistic note consumption with the Miden WebClient_

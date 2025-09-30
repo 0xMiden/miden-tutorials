@@ -1,3 +1,8 @@
+---
+title: "Foreign Procedure Invocation"
+sidebar_position: 7
+---
+
 # Foreign Procedure Invocation Tutorial
 
 _Using foreign procedure invocation to craft read-only cross-contract calls with the WebClient_
@@ -16,7 +21,7 @@ FPI is useful for developing smart contracts that extend the functionality of ex
 
 ## What We Will Build
 
-![Count Copy FPI diagram](../assets/count_copy_fpi_diagram.png)
+![Count Copy FPI diagram](../img/count_copy_fpi_diagram.png)
 
 The diagram above depicts the "count copy" smart contract using foreign procedure invocation to read the count state of the counter contract. After reading the state via FPI, the "count copy" smart contract writes the value returned from the counter contract to storage.
 

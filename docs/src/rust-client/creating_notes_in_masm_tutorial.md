@@ -1,3 +1,8 @@
+---
+title: "How to Create Notes in Miden Assembly"
+sidebar_position: 11
+---
+
 # Creating Notes in Miden Assembly
 
 _Creating notes inside the MidenVM using Miden assembly_
@@ -27,7 +32,7 @@ Here are some tangible examples of when creating a note in MASM is useful in a D
 
 ## What We Will Be Building
 
-![Iterative Note Creation](../assets/note_creation_masm.png)
+![Iterative Note Creation](../img/note_creation_masm.png)
 
 In the diagram above, note A is consumed by an account, and during the transaction, note A' is created.
 
