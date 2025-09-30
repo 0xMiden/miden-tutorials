@@ -1,3 +1,8 @@
+---
+title: "Consuming On-Chain Price Data from the Pragma Oracle"
+sidebar_position: 13
+---
+
 # Consuming On-Chain Price Data from the Pragma Oracle
 
 _Using the Pragma oracle to get on chain price data_

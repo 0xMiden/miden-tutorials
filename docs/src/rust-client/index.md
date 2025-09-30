@@ -1,3 +1,8 @@
+---
+title: "Rust Client"
+sidebar_position: 1
+---
+
 # Rust Client
 
 Rust library, which can be used to programmatically interact with the Miden rollup.

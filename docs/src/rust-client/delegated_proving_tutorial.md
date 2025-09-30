@@ -1,3 +1,8 @@
+---
+title: "Delegated Proving"
+sidebar_position: 12
+---
+
 # Delegated Proving
 
 _Using delegated proving to minimize transaction proving times on computationally constrained devices_

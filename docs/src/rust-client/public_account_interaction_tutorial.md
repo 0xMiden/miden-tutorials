@@ -1,3 +1,8 @@
+---
+title: "Interacting with Public Smart Contracts"
+sidebar_position: 5
+---
+
 # Interacting with Public Smart Contracts
 
 _Using the Miden client in Rust to interact with public smart contracts on Miden_
@@ -185,59 +190,7 @@ We will be reading the public storage state of the counter contract deployed on 
 
 Add the following code snippet to the end of your `src/main.rs` function:
 
-```rust,no_run
-# use std::{fs, path::Path, sync::Arc};
-
-# use miden_assembly::{
-#     ast::{Module, ModuleKind},
-#     LibraryPath,
-# };
-# use miden_client::{
-#     account::Address,
-#     builder::ClientBuilder,
-#     keystore::FilesystemKeyStore,
-#     rpc::{Endpoint, TonicRpcClient},
-#     transaction::{TransactionKernel, TransactionRequestBuilder},
-#     ClientError, ScriptBuilder,
-# };
-# use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
-
-# fn create_library(
-#     assembler: Assembler,
-#     library_path: &str,
-#     source_code: &str,
-# ) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
-#     let source_manager = Arc::new(DefaultSourceManager::default());
-#     let module = Module::parser(ModuleKind::Library).parse_str(
-#         LibraryPath::new(library_path)?,
-#         source_code,
-#         &source_manager,
-#     )?;
-#     let library = assembler.clone().assemble_library([module])?;
-#     Ok(library)
-# }
-
-# #[tokio::main]
-# async fn main() -> Result<(), ClientError> {
-#     // Initialize client
-#     let endpoint = Endpoint::testnet();
-#     let timeout_ms = 10_000;
-#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-#     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
-
-#     let mut client = ClientBuilder::new()
-#         .rpc(rpc_api)
-#         .authenticator(keystore)
-#         .in_debug_mode(true.into())
-#         .build()
-#         .await?;
-
-#     let sync_summary = client.sync_state().await.unwrap();
-#     println!("Latest block: {}", sync_summary.block_num);
-
-
-
-
+```rust,ignore
 // -------------------------------------------------------------------------
 // STEP 1: Read the Public State of the Counter Contract
 // -------------------------------------------------------------------------
@@ -269,8 +222,6 @@ let counter_contract = if let Some(account_record) = counter_contract_details {
 } else {
     panic!("Counter contract not found!");
 };
-#     Ok(())
-# }
 ```
 
 Run the following command to execute src/main.rs:
@@ -290,89 +241,7 @@ counter nonce: 5
 
 Add the following code snippet to the end of your `src/main.rs` function:
 
-```rust,no_run
-# use std::{fs, path::Path, sync::Arc};
-
-# use miden_assembly::{
-#     ast::{Module, ModuleKind},
-#     LibraryPath,
-# };
-# use miden_client::{
-#     account::Address,
-#     builder::ClientBuilder,
-#     keystore::FilesystemKeyStore,
-#     rpc::{Endpoint, TonicRpcClient},
-#     transaction::{TransactionKernel, TransactionRequestBuilder},
-#     ClientError, ScriptBuilder,
-# };
-# use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
-
-# fn create_library(
-#     assembler: Assembler,
-#     library_path: &str,
-#     source_code: &str,
-# ) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
-#     let source_manager = Arc::new(DefaultSourceManager::default());
-#     let module = Module::parser(ModuleKind::Library).parse_str(
-#         LibraryPath::new(library_path)?,
-#         source_code,
-#         &source_manager,
-#     )?;
-#     let library = assembler.clone().assemble_library([module])?;
-#     Ok(library)
-# }
-
-# #[tokio::main]
-# async fn main() -> Result<(), ClientError> {
-#     // Initialize client
-#     let endpoint = Endpoint::testnet();
-#     let timeout_ms = 10_000;
-#     let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-#     let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
-
-#     let mut client = ClientBuilder::new()
-#         .rpc(rpc_api)
-#         .authenticator(keystore)
-#         .in_debug_mode(true.into())
-#         .build()
-#         .await?;
-
-#     let sync_summary = client.sync_state().await.unwrap();
-#     println!("Latest block: {}", sync_summary.block_num);
-
-#     // -------------------------------------------------------------------------
-#     // STEP 1: Read the Public State of the Counter Contract
-#     // -------------------------------------------------------------------------
-#     println!("\n[STEP 1] Reading data from public state");
-
-#     // Define the Counter Contract account id from counter contract deploy
-#     let (_network_id, address) =
-#         Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
-#     let counter_contract_id = match address {
-#         Address::AccountId(account_id_address) => account_id_address.id(),
-#         _ => panic!("Expected AccountId address"),
-#     };
-
-#     client
-#         .import_account_by_id(counter_contract_id)
-#         .await
-#         .unwrap();
-
-#     let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
-
-#     let counter_contract = if let Some(account_record) = counter_contract_details {
-#         // Clone the account to get an owned instance
-#         let account = account_record.account().clone();
-#         println!(
-#             "Account details: {:?}",
-#             account.storage().slots().first().unwrap()
-#         );
-#         account // Now returns an owned account
-#     } else {
-#         panic!("Counter contract not found!");
-#     };
-
-#
+```rust,ignore
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
@@ -427,8 +296,6 @@ println!(
     "counter contract storage: {:?}",
     account.unwrap().account().storage().get_item(0)
 );
-#     Ok(())
-# }
 ```
 
 ## Summary

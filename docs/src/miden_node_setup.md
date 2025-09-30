@@ -1,3 +1,8 @@
+---
+title: Miden Node Setup
+sidebar_position: 2
+---
+
 # Miden Node Setup Tutorial
 
 To run the Miden tutorial examples, you will need to set up a test environment and connect to a Miden node.
