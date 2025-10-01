@@ -665,7 +665,7 @@ In this tutorial created a smart contract that calls the `get_count` procedure i
 
 The final `src/main.rs` file should look like this:
 
-```rust,no_run
+```rust
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 use tokio::time::sleep;
