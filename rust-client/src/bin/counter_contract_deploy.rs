@@ -127,15 +127,12 @@ async fn main() -> Result<(), ClientError> {
         &counter_code,
     )
     .unwrap();
-    println!("here");
 
     let tx_script = ScriptBuilder::new(true)
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(script_code)
         .unwrap();
-
-    println!("here");
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()

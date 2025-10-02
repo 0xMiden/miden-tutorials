@@ -27,7 +27,7 @@ mkdir accounts
 
 miden-node bundled bootstrap \
   --data-directory data \
-  --accounts-directory .
+  --accounts-directory accounts
 ```
 
 Expected output:

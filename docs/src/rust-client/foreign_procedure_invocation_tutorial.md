@@ -16,7 +16,7 @@ FPI is useful for developing smart contracts that extend the functionality of ex
 
 ## What We Will Build
 
-![count copy FPI diagram](../assets/count_copy_fpi_diagram.png)
+![count copy FPI diagram](./assets/count_copy_fpi_diagram.png)
 
 The diagram above depicts the "count copy" smart contract using foreign procedure invocation to read the count state of the counter contract. After reading the state via FPI, the "count copy" smart contract writes the value returned from the counter contract to storage.
 
@@ -364,7 +364,7 @@ println!("\n[STEP 2] Building counter contract from public state");
 
 // Define the Counter Contract account id from counter contract deploy
 let (_, counter_contract_address) =
-    Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+    Address::from_bech32("mtst1qre73e6qcrfevqqngx8wewvveacqqjh8p2a").unwrap();
 let counter_contract_id = match counter_contract_address {
     Address::AccountId(account_id_address) => account_id_address.id(),
     _ => panic!("Expected AccountId address"),
@@ -520,7 +520,7 @@ Add this snippet to the end of your file in the `main()` function:
 #
 #     // Define the Counter Contract account id from counter contract deploy
 #     let (_, counter_contract_address) =
-#         Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+#         Address::from_bech32("mtst1qre73e6qcrfevqqngx8wewvveacqqjh8p2a").unwrap();
 #     let counter_contract_id = match counter_contract_address {
 #         Address::AccountId(account_id_address) => account_id_address.id(),
 #         _ => panic!("Expected AccountId address"),
@@ -786,7 +786,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_address) =
-        Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+        Address::from_bech32("mtst1qre73e6qcrfevqqngx8wewvveacqqjh8p2a").unwrap();
     let counter_contract_id = match counter_contract_address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),
@@ -1006,4 +1006,4 @@ cargo run --release --bin counter_contract_fpi
 
 ### Continue learning
 
-Next tutorial: [How to Create Notes with Custom Logic](custom_note_how_to.md)
+Next tutorial: [How to Use Unauthenticated Notes](unauthenticated_note_how_to.md)
