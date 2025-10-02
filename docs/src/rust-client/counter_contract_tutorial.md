@@ -732,7 +732,6 @@ counter_contract id: "mtst1qre73e6qcrfevqqngx8wewvveacqqjh8p2a"
 counter_contract storage: AccountStorage { slots: [Value(Word([0, 0, 0, 0]))] }
 
 [STEP 2] Call Counter Contract With Script
-one or more warnings were emitted
 Stack state before step 2610:
 ├──  0: 1
 ├──  1: 0
