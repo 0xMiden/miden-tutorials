@@ -27,7 +27,7 @@ Below is an example of a transaction request minting tokens from the faucet for 
 
 Add this snippet to the end of your file in the `main()` function that we created in the previous chapter:
 
-```rust,ignore
+```rust ignore
 //------------------------------------------------------------
 // STEP 3: Mint 5 notes of 100 tokens for Alice
 //------------------------------------------------------------
@@ -71,7 +71,7 @@ _Tip: If you know how many notes to expect after a transaction, use an await or 
 
 #### Identifying which notes are available:
 
-```rust,ignore
+```rust ignore
 let consumable_notes = client.get_consumable_notes(Some(alice_account.id())).await?;
 ```
 
@@ -83,7 +83,7 @@ The following code snippet identifies consumable notes and consumes them in a si
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,ignore
+```rust ignore
 //------------------------------------------------------------
 // STEP 4: Alice consumes all her notes
 //------------------------------------------------------------
@@ -139,7 +139,7 @@ In the snippet below, we create an empty vector to store five P2ID output notes,
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,ignore
+```rust ignore
 //------------------------------------------------------------
 // STEP 5: Alice sends 5 notes of 50 tokens to 5 users
 //------------------------------------------------------------
@@ -199,7 +199,7 @@ Now as an example, Alice will send some tokens to an account in a single transac
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,ignore
+```rust ignore
 
 println!("Submitting one more single P2ID transaction...");
 let init_seed: [u8; 15] = {

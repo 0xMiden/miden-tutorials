@@ -71,7 +71,7 @@ Before interacting with the Miden network, we must instantiate the client. In th
 
 Copy and paste the following code into your `src/main.rs` file.
 
-```rust,no_run
+```rust no_run
 use miden_lib::account::auth::AuthRpoFalcon512;
 use rand::RngCore;
 use std::sync::Arc;
@@ -145,7 +145,7 @@ In the example below we create a mutable public account for Alice.
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,ignore
+```rust ignore
 //------------------------------------------------------------
 // STEP 1: Create a basic wallet for Alice
 //------------------------------------------------------------
@@ -195,7 +195,7 @@ We'll create a public faucet with a token symbol, decimals, and a max supply. We
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,ignore
+```rust ignore
 //------------------------------------------------------------
 // STEP 2: Deploy a fungible faucet
 //------------------------------------------------------------

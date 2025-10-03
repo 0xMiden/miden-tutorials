@@ -152,7 +152,7 @@ Before deploying the network account and creating network notes, we need to set 
 
 Copy and paste the following code into your `src/main.rs` file:
 
-```rust,no_run
+```rust no_run
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
@@ -307,7 +307,7 @@ Now we'll create a network smart contract. The key difference from regular contr
 
 Add this code to your `main()` function:
 
-```rust,ignore
+```rust ignore
 
 // -------------------------------------------------------------------------
 // STEP 2: Create Network Counter Smart Contract
@@ -363,7 +363,7 @@ We use a transaction script to deploy the network account and ensure it's proper
 
 Add this code to your `main()` function:
 
-```rust,ignore
+```rust ignore
 // -------------------------------------------------------------------------
 // STEP 3: Deploy Network Account with Transaction Script
 // -------------------------------------------------------------------------
@@ -411,7 +411,7 @@ We create a public note that the network operator can consume to execute the inc
 
 Add this code to your `main()` function:
 
-```rust,ignore
+```rust ignore
 // -------------------------------------------------------------------------
 // STEP 4: Prepare & Create the Network Note
 // -------------------------------------------------------------------------

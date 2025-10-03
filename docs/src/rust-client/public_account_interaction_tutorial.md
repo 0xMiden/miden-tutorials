@@ -128,7 +128,7 @@ end
 
 Copy and paste the following code into your `src/main.rs` file:
 
-```rust,no_run
+```rust no_run
 use std::{fs, path::Path, sync::Arc};
 
 use miden_assembly::{
@@ -190,7 +190,7 @@ We will be reading the public storage state of the counter contract deployed on 
 
 Add the following code snippet to the end of your `src/main.rs` function:
 
-```rust,ignore
+```rust ignore
 // -------------------------------------------------------------------------
 // STEP 1: Read the Public State of the Counter Contract
 // -------------------------------------------------------------------------
@@ -241,7 +241,7 @@ counter nonce: 5
 
 Add the following code snippet to the end of your `src/main.rs` function:
 
-```rust,ignore
+```rust ignore
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------

@@ -55,7 +55,7 @@ In the previous section, we explained how to instantiate the Miden client. We ca
 
 Copy and paste the following code into your `src/main.rs` file:
 
-```rust,no_run
+```rust no_run
 use miden_lib::account::auth::NoAuth;
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
@@ -242,7 +242,7 @@ end
 
 To build the counter contract copy and paste the following code at the end of your `src/main.rs` file:
 
-```rust,ignore
+```rust ignore
 // -------------------------------------------------------------------------
 // STEP 1: Create a basic counter contract
 // -------------------------------------------------------------------------
@@ -317,7 +317,7 @@ Now that we built the counter contract, lets create a transaction request to inc
 
 Paste the following code at the end of your `src/main.rs` file:
 
-```rust,ignore
+```rust ignore
 
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script

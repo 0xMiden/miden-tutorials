@@ -243,7 +243,7 @@ contract id: "mtst1qp3ca3adt34euqqqqwt488x34qnnd495"
 
 Add this snippet to the end of your file in the `main()` function that we created in the previous step:
 
-```rust,ignore
+```rust ignore
 // -------------------------------------------------------------------------
 // STEP 2: Build & Get State of the Counter Contract
 // -------------------------------------------------------------------------
@@ -284,7 +284,7 @@ This step uses the logic we explained in the [Public Account Interaction Tutoria
 
 Add this snippet to the end of your file in the `main()` function:
 
-```rust,ignore
+```rust ignore
     // -------------------------------------------------------------------------
     // STEP 3: Call the Counter Contract via Foreign Procedure Invocation (FPI)
     // -------------------------------------------------------------------------
