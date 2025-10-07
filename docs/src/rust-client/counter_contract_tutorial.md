@@ -184,9 +184,6 @@ export.get_count
 
     exec.account::get_item
     # => [count]
-
-    exec.sys::truncate_stack
-    # => []
 end
 
 # => []
@@ -280,12 +277,16 @@ let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .unwrap();
 
 println!(
+        "counter_contract commitment: {:?}",
+        counter_contract.commitment()
+    );
+println!(
     "counter_contract id: {:?}",
     Address::from(AccountIdAddress::new(
         counter_contract.id(),
         AddressInterface::Unspecified
     ))
-    .to_bech32(NetworkId::Devnet)
+    .to_bech32(NetworkId::Testnet)
 );
 println!("counter_contract storage: {:?}", counter_contract.storage());
 
@@ -293,7 +294,6 @@ client
     .add_account(&counter_contract.clone(), Some(counter_seed), false)
     .await
     .unwrap();
-
 ```
 
 Run the following command to execute `src/main.rs`:
@@ -318,7 +318,6 @@ Now that we built the counter contract, lets create a transaction request to inc
 Paste the following code at the end of your `src/main.rs` file:
 
 ```rust ignore
-
 // -------------------------------------------------------------------------
 // STEP 2: Call the Counter Contract with a script
 // -------------------------------------------------------------------------
@@ -335,15 +334,12 @@ let account_component_lib = create_library(
     &counter_code,
 )
 .unwrap();
-println!("here");
 
 let tx_script = ScriptBuilder::new(true)
     .with_dynamically_linked_library(&account_component_lib)
     .unwrap()
     .compile_tx_script(script_code)
     .unwrap();
-
-println!("here");
 
 // Build a transaction request with the custom script
 let tx_increment_request = TransactionRequestBuilder::new()
@@ -374,7 +370,6 @@ println!(
     "counter contract storage: {:?}",
     account.unwrap().account().storage().get_item(0)
 );
-
 ```
 
 **Note**: _Once our counter contract is deployed, other users can increment the count of the smart contract simply by knowing the account id of the contract and the procedure hash of the `increment_count` procedure._
@@ -488,7 +483,7 @@ async fn main() -> Result<(), ClientError> {
             counter_contract.id(),
             AddressInterface::Unspecified
         ))
-        .to_bech32(NetworkId::Devnet)
+        .to_bech32(NetworkId::Testnet)
     );
     println!("counter_contract storage: {:?}", counter_contract.storage());
 
@@ -513,15 +508,12 @@ async fn main() -> Result<(), ClientError> {
         &counter_code,
     )
     .unwrap();
-    println!("here");
 
     let tx_script = ScriptBuilder::new(true)
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(script_code)
         .unwrap();
-
-    println!("here");
 
     // Build a transaction request with the custom script
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -560,15 +552,16 @@ async fn main() -> Result<(), ClientError> {
 The output of our program will look something like this:
 
 ```text
-Latest block: 226717
+Latest block: 374255
 
 [STEP 1] Creating counter contract.
-counter_contract commitment: RpoDigest([10854804595308759734, 11034759279878416408, 15662010127375823242, 9560626040625797366])
-counter_contract id: "mtst1qpj0g3ke67tg5qqqqd2z4ffm9g8ezpf6"
-counter_contract storage: AccountStorage { slots: [Value([0, 0, 0, 0])] }
+one or more warnings were emitted
+counter_contract commitment: Word([3964727668949550262, 4265714847747507878, 5784293172192015964, 16803438753763367241])
+counter_contract id: "mtst1qre73e6qcrfevqqngx8wewvveacqqjh8p2a"
+counter_contract storage: AccountStorage { slots: [Value(Word([0, 0, 0, 0]))] }
 
 [STEP 2] Call Counter Contract With Script
-Stack state before step 2502:
+Stack state before step 2610:
 ├──  0: 1
 ├──  1: 0
 ├──  2: 0
@@ -590,8 +583,10 @@ Stack state before step 2502:
 ├── 18: 0
 └── 19: 0
 
-View transaction on MidenScan: https://testnet.midenscan.com/tx/0x645b89ebf39c7baa2a4264854f793736b7370d65ecf5f1a23c0169fda6a6a395
-counter contract storage: Ok(RpoDigest([0, 0, 0, 1]))
+└── (0 more items)
+
+View transaction on MidenScan: https://testnet.midenscan.com/tx/0x9767940bbed7bd3a74c24dc43f1ea8fe90a876dc7925621c217f648c63c4ab7a
+counter contract storage: Ok(Word([0, 0, 0, 1]))
 ```
 
 The line in the output `Stack state before step 2505` ouputs the stack state when we call "debug.stack" in the `counter.masm` file.

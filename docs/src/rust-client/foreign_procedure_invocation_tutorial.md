@@ -1,3 +1,8 @@
+---
+title: "Foreign Procedure Invocation"
+sidebar_position: 7
+---
+
 # Foreign Procedure Invocation Tutorial
 
 _Using foreign procedure invocation to craft read-only cross-contract calls in the Miden VM_
@@ -105,7 +110,7 @@ end
 
 ### Step 3: Set up your `src/main.rs` file:
 
-```rust
+```rust no_run
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 use tokio::time::sleep;
@@ -169,7 +174,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating count reader contract.");
 
     // Load the MASM file for the counter contract
-    let count_reader_path = Path::new("./masm/accounts/count_reader.masm");
+    let count_reader_path = Path::new("../masm/accounts/count_reader.masm");
     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -290,7 +295,7 @@ Add this snippet to the end of your file in the `main()` function:
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Call counter contract with FPI from count copy contract");
 
-    let counter_contract_path = Path::new("./masm/accounts/counter.masm");
+    let counter_contract_path = Path::new("../masm/accounts/counter.masm");
     let counter_contract_code = fs::read_to_string(counter_contract_path).unwrap();
 
     let counter_contract_component =
@@ -322,7 +327,7 @@ Add this snippet to the end of your file in the `main()` function:
     println!("suffix: {:?}", counter_contract.id().suffix());
 
     // Build the script that calls the count_copy_contract
-    let script_path = Path::new("./masm/scripts/reader_script.masm");
+    let script_path = Path::new("../masm/scripts/reader_script.masm");
     let script_code_original = fs::read_to_string(script_path).unwrap();
     let script_code = script_code_original
         .replace("{get_count_proc_hash}", &get_count_hash)
@@ -371,7 +376,7 @@ Add this snippet to the end of your file in the `main()` function:
     );
 
     // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await?;
+    let _ = client.submit_transaction(tx_result).await;
     client.sync_state().await.unwrap();
 
     sleep(Duration::from_secs(5)).await;
@@ -467,7 +472,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Creating count reader contract.");
 
     // Load the MASM file for the counter contract
-    let count_reader_path = Path::new("./masm/accounts/count_reader.masm");
+    let count_reader_path = Path::new("../masm/accounts/count_reader.masm");
     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
 
     // Prepare assembler (debug mode = true)
@@ -524,7 +529,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_address) =
-        Address::from_bech32("mtst1qrhk9zc2au2vxqzaynaz5ddhs4cqqghmajy").unwrap();
+        Address::from_bech32("mdev1qqarryhdvl3tuqp9k8gcp7r53ecqqeqtky8").unwrap();
     let counter_contract_id = match counter_contract_address {
         Address::AccountId(account_id_address) => account_id_address.id(),
         _ => panic!("Expected AccountId address"),
@@ -555,7 +560,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Call counter contract with FPI from count copy contract");
 
-    let counter_contract_path = Path::new("./masm/accounts/counter.masm");
+    let counter_contract_path = Path::new("../masm/accounts/counter.masm");
     let counter_contract_code = fs::read_to_string(counter_contract_path).unwrap();
 
     let counter_contract_component =
@@ -587,7 +592,7 @@ async fn main() -> Result<(), ClientError> {
     println!("suffix: {:?}", counter_contract.id().suffix());
 
     // Build the script that calls the count_copy_contract
-    let script_path = Path::new("./masm/scripts/reader_script.masm");
+    let script_path = Path::new("../masm/scripts/reader_script.masm");
     let script_code_original = fs::read_to_string(script_path).unwrap();
     let script_code = script_code_original
         .replace("{get_count_proc_hash}", &get_count_hash)
@@ -636,7 +641,7 @@ async fn main() -> Result<(), ClientError> {
     );
 
     // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await?;
+    let _ = client.submit_transaction(tx_result).await;
     client.sync_state().await.unwrap();
 
     sleep(Duration::from_secs(5)).await;
