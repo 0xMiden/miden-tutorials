@@ -1,3 +1,8 @@
+---
+title: "Creating Accounts and Faucets"
+sidebar_position: 2
+---
+
 ## Creating Accounts and Deploying Faucets
 
 _Using the Miden WebClient in TypeScript to create accounts and deploy faucets_

@@ -1,3 +1,8 @@
+---
+title: "Mint, Consume, and Create Notes"
+sidebar_position: 3
+---
+
 # Mint, Consume, and Transfer Assets
 
 _Using the Miden WebClient in TypeScript to mint, consume, and transfer assets_

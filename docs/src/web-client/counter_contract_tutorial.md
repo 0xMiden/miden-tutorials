@@ -1,3 +1,8 @@
+---
+title: "Incrementing the Count of the Counter Contract"
+sidebar_position: 5
+---
+
 # Incrementing the Count of the Counter Contract
 
 _Using the Miden WebClient to interact with a custom smart contract_
@@ -133,7 +138,8 @@ export async function incrementCounterContract(): Promise<void> {
 
     const.COUNTER_SLOT=0
 
-    # => []
+    #! Inputs:  []
+    #! Outputs: [count]
     export.get_count
         push.COUNTER_SLOT
         # => [index]
@@ -141,11 +147,13 @@ export async function incrementCounterContract(): Promise<void> {
         exec.account::get_item
         # => [count]
 
-        exec.sys::truncate_stack
-        # => []
+        # clean up stack
+        movdn.4 dropw
+        # => [count]
     end
 
-    # => []
+    #! Inputs:  []
+    #! Outputs: []
     export.increment_count
         push.COUNTER_SLOT
         # => [index]
@@ -162,9 +170,9 @@ export async function incrementCounterContract(): Promise<void> {
         # [index, count+1]
 
         exec.account::set_item
-        # => []
+        # => [OLD_VALUE]
 
-        exec.sys::truncate_stack
+        dropw
         # => []
     end
     `;
@@ -284,7 +292,8 @@ use.std::sys
 
 const.COUNTER_SLOT=0
 
-# => []
+#! Inputs:  []
+#! Outputs: [count]
 export.get_count
     push.COUNTER_SLOT
     # => [index]
@@ -292,11 +301,13 @@ export.get_count
     exec.account::get_item
     # => [count]
 
-    exec.sys::truncate_stack
-    # => []
+    # clean up stack
+    movdn.4 dropw
+    # => [count]
 end
 
-# => []
+#! Inputs:  []
+#! Outputs: []
 export.increment_count
     push.COUNTER_SLOT
     # => [index]
@@ -313,9 +324,9 @@ export.increment_count
     # [index, count+1]
 
     exec.account::set_item
-    # => []
+    # => [OLD_VALUE]
 
-    exec.sys::truncate_stack
+    dropw
     # => []
 end
 ```

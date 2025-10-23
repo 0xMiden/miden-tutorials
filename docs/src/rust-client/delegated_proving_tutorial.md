@@ -1,3 +1,8 @@
+---
+title: "Delegated Proving"
+sidebar_position: 12
+---
+
 # Delegated Proving
 
 _Using delegated proving to minimize transaction proving times on computationally constrained devices_
@@ -57,7 +62,7 @@ rand_chacha = "0.9.0"
 Similarly to previous tutorials, we must instantiate the client.
 We construct a `RemoteTransactionProver` that points to our delegated-proving service running at https://tx-prover.testnet.miden.io.
 
-```rust,no_run
+```rust
 use miden_client::auth::AuthSecretKey;
 use std::sync::Arc;
 
