@@ -1,5 +1,7 @@
-use.miden::note
+use.miden::active_note
 use.miden::tx
+use.miden::note
+use.miden::output_note
 use.std::sys
 use.std::crypto::hashes::rpo
 use.miden::contracts::wallets::basic->wallet
@@ -18,24 +20,24 @@ begin
     # => []
 
     # Get note inputs
-    push.ACCOUNT_ID_PREFIX exec.note::get_inputs drop drop
+    push.ACCOUNT_ID_PREFIX exec.active_note::get_inputs drop drop
     # => []
 
     # Get asset contained in note
-    push.ASSET exec.note::get_assets drop drop
+    push.ASSET exec.active_note::get_assets drop drop
     # => []
 
-    mem_loadw.ASSET
+    mem_loadw_be.ASSET
     # => [ASSET]
 
     # Compute half amount of asset
     swap.3 push.2 div swap.3
     # => [ASSET_HALF]
 
-    mem_storew.ASSET_HALF dropw
+    mem_storew_be.ASSET_HALF dropw
     # => []
 
-    mem_loadw.ASSET
+    mem_loadw_be.ASSET
     # => [ASSET]
 
     # Receive the entire asset amount to the wallet
@@ -51,18 +53,18 @@ begin
     # => [INPUTS_COMMITMENT]
 
     # Push script hash
-    exec.note::get_script_root
+    exec.active_note::get_script_root
     # => [SCRIPT_HASH, INPUTS_COMMITMENT]
 
     # Get the current note serial number
-    exec.note::get_serial_number
+    exec.active_note::get_serial_number
     # => [SERIAL_NUM, SCRIPT_HASH, INPUTS_COMMITMENT]
 
     # Increment serial number by 1
     push.1 add
     # => [SERIAL_NUM+1, SCRIPT_HASH, INPUTS_COMMITMENT]
 
-    exec.tx::build_recipient_hash
+    exec.note::build_recipient_hash
     # => [RECIPIENT]
 
     # Push hint, note type, and aux to stack
@@ -73,10 +75,10 @@ begin
     mem_load.TAG
     # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
-    call.tx::create_note
+    call.output_note::create
     # => [note_idx, pad(15) ...]
 
-    padw mem_loadw.ASSET_HALF
+    padw mem_loadw_be.ASSET_HALF
     # => [ASSET / 2, note_idx]
 
     call.wallet::move_asset_to_note
