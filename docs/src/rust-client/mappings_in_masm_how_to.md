@@ -40,44 +40,45 @@ At a high level, this example involves:
 ### Example of smart contract that uses a mapping
 
 ```masm
-use.miden::account
+use.miden::active_account
+use.miden::native_account
 use.std::sys
 
 # Inputs: [KEY, VALUE]
 # Outputs: []
 export.write_to_map
-  # The storage map is in storage slot 1
-  push.1
-  # => [index, KEY, VALUE]
+    # The storage map is in storage slot 1
+    push.1
+    # => [index, KEY, VALUE]
 
-  # Setting the key value pair in the map
-  exec.account::set_map_item
-  # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # Setting the key value pair in the map
+    exec.native_account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 
-  dropw dropw dropw dropw
-  # => []
+    dropw dropw dropw dropw
+    # => []
 end
 
 # Inputs: [KEY]
 # Outputs: [VALUE]
 export.get_value_in_map
-  # The storage map is in storage slot 1
-  push.1
-  # => [index]
+    # The storage map is in storage slot 1
+    push.1
+    # => [index]
 
-  exec.account::get_map_item
-  # => [VALUE]
+    exec.active_account::get_map_item
+    # => [VALUE]
 end
 
 # Inputs: []
 # Outputs: [CURRENT_ROOT]
 export.get_current_map_root
-  # Getting the current root from slot 1
-  push.1 exec.account::get_item
-  # => [CURRENT_ROOT]
+    # Getting the current root from slot 1
+    push.1 exec.active_account::get_item
+    # => [CURRENT_ROOT]
 
-  exec.sys::truncate_stack
-  # => [CURRENT_ROOT]
+    exec.sys::truncate_stack
+    # => [CURRENT_ROOT]
 end
 ```
 
@@ -100,26 +101,26 @@ use.miden_by_example::mapping_example_contract
 use.std::sys
 
 begin
-  push.1.2.3.4
-  push.0.0.0.0
-  # => [KEY, VALUE]
+    push.1.2.3.4
+    push.0.0.0.0
+    # => [KEY, VALUE]
 
-  call.mapping_example_contract::write_to_map
-  # => []
+    call.mapping_example_contract::write_to_map
+    # => []
 
-  push.0.0.0.0
-  # => [KEY]
+    push.0.0.0.0
+    # => [KEY]
 
-  call.mapping_example_contract::get_value_in_map
-  # => [VALUE]
+    call.mapping_example_contract::get_value_in_map
+    # => [VALUE]
 
-  dropw
-  # => []
+    dropw
+    # => []
 
-  call.mapping_example_contract::get_current_map_root
-  # => [CURRENT_ROOT]
+    call.mapping_example_contract::get_current_map_root
+    # => [CURRENT_ROOT]
 
-  exec.sys::truncate_stack
+    exec.sys::truncate_stack
 end
 ```
 
@@ -141,33 +142,32 @@ The script calls the `write_to_map` procedure in the account which writes the ke
 Below is the Rust code that deploys the smart contract, creates the transaction script, and submits a transaction to update the mapping in the account:
 
 ```rust
-use rand::RngCore;
+use miden_lib::account::auth::NoAuth;
+use miden_lib::transaction::TransactionKernel;
+use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 
-use miden_assembly::{
-    ast::{Module, ModuleKind},
-    LibraryPath,
-};
 use miden_client::{
-    account::{AccountBuilder, AccountStorageMode, AccountType, StorageSlot},
+    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
-    ClientError, Felt, ScriptBuilder,
+    rpc::{Endpoint, GrpcClient},
+    transaction::TransactionRequestBuilder,
+    ClientError,
 };
-use miden_lib::account::auth::NoAuth;
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
 use miden_objects::{
-    account::{AccountComponent, StorageMap},
-    assembly::Assembler,
-    assembly::DefaultSourceManager,
+    account::{
+        AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageMap, StorageSlot,
+    },
+    Felt, Word,
 };
 
 fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
         LibraryPath::new(library_path)?,
@@ -183,12 +183,18 @@ async fn main() -> Result<(), ClientError> {
     // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
+
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -202,15 +208,15 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Deploy a smart contract with a mapping");
 
     // Load the MASM file for the counter contract
-    let file_path = Path::new("./masm/accounts/mapping_example_contract.masm");
+    let file_path = Path::new("../masm/accounts/mapping_example_contract.masm");
     let account_code = fs::read_to_string(file_path).unwrap();
 
     // Prepare assembler (debug mode = true)
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
 
-    // Using an empty storage value in slot 0 since this is usually resurved
+    // Using an empty storage value in slot 0 since this is usually reserved
     // for the account pub_key and metadata
-    let empty_storage_slot = StorageSlot::empty_value();
+    let empty_storage_slot = StorageSlot::Value(Word::default());
 
     // initialize storage map
     let storage_map = StorageMap::new();
@@ -218,7 +224,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Compile the account code into `AccountComponent` with one storage slot
     let mapping_contract_component = AccountComponent::compile(
-        account_code.clone(),
+        &account_code,
         assembler.clone(),
         vec![empty_storage_slot, storage_slot_map],
     )
@@ -230,7 +236,7 @@ async fn main() -> Result<(), ClientError> {
     client.rng().fill_bytes(&mut init_seed);
 
     // Build the new `Account` with the component
-    let (mapping_example_contract, seed) = AccountBuilder::new(init_seed)
+    let mapping_example_contract = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(mapping_contract_component.clone())
@@ -239,7 +245,7 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     client
-        .add_account(&mapping_example_contract.clone(), Some(seed), false)
+        .add_account(&mapping_example_contract, false)
         .await
         .unwrap();
 
@@ -249,7 +255,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Mapping Contract With Script");
 
     let script_code =
-        fs::read_to_string(Path::new("./masm/scripts/mapping_example_script.masm")).unwrap();
+        fs::read_to_string(Path::new("../masm/scripts/mapping_example_script.masm")).unwrap();
 
     // Create the library from the account source code using the helper function.
     let account_component_lib = create_library(
@@ -260,10 +266,11 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     // Compile the transaction script with the library.
-    let tx_script = ScriptBuilder::new(true)
+    let tx_script = client
+        .script_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
-        .compile_tx_script(script_code)
+        .compile_tx_script(&script_code)
         .unwrap();
 
     // Build a transaction request with the custom script
@@ -272,20 +279,16 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
-    // Execute the transaction locally
-    let tx_result = client
-        .new_transaction(mapping_example_contract.id(), tx_increment_request)
+    // Execute and submit the transaction
+    let tx_id = client
+        .submit_new_transaction(mapping_example_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
-    let tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         tx_id
     );
-
-    // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await;
 
     client.sync_state().await.unwrap();
 

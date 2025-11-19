@@ -85,8 +85,10 @@ masm/
 Inside the `masm/notes/` directory, create the file `iterative_output_note.masm`:
 
 ```masm
-use.miden::note
+use.miden::active_note
 use.miden::tx
+use.miden::note
+use.miden::output_note
 use.std::sys
 use.std::crypto::hashes::rpo
 use.miden::contracts::wallets::basic->wallet
@@ -105,24 +107,24 @@ begin
     # => []
 
     # Get note inputs
-    push.ACCOUNT_ID_PREFIX exec.note::get_inputs drop drop
+    push.ACCOUNT_ID_PREFIX exec.active_note::get_inputs drop drop
     # => []
 
     # Get asset contained in note
-    push.ASSET exec.note::get_assets drop drop
+    push.ASSET exec.active_note::get_assets drop drop
     # => []
 
-    mem_loadw.ASSET
+    mem_loadw_be.ASSET
     # => [ASSET]
 
     # Compute half amount of asset
     swap.3 push.2 div swap.3
     # => [ASSET_HALF]
 
-    mem_storew.ASSET_HALF dropw
+    mem_storew_be.ASSET_HALF dropw
     # => []
 
-    mem_loadw.ASSET
+    mem_loadw_be.ASSET
     # => [ASSET]
 
     # Receive the entire asset amount to the wallet
@@ -138,18 +140,18 @@ begin
     # => [INPUTS_COMMITMENT]
 
     # Push script hash
-    exec.note::get_script_root
+    exec.active_note::get_script_root
     # => [SCRIPT_HASH, INPUTS_COMMITMENT]
 
     # Get the current note serial number
-    exec.note::get_serial_number
+    exec.active_note::get_serial_number
     # => [SERIAL_NUM, SCRIPT_HASH, INPUTS_COMMITMENT]
 
     # Increment serial number by 1
     push.1 add
     # => [SERIAL_NUM+1, SCRIPT_HASH, INPUTS_COMMITMENT]
 
-    exec.tx::build_recipient_hash
+    exec.note::build_recipient_hash
     # => [RECIPIENT]
 
     # Push hint, note type, and aux to stack
@@ -160,10 +162,10 @@ begin
     mem_load.TAG
     # => [tag, aux, note_type, execution_hint, RECIPIENT]
 
-    call.tx::create_note
+    call.output_note::create
     # => [note_idx, pad(15) ...]
 
-    padw mem_loadw.ASSET_HALF
+    padw mem_loadw_be.ASSET_HALF
     # => [ASSET / 2, note_idx]
 
     call.wallet::move_asset_to_note
@@ -182,19 +184,19 @@ end
 1. **Reads note inputs:**  
    The note begins by writing the note inputs to memory by calling the `note::get_inputs` procedure. It writes the note inputs starting at memory address 8, which is defined as the constant `ACCOUNT_ID_PREFIX`.
 2. **Retrieving the asset:**  
-   The note then calls `note::get_assets` to write the asset contained in the note to memory address 0, defined as `ASSET`. It computes half of the asset and stores the value at memory address 4, defined as `ASSET_HALF`. Finally, the note calls the `wallet::receive_asset` procedure to move the asset contained in the note to the consuming account.
+   The note then calls `active_note::get_assets` to write the asset contained in the note to memory address 0, defined as `ASSET`. It computes half of the asset and stores the value at memory address 4, defined as `ASSET_HALF`. Finally, the note calls the `wallet::receive_asset` procedure to move the asset contained in the note to the consuming account.
 3. **Computing note inputs hash in MASM:**  
-   The script calls the `note::compute_inputs_hash` procedure with the number of inputs and the memory address where the inputs begin. This procedure returns the note inputs commitment.
+   The script calls the `rpo::hash_memory` procedure with the number of inputs and the memory address where the inputs begin. This procedure returns the note inputs commitment.
 4. **Getting the script hash:**  
-   Next, the note script calls the `note::get_script_hash` procedure, which returns the note's script hash.
+   Next, the note script calls the `active_note::get_script_root` procedure, which returns the note's script hash.
 5. **Getting the serial number for the future note:**  
    Although not strictly necessary in this scenario, preventing two identical notes from having the same serial number is important. If an account creates two identical notes with the same serial number, recipient, and asset vault, one of the notes may not be consumed. Therefore, the MASM code increments the serial number of the current note by 1.
 6. **Computing the `RECIPIENT` hash:**  
    The `RECIPIENT` hash is defined as:  
    `hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)`  
-   To compute it in MASM, the script calls the `tx::build_recipient_hash` procedure with the serial number, script hash, and inputs commitment on the stack.
+   To compute it in MASM, the script calls the `note::build_recipient_hash` procedure with the serial number, script hash, and inputs commitment on the stack.
 7. **Creating the note:**  
-   To create the note, the script pushes the execution hint, note type, aux value, and tag onto the stack, then calls the `wallet::create_note` procedure, which returns a pointer to the note.
+   To create the note, the script pushes the execution hint, note type, aux value, and tag onto the stack, then calls the `output_note::create` procedure, which returns a pointer to the note.
 8. **Moving assets to the note:**  
    After the note is created, the script loads the half asset value computed in step 2 onto the stack and calls the `wallet::move_asset_to_note` procedure.
 9. **Stack cleanup:**  
@@ -208,81 +210,90 @@ Copy and paste the following code into your `src/main.rs` file.
 
 ```rust
 use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{prelude::StdRng, RngCore};
+use miden_lib::transaction::TransactionKernel;
+use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 use tokio::time::{sleep, Duration};
 
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface,
+        Account,
     },
+    address::NetworkId,
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::{FeltRng, SecretKey},
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteScript, NoteTag, NoteType,
     },
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionKernel, TransactionRequestBuilder},
+    rpc::{Endpoint, GrpcClient},
+    transaction::{OutputNote, TransactionRequestBuilder},
     Client, ClientError, Felt,
 };
-
-use miden_objects::account::NetworkId;
-use miden_objects::note::NoteDetails;
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_objects::{
+    account::{AccountBuilder, AccountStorageMode, AccountType},
+    note::NoteDetails,
+};
 
 // Helper to create a basic account
 async fn create_basic_account(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
-    keystore: FilesystemKeyStore<StdRng>,
-) -> Result<miden_client::account::Account, ClientError> {
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+) -> Result<Account, ClientError> {
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
-    let key_pair = SecretKey::with_rng(client.rng());
-    let builder = AccountBuilder::new(init_seed)
+
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
+
+    let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicWallet);
-    let (account, seed) = builder.build().unwrap();
-    client.add_account(&account, Some(seed), false).await?;
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicWallet)
+        .build()
         .unwrap();
+
+    client.add_account(&account, false).await?;
+    keystore.add_key(&key_pair).unwrap();
+
     Ok(account)
 }
 
 async fn create_basic_faucet(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
-    keystore: FilesystemKeyStore<StdRng>,
-) -> Result<miden_client::account::Account, ClientError> {
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+) -> Result<Account, ClientError> {
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
-    let key_pair = SecretKey::with_rng(client.rng());
+
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
     let symbol = TokenSymbol::new("MID").unwrap();
     let decimals = 8;
     let max_supply = Felt::new(1_000_000);
-    let builder = AccountBuilder::new(init_seed)
+
+    let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
-    let (account, seed) = builder.build().unwrap();
-    client.add_account(&account, Some(seed), false).await?;
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
+        .build()
         .unwrap();
+
+    client.add_account(&account, false).await?;
+    keystore.add_key(&key_pair).unwrap();
+
     Ok(account)
 }
 
 // Helper to wait until an account has the expected number of consumable notes
 async fn wait_for_notes(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
-    account_id: &miden_client::account::Account,
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    account_id: &Account,
     expected: usize,
 ) -> Result<(), ClientError> {
     loop {
@@ -294,28 +305,30 @@ async fn wait_for_notes(
         println!(
             "{} consumable notes found for account {}. Waiting...",
             notes.len(),
-            Address::from(AccountIdAddress::new(
-                account_id.id(),
-                AddressInterface::Unspecified
-            ))
-            .to_bech32(NetworkId::Testnet)
+            account_id.id().to_bech32(NetworkId::Testnet)
         );
         sleep(Duration::from_secs(3)).await;
     }
     Ok(())
 }
+
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -323,41 +336,26 @@ async fn main() -> Result<(), ClientError> {
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
 
-    let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
-        FilesystemKeyStore::new("./keystore".into()).unwrap();
-
     // -------------------------------------------------------------------------
     // STEP 1: Create accounts and deploy faucet
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
-    let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
+    let alice_account = create_basic_account(&mut client, &keystore).await?;
     println!(
         "Alice's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            alice_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        alice_account.id().to_bech32(NetworkId::Testnet)
     );
-    let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
+    let bob_account = create_basic_account(&mut client, &keystore).await?;
     println!(
         "Bob's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            bob_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        bob_account.id().to_bech32(NetworkId::Testnet)
     );
 
     println!("\nDeploying a new fungible faucet.");
-    let faucet = create_basic_faucet(&mut client, keystore.clone()).await?;
+    let faucet = create_basic_faucet(&mut client, &keystore).await?;
     println!(
         "Faucet account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            faucet.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        faucet.id().to_bech32(NetworkId::Testnet)
     );
     client.sync_state().await?;
 
@@ -378,25 +376,27 @@ async fn main() -> Result<(), ClientError> {
         )
         .unwrap();
 
-    let tx_exec = client.new_transaction(faucet.id(), tx_req).await?;
-    client.submit_transaction(tx_exec.clone()).await?;
-
-    let p2id_note = if let OutputNote::Full(note) = tx_exec.created_notes().get_note(0) {
-        note.clone()
-    } else {
-        panic!("Expected OutputNote::Full");
-    };
+    let tx_id = client.submit_new_transaction(faucet.id(), tx_req).await?;
+    println!("Minted tokens. TX: {:?}", tx_id);
 
     wait_for_notes(&mut client, &alice_account, 1).await?;
 
-    let consume_req = TransactionRequestBuilder::new()
-        .authenticated_input_notes([(p2id_note.id(), None)])
-        .build()
-        .unwrap();
-    let tx_exec = client
-        .new_transaction(alice_account.id(), consume_req)
+    // Consume the minted note
+    let consumable_notes = client
+        .get_consumable_notes(Some(alice_account.id()))
         .await?;
-    client.submit_transaction(tx_exec).await?;
+
+    if let Some((note_record, _)) = consumable_notes.first() {
+        let consume_req = TransactionRequestBuilder::new()
+            .build_consume_notes(vec![note_record.id()])
+            .unwrap();
+
+        let tx_id = client
+            .submit_new_transaction(alice_account.id(), consume_req)
+            .await?;
+        println!("Consumed minted note. TX: {:?}", tx_id);
+    }
+
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -405,9 +405,8 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 3] Create iterative output note");
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("./masm/notes/iterative_output_note.masm")).unwrap();
-    let rng = client.rng();
-    let serial_num = rng.draw_word();
+    let code = fs::read_to_string(Path::new("../masm/notes/iterative_output_note.masm")).unwrap();
+    let serial_num = client.rng().draw_word();
 
     // Create note metadata and tag
     let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
@@ -418,7 +417,7 @@ async fn main() -> Result<(), ClientError> {
         NoteExecutionHint::always(),
         Felt::new(0),
     )?;
-    let program = assembler.clone().assemble_program(code).unwrap();
+    let program = assembler.clone().assemble_program(&code).unwrap();
     let note_script = NoteScript::new(program);
     let note_inputs = NoteInputs::new(vec![
         alice_account.id().prefix().as_felt(),
@@ -436,15 +435,15 @@ async fn main() -> Result<(), ClientError> {
         .own_output_notes(vec![OutputNote::Full(custom_note.clone())])
         .build()
         .unwrap();
-    let tx_result = client
-        .new_transaction(alice_account.id(), note_req)
-        .await
-        .unwrap();
+
+    let tx_id = client
+        .submit_new_transaction(alice_account.id(), note_req)
+        .await?;
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-        tx_result.executed_transaction().id()
+        tx_id
     );
-    let _ = client.submit_transaction(tx_result).await;
+
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -487,16 +486,14 @@ async fn main() -> Result<(), ClientError> {
         .expected_output_recipients(vec![output_note.recipient().clone()])
         .build()
         .unwrap();
-    let tx_result = client
-        .new_transaction(bob_account.id(), consume_custom_req)
-        .await
-        .unwrap();
+
+    let tx_id = client
+        .submit_new_transaction(bob_account.id(), consume_custom_req)
+        .await?;
     println!(
         "Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-        tx_result.executed_transaction().id()
+        tx_id
     );
-    println!("Account delta: {:?}", tx_result.account_delta().vault());
-    let _ = client.submit_transaction(tx_result).await;
 
     Ok(())
 }

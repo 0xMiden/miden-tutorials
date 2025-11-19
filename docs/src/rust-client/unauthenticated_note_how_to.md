@@ -53,49 +53,83 @@ Alice ➡ Bob ➡ Charlie ➡ Dave ➡ Eve ➡ Frank ➡ ...
 ## Full Rust code example
 
 ```rust
-use rand::RngCore;
+use miden_lib::account::auth::AuthRpoFalcon512;
+use rand::{rngs::StdRng, RngCore};
 use std::sync::Arc;
-use tokio::time::{Duration, Instant};
+use tokio::time::{sleep, Duration, Instant};
 
 use miden_client::{
-    account::{
-        component::{BasicFungibleFaucet, BasicWallet},
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface,
-    },
+    account::component::{BasicFungibleFaucet, BasicWallet},
+    address::NetworkId,
     asset::{FungibleAsset, TokenSymbol},
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::SecretKey,
     keystore::FilesystemKeyStore,
     note::{create_p2id_note, Note, NoteType},
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, TransactionRequestBuilder},
+    rpc::{Endpoint, GrpcClient},
+    store::TransactionFilter,
+    transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
     utils::{Deserializable, Serializable},
-    ClientError, Felt,
+    Client, ClientError, Felt,
 };
-use miden_lib::account::auth::AuthRpoFalcon512;
-use miden_objects::account::NetworkId;
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_objects::account::{AccountBuilder, AccountStorageMode, AccountType};
+
+/// Waits for a specific transaction to be committed.
+async fn wait_for_tx(
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    tx_id: TransactionId,
+) -> Result<(), ClientError> {
+    loop {
+        client.sync_state().await?;
+
+        // Check transaction status
+        let txs = client
+            .get_transactions(TransactionFilter::Ids(vec![tx_id]))
+            .await?;
+        let tx_committed = if !txs.is_empty() {
+            matches!(txs[0].status, TransactionStatus::Committed { .. })
+        } else {
+            false
+        };
+
+        if tx_committed {
+            println!("✅ transaction {} committed", tx_id.to_hex());
+            break;
+        }
+
+        println!(
+            "Transaction {} not yet committed. Waiting...",
+            tx_id.to_hex()
+        );
+        sleep(Duration::from_secs(2)).await;
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
 
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
-
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     //------------------------------------------------------------
     // STEP 1: Deploy a fungible faucet
@@ -107,7 +141,7 @@ async fn main() -> Result<(), ClientError> {
     client.rng().fill_bytes(&mut init_seed);
 
     // Generate key pair
-    let key_pair = SecretKey::with_rng(client.rng());
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
 
     // Faucet parameters
     let symbol = TokenSymbol::new("MID").unwrap();
@@ -115,31 +149,24 @@ async fn main() -> Result<(), ClientError> {
     let max_supply = Felt::new(1_000_000);
 
     // Build the account
-    let builder = AccountBuilder::new(init_seed)
+    let faucet_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
-
-    let (faucet_account, seed) = builder.build().unwrap();
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
+        .build()
+        .unwrap();
 
     // Add the faucet to the client
-    client
-        .add_account(&faucet_account, Some(seed), false)
-        .await?;
+    client.add_account(&faucet_account, false).await?;
+
     println!(
         "Faucet account ID: {}",
-        Address::from(AccountIdAddress::new(
-            faucet_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        faucet_account.id().to_bech32(NetworkId::Testnet)
     );
 
     // Add the key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
-        .unwrap();
+    keystore.add_key(&key_pair).unwrap();
 
     // Resync to show newly deployed faucet
     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -156,30 +183,27 @@ async fn main() -> Result<(), ClientError> {
     for i in 0..number_of_accounts {
         let mut init_seed = [0_u8; 32];
         client.rng().fill_bytes(&mut init_seed);
-        let key_pair = SecretKey::with_rng(client.rng());
-        let builder = AccountBuilder::new(init_seed)
+
+        let key_pair = AuthSecretKey::new_rpo_falcon512();
+
+        let account = AccountBuilder::new(init_seed)
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-            .with_component(BasicWallet);
+            .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+            .with_component(BasicWallet)
+            .build()
+            .unwrap();
 
-        let (account, seed) = builder.build().unwrap();
         accounts.push(account.clone());
         println!(
             "account id {:?}: {}",
             i,
-            Address::from(AccountIdAddress::new(
-                account.id(),
-                AddressInterface::Unspecified
-            ))
-            .to_bech32(NetworkId::Testnet)
+            account.id().to_bech32(NetworkId::Testnet)
         );
-        client.add_account(&account, Some(seed), true).await?;
+        client.add_account(&account, true).await?;
 
         // Add the key pair to the keystore
-        keystore
-            .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
-            .unwrap();
+        keystore.add_key(&key_pair).unwrap();
     }
 
     // For demo purposes, Alice is the first account.
@@ -201,56 +225,44 @@ async fn main() -> Result<(), ClientError> {
         )
         .unwrap();
 
-    let tx_execution_result = client
-        .new_transaction(faucet_account.id(), transaction_request)
+    let tx_id = client
+        .submit_new_transaction(faucet_account.id(), transaction_request)
         .await?;
-    client
-        .submit_transaction(tx_execution_result.clone())
-        .await?;
+    println!("Minted tokens. TX: {:?}", tx_id);
 
-    // The minted fungible asset is public so output is a `Full` note type
-    let p2id_note: Note =
-        if let OutputNote::Full(note) = tx_execution_result.created_notes().get_note(0) {
-            note.clone()
-        } else {
-            panic!("Expected Full note type");
-        };
+    // Wait for mint transaction to be committed
+    wait_for_tx(&mut client, tx_id).await?;
 
-    let transaction_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(p2id_note, None)])
-        .build()
-        .unwrap();
-    let tx_execution_result = client
-        .new_transaction(alice.id(), transaction_request)
-        .await?;
-    client.submit_transaction(tx_execution_result).await?;
-    client.sync_state().await?;
+    // Get the minted note and consume it
+    let consumable_notes = client.get_consumable_notes(Some(alice.id())).await?;
+
+    if let Some((note_record, _)) = consumable_notes.first() {
+        let transaction_request = TransactionRequestBuilder::new()
+            .build_consume_notes(vec![note_record.id()])
+            .unwrap();
+
+        let consume_tx_id = client
+            .submit_new_transaction(alice.id(), transaction_request)
+            .await?;
+        println!("Consumed minted note. TX: {:?}", consume_tx_id);
+
+        // Wait for consumption to complete
+        wait_for_tx(&mut client, consume_tx_id).await?;
+    }
 
     //------------------------------------------------------------
     // STEP 4: Create unauthenticated note tx chain
     //------------------------------------------------------------
     println!("\n[STEP 4] Create unauthenticated note tx chain");
-    let mut landed_blocks = vec![];
     let start = Instant::now();
 
     for i in 0..number_of_accounts - 1 {
         let loop_start = Instant::now();
         println!("\nunauthenticated tx {:?}", i + 1);
-        println!(
-            "sender: {}",
-            Address::from(AccountIdAddress::new(
-                accounts[i].id(),
-                AddressInterface::Unspecified
-            ))
-            .to_bech32(NetworkId::Testnet)
-        );
+        println!("sender: {}", accounts[i].id().to_bech32(NetworkId::Testnet));
         println!(
             "target: {}",
-            Address::from(AccountIdAddress::new(
-                accounts[i + 1].id(),
-                AddressInterface::Unspecified
-            ))
-            .to_bech32(NetworkId::Testnet)
+            accounts[i + 1].id().to_bech32(NetworkId::Testnet)
         );
 
         // Time the creation of the p2id note
@@ -282,10 +294,11 @@ async fn main() -> Result<(), ClientError> {
             .own_output_notes(vec![output_note])
             .build()
             .unwrap();
-        let tx_execution_result = client
-            .new_transaction(accounts[i].id(), transaction_request)
+
+        let tx_id = client
+            .submit_new_transaction(accounts[i].id(), transaction_request)
             .await?;
-        client.submit_transaction(tx_execution_result).await?;
+        println!("Created note. TX: {:?}", tx_id);
 
         // Note serialization/deserialization
         // This demonstrates how you could send the serialized note to another client instance
@@ -298,18 +311,13 @@ async fn main() -> Result<(), ClientError> {
             .build()
             .unwrap();
 
-        let tx_execution_result = client
-            .new_transaction(accounts[i + 1].id(), consume_note_request)
-            .await?;
-
-        landed_blocks.push(tx_execution_result.block_num());
-        client
-            .submit_transaction(tx_execution_result.clone())
+        let tx_id = client
+            .submit_new_transaction(accounts[i + 1].id(), consume_note_request)
             .await?;
 
         println!(
             "Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-            tx_execution_result.executed_transaction().id()
+            tx_id
         );
         println!(
             "Total time for loop iteration {}: {:?}",
@@ -322,7 +330,6 @@ async fn main() -> Result<(), ClientError> {
         "\nTotal execution time for unauthenticated note txs: {:?}",
         start.elapsed()
     );
-    println!("blocks: {:?}", landed_blocks);
 
     // Final resync and display account balances
     tokio::time::sleep(Duration::from_secs(3)).await;
@@ -336,11 +343,7 @@ async fn main() -> Result<(), ClientError> {
             .unwrap();
         println!(
             "Account: {} balance: {}",
-            Address::from(AccountIdAddress::new(
-                account.id(),
-                AddressInterface::Unspecified
-            ))
-            .to_bech32(NetworkId::Testnet),
+            account.id().to_bech32(NetworkId::Testnet),
             balance
         );
     }

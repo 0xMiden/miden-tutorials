@@ -1,4 +1,5 @@
-use.miden::account
+use.miden::active_account
+use miden::native_account
 use.miden::tx
 use.std::sys
 
@@ -12,7 +13,7 @@ export.copy_count
 
     debug.stack
 
-    exec.account::set_item dropw
+    exec.native_account::set_item dropw
     # => []
 
     exec.sys::truncate_stack

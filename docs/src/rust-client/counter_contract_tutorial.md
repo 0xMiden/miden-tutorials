@@ -37,11 +37,12 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11", default-features = false }
-miden-objects = { version = "0.11", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.15.9", features = ["executable"] }
-miden-assembly = "0.17.0"
+miden-client = { version = "0.12", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
+miden-lib = { version = "0.12", default-features = false }
+miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
+miden-crypto = { version = "0.17.1", features = ["executable"] }
+miden-assembly = "0.18.3"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -57,35 +58,30 @@ Copy and paste the following code into your `src/main.rs` file:
 
 ```rust no_run
 use miden_lib::account::auth::NoAuth;
-use rand::RngCore;
+use miden_lib::transaction::TransactionKernel;
+use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 
-use miden_assembly::{
-    ast::{Module, ModuleKind},
-    LibraryPath,
-};
 use miden_client::{
-    account::{
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface, StorageSlot,
-    },
+    address::NetworkId,
+    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
-    ClientError, Felt, ScriptBuilder,
+    rpc::{Endpoint, GrpcClient},
+    transaction::TransactionRequestBuilder,
+    ClientError,
 };
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
 use miden_objects::{
-    account::{AccountComponent, NetworkId},
-    assembly::Assembler,
-    assembly::DefaultSourceManager,
+    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
+    Word,
 };
 
 fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
         LibraryPath::new(library_path)?,
@@ -101,12 +97,18 @@ async fn main() -> Result<(), ClientError> {
     // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
+
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -162,53 +164,61 @@ The import `std::sys` contains a useful procedure for truncating the operand sta
 #### Here's a breakdown of what the `increment_count` procedure does:
 
 1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
-2. Calls `account::get_item` with the index of `0`.
+2. Calls `active_account::get_item` with the index of `0`.
 3. Pushes `1` onto the stack.
-4. Adds `1` to the count value returned from `account::get_item`.
+4. Adds `1` to the count value returned from `active_account::get_item`.
 5. _For demonstration purposes_, calls `debug.stack` to see the state of the stack
 6. Pushes `0` (COUNTER_SLOT) onto the stack, which is the index of the storage slot we want to write to.
-7. Calls `account::set_item` which saves the incremented count to storage at index `0`
-8. Calls `sys::truncate_stack` to truncate the stack to size 16.
+7. Calls `native_account::set_item` which saves the incremented count to storage at index `0`
+8. Uses `dropw` to clear the top 4 Stack elements, which is the old count value returned by the previous call
 
 Inside of the `masm/accounts/` directory, create the `counter.masm` file:
 
 ```masm
-use.miden::account
+use.miden::active_account
+use miden::native_account
 use.std::sys
 
 const.COUNTER_SLOT=0
-# => []
+
+#! Inputs:  []
+#! Outputs: [count]
 export.get_count
     push.COUNTER_SLOT
     # => [index]
 
-    exec.account::get_item
+    exec.active_account::get_item
+    # => [count]
+
+    # clean up stack
+    movdn.4 dropw
     # => [count]
 end
 
-# => []
+#! Inputs:  []
+#! Outputs: []
 export.increment_count
     push.COUNTER_SLOT
     # => [index]
 
-    exec.account::get_item
+    exec.active_account::get_item
     # => [count]
 
-    push.1 add
+    add.1
     # => [count+1]
 
-    # debug statement with client
     debug.stack
 
     push.COUNTER_SLOT
     # [index, count+1]
 
-    exec.account::set_item
-    # => []
+    exec.native_account::set_item
+    # => [OLD_VALUE]
 
-    exec.sys::truncate_stack
+    dropw
     # => []
 end
+
 ```
 
 **Note**: _It's a good habit to add comments below each line of MASM code with the expected stack state. This improves readability and helps with debugging._
@@ -245,20 +255,15 @@ To build the counter contract copy and paste the following code at the end of yo
 // -------------------------------------------------------------------------
 println!("\n[STEP 1] Creating counter contract.");
 
-// Prepare assembler (debug mode = true)
-let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-
 // Load the MASM file for the counter contract
-let counter_path = Path::new("./masm/accounts/counter.masm");
+let counter_path = Path::new("../masm/accounts/counter.masm");
 let counter_code = fs::read_to_string(counter_path).unwrap();
 
 // Compile the account code into `AccountComponent` with one storage slot
 let counter_component = AccountComponent::compile(
-    counter_code.clone(),
-    assembler,
-    vec![StorageSlot::Value(
-        [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into(),
-    )],
+    &counter_code,
+    TransactionKernel::assembler(),
+    vec![StorageSlot::Value(Word::default())],
 )
 .unwrap()
 .with_supports_all_types();
@@ -268,7 +273,7 @@ let mut seed = [0_u8; 32];
 client.rng().fill_bytes(&mut seed);
 
 // Build the new `Account` with the component
-let (counter_contract, counter_seed) = AccountBuilder::new(seed)
+let counter_contract = AccountBuilder::new(seed)
     .account_type(AccountType::RegularAccountImmutableCode)
     .storage_mode(AccountStorageMode::Public)
     .with_component(counter_component.clone())
@@ -277,23 +282,13 @@ let (counter_contract, counter_seed) = AccountBuilder::new(seed)
     .unwrap();
 
 println!(
-        "counter_contract commitment: {:?}",
-        counter_contract.commitment()
-    );
-println!(
-    "counter_contract id: {:?}",
-    Address::from(AccountIdAddress::new(
-        counter_contract.id(),
-        AddressInterface::Unspecified
-    ))
-    .to_bech32(NetworkId::Testnet)
+    "counter_contract commitment: {:?}",
+    counter_contract.commitment()
 );
+println!("counter_contract id: {:?}", counter_contract.id());
 println!("counter_contract storage: {:?}", counter_contract.storage());
 
-client
-    .add_account(&counter_contract.clone(), Some(counter_seed), false)
-    .await
-    .unwrap();
+client.add_account(&counter_contract, false).await.unwrap();
 ```
 
 Run the following command to execute `src/main.rs`:
@@ -324,10 +319,11 @@ Paste the following code at the end of your `src/main.rs` file:
 println!("\n[STEP 2] Call Counter Contract With Script");
 
 // Load the MASM script referencing the increment procedure
-let script_path = Path::new("./masm/scripts/counter_script.masm");
+let script_path = Path::new("../masm/scripts/counter_script.masm");
 let script_code = fs::read_to_string(script_path).unwrap();
 
-let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+// Create a library from the counter contract code
+let assembler = TransactionKernel::assembler().with_debug_mode(true);
 let account_component_lib = create_library(
     assembler.clone(),
     "external_contract::counter_contract",
@@ -335,10 +331,11 @@ let account_component_lib = create_library(
 )
 .unwrap();
 
-let tx_script = ScriptBuilder::new(true)
+let tx_script = client
+    .script_builder()
     .with_dynamically_linked_library(&account_component_lib)
     .unwrap()
-    .compile_tx_script(script_code)
+    .compile_tx_script(&script_code)
     .unwrap();
 
 // Build a transaction request with the custom script
@@ -347,20 +344,21 @@ let tx_increment_request = TransactionRequestBuilder::new()
     .build()
     .unwrap();
 
-// Execute the transaction locally
-let tx_result = client
-    .new_transaction(counter_contract.id(), tx_increment_request)
+// Execute and submit the transaction
+let tx_id = client
+    .submit_new_transaction(counter_contract.id(), tx_increment_request)
     .await
     .unwrap();
 
-let tx_id = tx_result.executed_transaction().id();
 println!(
     "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
     tx_id
 );
 
-// Submit transaction to the network
-let _ = client.submit_transaction(tx_result).await;
+println!(
+    "Counter contract id: {:?}",
+    counter_contract.id().to_bech32(NetworkId::Testnet)
+);
 
 client.sync_state().await.unwrap();
 
@@ -380,35 +378,30 @@ The final `src/main.rs` file should look like this:
 
 ```rust
 use miden_lib::account::auth::NoAuth;
-use rand::RngCore;
+use miden_lib::transaction::TransactionKernel;
+use rand::{rngs::StdRng, RngCore};
 use std::{fs, path::Path, sync::Arc};
 
-use miden_assembly::{
-    ast::{Module, ModuleKind},
-    LibraryPath,
-};
 use miden_client::{
-    account::{
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface, StorageSlot,
-    },
+    address::NetworkId,
+    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
-    ClientError, Felt, ScriptBuilder,
+    rpc::{Endpoint, GrpcClient},
+    transaction::TransactionRequestBuilder,
+    ClientError,
 };
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
 use miden_objects::{
-    account::{AccountComponent, NetworkId},
-    assembly::Assembler,
-    assembly::DefaultSourceManager,
+    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
+    Word,
 };
 
 fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
         LibraryPath::new(library_path)?,
@@ -424,12 +417,18 @@ async fn main() -> Result<(), ClientError> {
     // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
+
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -442,20 +441,15 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating counter contract.");
 
-    // Prepare assembler (debug mode = true)
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-
     // Load the MASM file for the counter contract
-    let counter_path = Path::new("./masm/accounts/counter.masm");
+    let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     // Compile the account code into `AccountComponent` with one storage slot
     let counter_component = AccountComponent::compile(
-        counter_code.clone(),
-        assembler,
-        vec![StorageSlot::Value(
-            [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into(),
-        )],
+        &counter_code,
+        TransactionKernel::assembler(),
+        vec![StorageSlot::Value(Word::default())],
     )
     .unwrap()
     .with_supports_all_types();
@@ -465,7 +459,7 @@ async fn main() -> Result<(), ClientError> {
     client.rng().fill_bytes(&mut seed);
 
     // Build the new `Account` with the component
-    let (counter_contract, counter_seed) = AccountBuilder::new(seed)
+    let counter_contract = AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(counter_component.clone())
@@ -477,20 +471,10 @@ async fn main() -> Result<(), ClientError> {
         "counter_contract commitment: {:?}",
         counter_contract.commitment()
     );
-    println!(
-        "counter_contract id: {:?}",
-        Address::from(AccountIdAddress::new(
-            counter_contract.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
-    );
+    println!("counter_contract id: {:?}", counter_contract.id());
     println!("counter_contract storage: {:?}", counter_contract.storage());
 
-    client
-        .add_account(&counter_contract.clone(), Some(counter_seed), false)
-        .await
-        .unwrap();
+    client.add_account(&counter_contract, false).await.unwrap();
 
     // -------------------------------------------------------------------------
     // STEP 2: Call the Counter Contract with a script
@@ -498,10 +482,11 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Call Counter Contract With Script");
 
     // Load the MASM script referencing the increment procedure
-    let script_path = Path::new("./masm/scripts/counter_script.masm");
+    let script_path = Path::new("../masm/scripts/counter_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+    // Create a library from the counter contract code
+    let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let account_component_lib = create_library(
         assembler.clone(),
         "external_contract::counter_contract",
@@ -509,10 +494,11 @@ async fn main() -> Result<(), ClientError> {
     )
     .unwrap();
 
-    let tx_script = ScriptBuilder::new(true)
+    let tx_script = client
+        .script_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
-        .compile_tx_script(script_code)
+        .compile_tx_script(&script_code)
         .unwrap();
 
     // Build a transaction request with the custom script
@@ -521,20 +507,21 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
-    // Execute the transaction locally
-    let tx_result = client
-        .new_transaction(counter_contract.id(), tx_increment_request)
+    // Execute and submit the transaction
+    let tx_id = client
+        .submit_new_transaction(counter_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
-    let tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         tx_id
     );
 
-    // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await;
+    println!(
+        "Counter contract id: {:?}",
+        counter_contract.id().to_bech32(NetworkId::Testnet)
+    );
 
     client.sync_state().await.unwrap();
 

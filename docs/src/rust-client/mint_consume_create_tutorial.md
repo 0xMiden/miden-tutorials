@@ -37,21 +37,24 @@ let amount: u64 = 100;
 let fungible_asset = FungibleAsset::new(faucet_account.id(), amount).unwrap();
 
 for i in 1..=5 {
-    let transaction_request = TransactionRequestBuilder::new().build_mint_fungible_asset(
-        fungible_asset,
-        alice_account.id(),
-        NoteType::Public,
-        client.rng(),
-    )
-    .unwrap();
+    let transaction_request = TransactionRequestBuilder::new()
+        .build_mint_fungible_asset(
+            fungible_asset,
+            alice_account.id(),
+            NoteType::Public,
+            client.rng(),
+        )
+        .unwrap();
 
     println!("tx request built");
 
-    let tx_execution_result = client
-        .new_transaction(faucet_account.id(), transaction_request)
+    let tx_id = client
+        .submit_new_transaction(faucet_account.id(), transaction_request)
         .await?;
-    client.submit_transaction(tx_execution_result).await?;
-    println!("Minted note #{} of {} tokens for Alice.", i, amount);
+    println!(
+        "Minted note #{} of {} tokens for Alice. TX: {:?}",
+        i, amount, tx_id
+    );
 }
 println!("All 5 notes minted for Alice successfully!");
 
@@ -104,12 +107,14 @@ loop {
         let transaction_request = TransactionRequestBuilder::new()
             .build_consume_notes(list_of_note_ids)
             .unwrap();
-        let tx_execution_result = client
-            .new_transaction(alice_account.id(), transaction_request)
-            .await?;
 
-        client.submit_transaction(tx_execution_result).await?;
-        println!("All of Alice's notes consumed successfully.");
+        let tx_id = client
+            .submit_new_transaction(alice_account.id(), transaction_request)
+            .await?;
+        println!(
+            "All of Alice's notes consumed successfully. TX: {:?}",
+            tx_id
+        );
         break;
     } else {
         println!(
@@ -184,13 +189,11 @@ let transaction_request = TransactionRequestBuilder::new()
     .build()
     .unwrap();
 
-let tx_execution_result = client
-    .new_transaction(alice_account.id(), transaction_request)
+let tx_id = client
+    .submit_new_transaction(alice_account.id(), transaction_request)
     .await?;
 
-// Submitting the transaction
-client.submit_transaction(tx_execution_result).await?;
-println!("Submitted a transaction with 4 P2ID notes.");
+println!("Submitted a transaction with 4 P2ID notes. TX: {:?}", tx_id);
 ```
 
 ### Basic P2ID transfer
@@ -200,7 +203,6 @@ Now as an example, Alice will send some tokens to an account in a single transac
 Add this snippet to the end of your file in the `main()` function:
 
 ```rust ignore
-
 println!("Submitting one more single P2ID transaction...");
 let init_seed: [u8; 15] = {
     let mut init_seed = [0_u8; 15];
@@ -217,24 +219,25 @@ let target_account_id = AccountId::dummy(
 let send_amount = 50;
 let fungible_asset = FungibleAsset::new(faucet_account.id(), send_amount).unwrap();
 
-let payment_transaction = PaymentNoteDescription::new(
-    vec![fungible_asset.into()],
+let p2id_note = create_p2id_note(
     alice_account.id(),
     target_account_id,
-);
+    vec![fungible_asset.into()],
+    NoteType::Public,
+    Felt::new(0),
+    client.rng(),
+)?;
 
 let transaction_request = TransactionRequestBuilder::new()
-    .build_pay_to_id(
-        payment_transaction,
-        NoteType::Public, // note type
-        client.rng(),     // rng
-    )
+    .own_output_notes(vec![OutputNote::Full(p2id_note)])
+    .build()
     .unwrap();
-let tx_execution_result = client
-    .new_transaction(alice_account.id(), transaction_request)
+
+let tx_id = client
+    .submit_new_transaction(alice_account.id(), transaction_request)
     .await?;
 
-client.submit_transaction(tx_execution_result).await?;
+println!("Submitted final P2ID transaction. TX: {:?}", tx_id);
 ```
 
 Note: _In a production environment do not use `AccountId::new_dummy()`, this is simply for the sake of the tutorial example._
@@ -244,41 +247,49 @@ Note: _In a production environment do not use `AccountId::new_dummy()`, this is 
 Your `src/main.rs` function should now look like this:
 
 ```rust
-use rand::RngCore;
+use miden_lib::account::auth::AuthRpoFalcon512;
+use rand::{rngs::StdRng, RngCore};
 use std::sync::Arc;
 use tokio::time::Duration;
 
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        AccountBuilder, AccountId, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface,
+        AccountId,
     },
-    asset::{FungibleAsset, TokenSymbol},
+    address::NetworkId,
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::SecretKey,
     keystore::FilesystemKeyStore,
     note::{create_p2id_note, NoteType},
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{OutputNote, PaymentNoteDescription, TransactionRequestBuilder},
-    ClientError, Felt,
+    rpc::{Endpoint, GrpcClient},
+    transaction::{OutputNote, TransactionRequestBuilder},
+    ClientError,
 };
-use miden_lib::account::auth::AuthRpoFalcon512;
-use miden_objects::account::{AccountIdVersion, NetworkId};
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_objects::{
+    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+    asset::{FungibleAsset, TokenSymbol},
+    Felt,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore: FilesystemKeyStore<rand::prelude::StdRng> =
-        FilesystemKeyStore::new("./keystore".into()).unwrap();
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
+
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore.clone().into())
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -295,35 +306,25 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = SecretKey::with_rng(client.rng());
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
 
     // Build the account
-    let builder = AccountBuilder::new(init_seed)
+    let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicWallet);
-
-    let (alice_account, seed) = builder.build().unwrap();
-
-    // Add the account to the client
-    client
-        .add_account(&alice_account, Some(seed), false)
-        .await?;
-
-    // Add the key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicWallet)
+        .build()
         .unwrap();
 
-    println!(
-        "Alice's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            alice_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
-    );
+    // Add the account to the client
+    client.add_account(&alice_account, false).await?;
+
+    // Add the key pair to the keystore
+    keystore.add_key(&key_pair).unwrap();
+
+    let alice_account_id_bech32 = alice_account.id().to_bech32(NetworkId::Testnet);
+    println!("Alice's account ID: {:?}", alice_account_id_bech32);
 
     //------------------------------------------------------------
     // STEP 2: Deploy a fungible faucet
@@ -340,35 +341,25 @@ async fn main() -> Result<(), ClientError> {
     let max_supply = Felt::new(1_000_000);
 
     // Generate key pair
-    let key_pair = SecretKey::with_rng(client.rng());
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
 
-    // Build the account
-    let builder = AccountBuilder::new(init_seed)
+    // Build the faucet account
+    let faucet_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
-
-    let (faucet_account, seed) = builder.build().unwrap();
-
-    // Add the faucet to the client
-    client
-        .add_account(&faucet_account, Some(seed), false)
-        .await?;
-
-    // Add the key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
+        .build()
         .unwrap();
 
-    println!(
-        "Faucet account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            faucet_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
-    );
+    // Add the faucet to the client
+    client.add_account(&faucet_account, false).await?;
+
+    // Add the key pair to the keystore
+    keystore.add_key(&key_pair).unwrap();
+
+    let faucet_account_id_bech32 = faucet_account.id().to_bech32(NetworkId::Testnet);
+    println!("Faucet account ID: {:?}", faucet_account_id_bech32);
 
     // Resync to show newly deployed faucet
     client.sync_state().await?;
@@ -394,11 +385,13 @@ async fn main() -> Result<(), ClientError> {
 
         println!("tx request built");
 
-        let tx_execution_result = client
-            .new_transaction(faucet_account.id(), transaction_request)
+        let tx_id = client
+            .submit_new_transaction(faucet_account.id(), transaction_request)
             .await?;
-        client.submit_transaction(tx_execution_result).await?;
-        println!("Minted note #{} of {} tokens for Alice.", i, amount);
+        println!(
+            "Minted note #{} of {} tokens for Alice. TX: {:?}",
+            i, amount, tx_id
+        );
     }
     println!("All 5 notes minted for Alice successfully!");
 
@@ -425,12 +418,14 @@ async fn main() -> Result<(), ClientError> {
             let transaction_request = TransactionRequestBuilder::new()
                 .build_consume_notes(list_of_note_ids)
                 .unwrap();
-            let tx_execution_result = client
-                .new_transaction(alice_account.id(), transaction_request)
-                .await?;
 
-            client.submit_transaction(tx_execution_result).await?;
-            println!("All of Alice's notes consumed successfully.");
+            let tx_id = client
+                .submit_new_transaction(alice_account.id(), transaction_request)
+                .await?;
+            println!(
+                "All of Alice's notes consumed successfully. TX: {:?}",
+                tx_id
+            );
             break;
         } else {
             println!(
@@ -485,13 +480,11 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
-    let tx_execution_result = client
-        .new_transaction(alice_account.id(), transaction_request)
+    let tx_id = client
+        .submit_new_transaction(alice_account.id(), transaction_request)
         .await?;
 
-    // Submitting the transaction
-    client.submit_transaction(tx_execution_result).await?;
-    println!("Submitted a transaction with 4 P2ID notes.");
+    println!("Submitted a transaction with 4 P2ID notes. TX: {:?}", tx_id);
 
     println!("Submitting one more single P2ID transaction...");
     let init_seed: [u8; 15] = {
@@ -509,24 +502,25 @@ async fn main() -> Result<(), ClientError> {
     let send_amount = 50;
     let fungible_asset = FungibleAsset::new(faucet_account.id(), send_amount).unwrap();
 
-    let payment_transaction = PaymentNoteDescription::new(
-        vec![fungible_asset.into()],
+    let p2id_note = create_p2id_note(
         alice_account.id(),
         target_account_id,
-    );
+        vec![fungible_asset.into()],
+        NoteType::Public,
+        Felt::new(0),
+        client.rng(),
+    )?;
 
     let transaction_request = TransactionRequestBuilder::new()
-        .build_pay_to_id(
-            payment_transaction,
-            NoteType::Public, // note type
-            client.rng(),     // rng
-        )
+        .own_output_notes(vec![OutputNote::Full(p2id_note)])
+        .build()
         .unwrap();
-    let tx_execution_result = client
-        .new_transaction(alice_account.id(), transaction_request)
+
+    let tx_id = client
+        .submit_new_transaction(alice_account.id(), transaction_request)
         .await?;
 
-    client.submit_transaction(tx_execution_result).await?;
+    println!("Submitted final P2ID transaction. TX: {:?}", tx_id);
 
     println!("\nAll steps completed successfully!");
     println!("Alice created a wallet, a faucet was deployed,");

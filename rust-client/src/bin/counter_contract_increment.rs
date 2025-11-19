@@ -1,24 +1,23 @@
+use miden_lib::transaction::TransactionKernel;
+use rand::rngs::StdRng;
 use std::{fs, path::Path, sync::Arc};
 
-use miden_assembly::{
-    ast::{Module, ModuleKind},
-    LibraryPath,
-};
 use miden_client::{
-    account::Address,
+    account::AccountId,
+    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
-    rpc::{Endpoint, TonicRpcClient},
-    transaction::{TransactionKernel, TransactionRequestBuilder},
-    ClientError, ScriptBuilder,
+    rpc::{Endpoint, GrpcClient},
+    transaction::TransactionRequestBuilder,
+    ClientError,
 };
-use miden_objects::{assembly::Assembler, assembly::DefaultSourceManager};
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
 
 fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
         LibraryPath::new(library_path)?,
@@ -34,12 +33,18 @@ async fn main() -> Result<(), ClientError> {
     // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
+
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -53,12 +58,8 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 1] Reading data from public state");
 
     // Define the Counter Contract account id from counter contract deploy
-    let (_network_id, address) =
-        Address::from_bech32("mtst1qre73e6qcrfevqqngx8wewvveacqqjh8p2a").unwrap();
-    let counter_contract_id = match address {
-        Address::AccountId(account_id_address) => account_id_address.id(),
-        _ => panic!("Expected AccountId address"),
-    };
+    let (_, counter_contract_id) =
+        AccountId::from_bech32("mtst1arjemrxne8lj5qz4mg9c8mtyxg954483").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)
@@ -91,7 +92,7 @@ async fn main() -> Result<(), ClientError> {
     let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let account_component_lib = create_library(
         assembler.clone(),
         "external_contract::counter_contract",
@@ -99,10 +100,11 @@ async fn main() -> Result<(), ClientError> {
     )
     .unwrap();
 
-    let tx_script = ScriptBuilder::new(true)
+    let tx_script = client
+        .script_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
-        .compile_tx_script(script_code)
+        .compile_tx_script(&script_code)
         .unwrap();
 
     // Build a transaction request with the custom script
@@ -111,20 +113,16 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
-    // Execute the transaction locally
-    let tx_result = client
-        .new_transaction(counter_contract.id(), tx_increment_request)
+    // Execute and submit the transaction
+    let tx_id = client
+        .submit_new_transaction(counter_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
-    let tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         tx_id
     );
-
-    // Submit transaction to the network
-    let _ = client.submit_transaction(tx_result).await;
 
     client.sync_state().await.unwrap();
 

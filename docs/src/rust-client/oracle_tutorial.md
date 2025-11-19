@@ -37,17 +37,17 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11", default-features = false }
-miden-objects = { version = "0.11", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.15.9", features = ["executable"] }
-miden-assembly = "0.17.0"
+miden-client = { version = "0.12", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
+miden-lib = { version = "0.12", default-features = false }
+miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
+miden-crypto = { version = "0.17.1", features = ["executable"] }
+miden-assembly = "0.18.3"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 tokio = { version = "1.46", features = ["rt-multi-thread", "net", "macros", "fs"] }
 rand_chacha = "0.9.0"
-miden-client-tools = "0.2.0"
 ```
 
 ### Step 1: Set up your `src/main.rs` file
@@ -55,28 +55,25 @@ miden-client-tools = "0.2.0"
 Copy and paste the following code into your `src/main.rs` file:
 
 ```rust
-use miden_assembly::{
-    ast::{Module, ModuleKind},
-    Assembler, DefaultSourceManager, LibraryPath,
-};
-use rand::RngCore;
-use std::{fs, path::Path, sync::Arc};
-
 use miden_client::{
-    account::{
-        component::AccountComponent, AccountBuilder, AccountId, AccountStorageMode, AccountType,
-        Address, StorageSlot,
-    },
+    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{
         domain::account::{AccountStorageRequirements, StorageMapKey},
-        Endpoint, TonicRpcClient,
+        Endpoint, GrpcClient,
     },
-    transaction::{ForeignAccount, TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt, ScriptBuilder, Word, ZERO,
+    transaction::{ForeignAccount, TransactionRequestBuilder},
+    Client, ClientError,
 };
-use miden_lib::account::auth::NoAuth;
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_lib::{account::auth::NoAuth, transaction::TransactionKernel};
+use miden_objects::{
+    account::{AccountComponent, AccountId, AccountStorageMode, AccountType, StorageSlot},
+    Felt, Word, ZERO,
+};
+use rand::{rngs::StdRng, RngCore};
+use std::{fs, path::Path, sync::Arc};
 
 /// Import the oracle + its publishers and return the ForeignAccount list
 /// Due to Pragma's decentralized oracle architecture, we need to get the
@@ -136,7 +133,7 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
         LibraryPath::new(library_path)?,
@@ -154,12 +151,17 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
+
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -169,12 +171,8 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     // Get all foreign accounts for oracle data
     // -------------------------------------------------------------------------
-    let (_, oracle_address) =
-        Address::from_bech32("mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99").unwrap();
-    let oracle_account_id = match oracle_address {
-        Address::AccountId(account_id_address) => account_id_address.id(),
-        _ => panic!("Expected AccountId address"),
-    };
+    let oracle_bech32 = "mtst1qq0zffxzdykm7qqqqdt24cc2du5ghx99";
+    let oracle_account_id = AccountId::from_hex(oracle_bech32).unwrap();
     let btc_usd_pair_id = 120195681;
     let foreign_accounts: Vec<ForeignAccount> =
         get_oracle_foreign_accounts(&mut client, oracle_account_id, btc_usd_pair_id).await?;
@@ -189,14 +187,14 @@ async fn main() -> Result<(), ClientError> {
     // Create Oracle Reader contract
     // -------------------------------------------------------------------------
     let contract_code =
-        fs::read_to_string(Path::new("./masm/accounts/oracle_reader.masm")).unwrap();
+        fs::read_to_string(Path::new("../masm/accounts/oracle_reader.masm")).unwrap();
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
 
     let contract_component = AccountComponent::compile(
-        contract_code.clone(),
+        &contract_code,
         assembler,
-        vec![StorageSlot::empty_value()],
+        vec![StorageSlot::Value(Word::default())],
     )
     .unwrap()
     .with_supports_all_types();
@@ -204,7 +202,7 @@ async fn main() -> Result<(), ClientError> {
     let mut seed = [0_u8; 32];
     client.rng().fill_bytes(&mut seed);
 
-    let (oracle_reader_contract, seed) = AccountBuilder::new(seed)
+    let oracle_reader_contract = miden_objects::account::AccountBuilder::new(seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Public)
         .with_component(contract_component.clone())
@@ -213,14 +211,14 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
 
     client
-        .add_account(&oracle_reader_contract.clone(), Some(seed), false)
+        .add_account(&oracle_reader_contract, false)
         .await
         .unwrap();
 
     // -------------------------------------------------------------------------
     // Build the script that calls our `get_price` procedure
     // -------------------------------------------------------------------------
-    let script_path = Path::new("./masm/scripts/oracle_reader_script.masm");
+    let script_path = Path::new("../masm/scripts/oracle_reader_script.masm");
     let script_code = fs::read_to_string(script_path).unwrap();
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
@@ -228,10 +226,11 @@ async fn main() -> Result<(), ClientError> {
     let account_component_lib =
         create_library(assembler.clone(), library_path, &contract_code).unwrap();
 
-    let tx_script = ScriptBuilder::new(true)
+    let tx_script = client
+        .script_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
-        .compile_tx_script(script_code)
+        .compile_tx_script(&script_code)
         .unwrap();
 
     let tx_increment_request = TransactionRequestBuilder::new()
@@ -240,20 +239,15 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
-    let tx_result = client
-        .new_transaction(oracle_reader_contract.id(), tx_increment_request)
+    let tx_id = client
+        .submit_new_transaction(oracle_reader_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
-    let tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         tx_id
     );
-    // -------------------------------------------------------------------------
-    //  Submit transaction to the network
-    // -------------------------------------------------------------------------
-    let _ = client.submit_transaction(tx_result).await;
 
     client.sync_state().await.unwrap();
 

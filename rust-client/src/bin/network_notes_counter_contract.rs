@@ -1,40 +1,34 @@
 use std::{fs, path::Path, sync::Arc};
 
+use miden_client::account::component::BasicWallet;
 use miden_client::{
-    account::{
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface, StorageSlot,
-    },
+    address::NetworkId,
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::SecretKey,
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
         NoteType,
     },
-    rpc::{Endpoint, TonicRpcClient},
+    rpc::{Endpoint, GrpcClient},
     store::TransactionFilter,
     transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
     Client, ClientError, Felt, Word,
 };
-use miden_lib::account::{
-    auth::{self, AuthRpoFalcon512},
-    wallets::BasicWallet,
-};
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_lib::account::auth::{self, AuthRpoFalcon512};
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
 use miden_objects::{
-    account::AccountComponent,
-    account::NetworkId,
+    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
     assembly::{Assembler, DefaultSourceManager, Library, LibraryPath, Module, ModuleKind},
 };
-use rand::RngCore;
+use rand::{rngs::StdRng, RngCore};
 use tokio::time::{sleep, Duration};
 
 /// Waits for a specific transaction to be committed.
 async fn wait_for_tx(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
     tx_id: TransactionId,
 ) -> Result<(), ClientError> {
     loop {
@@ -82,21 +76,24 @@ fn create_library(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
-
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
@@ -110,34 +107,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = SecretKey::with_rng(client.rng());
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
 
     // Build the account
-    let builder = AccountBuilder::new(init_seed)
+    let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicWallet);
-
-    let (alice_account, seed) = builder.build().unwrap();
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicWallet)
+        .build()
+        .unwrap();
 
     // Add the account to the client
-    client
-        .add_account(&alice_account, Some(seed), false)
-        .await?;
+    client.add_account(&alice_account, false).await?;
 
     // Add the key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
-        .unwrap();
+    keystore.add_key(&key_pair).unwrap();
 
     println!(
         "Alice's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            alice_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        alice_account.id().to_bech32(NetworkId::Testnet)
     );
 
     // -------------------------------------------------------------------------
@@ -151,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // First, compile the MASM code into an account component
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
     let counter_component = AccountComponent::compile(
-        counter_code.to_string(),
+        &counter_code,
         assembler.clone(),
         vec![StorageSlot::Value([Felt::new(0); 4].into())], // Initialize counter storage to 0
     )
@@ -163,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.rng().fill_bytes(&mut init_seed);
 
     // Build the immutable network account with no authentication
-    let (counter_contract, counter_seed) = AccountBuilder::new(init_seed)
+    let counter_contract = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode) // Immutable code
         .storage_mode(AccountStorageMode::Network) // Stored on network
         .with_auth_component(auth::NoAuth) // No authentication required
@@ -171,18 +160,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .unwrap();
 
-    client
-        .add_account(&counter_contract, Some(counter_seed), false)
-        .await
-        .unwrap();
+    client.add_account(&counter_contract, false).await.unwrap();
 
     println!(
         "contract id: {:?}",
-        Address::from(AccountIdAddress::new(
-            counter_contract.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        counter_contract.id().to_bech32(NetworkId::Testnet)
     );
 
     // -------------------------------------------------------------------------
@@ -197,23 +179,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let library = create_library(account_code, library_path).unwrap();
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = client
+        .script_builder()
         .with_dynamically_linked_library(&library)?
-        .compile_tx_script(script_code)?;
+        .compile_tx_script(&script_code)?;
 
     let tx_increment_request = TransactionRequestBuilder::new()
         .custom_script(tx_script)
         .build()
         .unwrap();
 
-    let tx_result = client
-        .new_transaction(counter_contract.id(), tx_increment_request)
+    let tx_id = client
+        .submit_new_transaction(counter_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
-    let _ = client.submit_transaction(tx_result.clone()).await;
-
-    let tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         tx_id
@@ -236,13 +216,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create and submit the network note that will increment the counter
     // Generate a random serial number for the note
-    let rng = client.rng();
-    let serial_num = rng.inner_mut().draw_word();
+    let serial_num = client.rng().draw_word();
 
     // Compile the note script with the counter contract library
-    let note_script = ScriptBuilder::default()
+    let note_script = client
+        .script_builder()
         .with_dynamically_linked_library(&library)?
-        .compile_note_script(network_note_code)?;
+        .compile_note_script(&network_note_code)?;
 
     // Create note recipient with empty inputs
     let note_inputs = NoteInputs::new([].to_vec())?;
@@ -266,11 +246,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .own_output_notes(vec![OutputNote::Full(increment_note)])
         .build()?;
 
-    let tx_result = client.new_transaction(alice_account.id(), note_req).await?;
+    let note_tx_id = client
+        .submit_new_transaction(alice_account.id(), note_req)
+        .await?;
 
-    let _ = client.submit_transaction(tx_result.clone()).await;
-
-    let note_tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         note_tx_id
