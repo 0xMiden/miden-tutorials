@@ -52,7 +52,7 @@ Now, combine the minted asset and the secret hash to build the custom note. The 
 Below is the Miden Assembly code for the note:
 
 ```masm
-use.miden::note
+use.miden::active_note
 use.miden::contracts::wallets::basic->wallet
 
 # CONSTANTS
@@ -78,10 +78,10 @@ begin
     # => [DIGEST]
 
     # Writing the note inputs to memory
-    push.EXPECTED_DIGEST_PTR exec.note::get_inputs drop drop
+    push.EXPECTED_DIGEST_PTR exec.active_note::get_inputs drop drop
 
     # Pad stack and load expected digest from memory
-    padw push.EXPECTED_DIGEST_PTR mem_loadw
+    padw push.EXPECTED_DIGEST_PTR mem_loadw_be
     # => [EXPECTED_DIGEST, DIGEST]
 
     # Assert that the note input matches the digest
@@ -94,14 +94,14 @@ begin
     # ---------------------------------------------------------------------------------------------
 
     # Write the asset in note to memory address ASSET_PTR
-    push.ASSET_PTR exec.note::get_assets
+    push.ASSET_PTR exec.active_note::get_assets
     # => [num_assets, dest_ptr]
 
     drop
     # => [dest_ptr]
 
     # Load asset from memory
-    mem_loadw
+    mem_loadw_be
     # => [ASSET]
 
     # Call receive asset in wallet
@@ -142,74 +142,82 @@ use tokio::time::{sleep, Duration};
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        Account, AccountBuilder, AccountId, AccountIdAddress, AccountStorageMode, AccountType,
-        Address, AddressInterface,
+        Account, AccountId,
     },
-    asset::{FungibleAsset, TokenSymbol},
+    address::NetworkId,
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::{FeltRng, SecretKey},
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteRelevance, NoteTag, NoteType,
     },
-    rpc::{Endpoint, TonicRpcClient},
+    rpc::{Endpoint, GrpcClient},
     store::InputNoteRecord,
     transaction::{OutputNote, TransactionRequestBuilder},
     Client, ClientError, Felt, ScriptBuilder,
 };
-use miden_objects::account::NetworkId;
-use miden_objects::Hasher;
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_objects::{
+    account::{AccountBuilder, AccountStorageMode, AccountType},
+    asset::{FungibleAsset, TokenSymbol},
+    Hasher,
+};
+
 // Helper to create a basic account
 async fn create_basic_account(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
-    keystore: FilesystemKeyStore<StdRng>,
-) -> Result<miden_client::account::Account, ClientError> {
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+) -> Result<Account, ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = SecretKey::with_rng(client.rng());
-    let builder = AccountBuilder::new(init_seed)
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
+
+    let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicWallet);
-    let (account, seed) = builder.build().unwrap();
-    client.add_account(&account, Some(seed), false).await?;
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicWallet)
+        .build()
         .unwrap();
+
+    client.add_account(&account, false).await?;
+    keystore.add_key(&key_pair).unwrap();
 
     Ok(account)
 }
 
 async fn create_basic_faucet(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
-    keystore: FilesystemKeyStore<StdRng>,
-) -> Result<miden_client::account::Account, ClientError> {
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+) -> Result<Account, ClientError> {
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
-    let key_pair = SecretKey::with_rng(client.rng());
+
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
     let symbol = TokenSymbol::new("MID").unwrap();
     let decimals = 8;
     let max_supply = Felt::new(1_000_000);
-    let builder = AccountBuilder::new(init_seed)
+
+    let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap());
-    let (account, seed) = builder.build().unwrap();
-    client.add_account(&account, Some(seed), false).await?;
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
+        .build()
         .unwrap();
+
+    client.add_account(&account, false).await?;
+    keystore.add_key(&key_pair).unwrap();
+
     Ok(account)
 }
 
 // Helper to wait until an account has the expected number of consumable notes
 pub async fn wait_for_note(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
     account_id: &Account,
     expected: &Note,
 ) -> Result<(), ClientError> {
@@ -234,16 +242,21 @@ pub async fn wait_for_note(
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
@@ -251,40 +264,26 @@ async fn main() -> Result<(), ClientError> {
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap();
-
     // -------------------------------------------------------------------------
     // STEP 1: Create accounts and deploy faucet
     // -------------------------------------------------------------------------
     println!("\n[STEP 1] Creating new accounts");
-    let alice_account = create_basic_account(&mut client, keystore.clone()).await?;
+    let alice_account = create_basic_account(&mut client, &keystore).await?;
     println!(
         "Alice's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            alice_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        alice_account.id().to_bech32(NetworkId::Testnet)
     );
-    let bob_account = create_basic_account(&mut client, keystore.clone()).await?;
+    let bob_account = create_basic_account(&mut client, &keystore).await?;
     println!(
         "Bob's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            bob_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        bob_account.id().to_bech32(NetworkId::Testnet)
     );
 
     println!("\nDeploying a new fungible faucet.");
-    let faucet = create_basic_faucet(&mut client, keystore).await?;
+    let faucet = create_basic_faucet(&mut client, &keystore).await?;
     println!(
         "Faucet account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            faucet.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        faucet.id().to_bech32(NetworkId::Testnet)
     );
     client.sync_state().await?;
 
@@ -303,25 +302,32 @@ async fn main() -> Result<(), ClientError> {
             client.rng(),
         )
         .unwrap();
-    let tx_exec = client.new_transaction(faucet.id(), tx_request).await?;
-    client.submit_transaction(tx_exec.clone()).await?;
 
-    let p2id_note = if let OutputNote::Full(note) = tx_exec.created_notes().get_note(0) {
-        note.clone()
-    } else {
-        panic!("Expected OutputNote::Full");
-    };
-
-    wait_for_note(&mut client, &alice_account, &p2id_note).await?;
-
-    let consume_request = TransactionRequestBuilder::new()
-        .authenticated_input_notes([(p2id_note.id(), None)])
-        .build()
-        .unwrap();
-    let tx_exec = client
-        .new_transaction(alice_account.id(), consume_request)
+    let tx_id = client
+        .submit_new_transaction(faucet.id(), tx_request)
         .await?;
-    client.submit_transaction(tx_exec).await?;
+    println!("Minted tokens. TX: {:?}", tx_id);
+
+    // Wait for the note to be available
+    client.sync_state().await?;
+    sleep(Duration::from_secs(3)).await;
+
+    // Consume the minted note
+    let consumable_notes = client
+        .get_consumable_notes(Some(alice_account.id()))
+        .await?;
+
+    if let Some((note_record, _)) = consumable_notes.first() {
+        let consume_request = TransactionRequestBuilder::new()
+            .build_consume_notes(vec![note_record.id()])
+            .unwrap();
+
+        let tx_id = client
+            .submit_new_transaction(alice_account.id(), consume_request)
+            .await?;
+        println!("Consumed minted note. TX: {:?}", tx_id);
+    }
+
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -332,7 +338,7 @@ async fn main() -> Result<(), ClientError> {
     let digest = Hasher::hash_elements(&secret_vals);
     println!("digest: {:?}", digest);
 
-    let code = fs::read_to_string(Path::new("./masm/notes/hash_preimage_note.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../masm/notes/hash_preimage_note.masm")).unwrap();
     let serial_num = client.rng().draw_word();
 
     let note_script = ScriptBuilder::new(true).compile_note_script(code).unwrap();
@@ -354,15 +360,15 @@ async fn main() -> Result<(), ClientError> {
         .own_output_notes(vec![OutputNote::Full(custom_note.clone())])
         .build()
         .unwrap();
-    let tx_result = client
-        .new_transaction(alice_account.id(), note_request)
-        .await
-        .unwrap();
+
+    let tx_id = client
+        .submit_new_transaction(alice_account.id(), note_request)
+        .await?;
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-        tx_result.executed_transaction().id()
+        tx_id
     );
-    let _ = client.submit_transaction(tx_result).await;
+
     client.sync_state().await?;
 
     // -------------------------------------------------------------------------
@@ -375,16 +381,14 @@ async fn main() -> Result<(), ClientError> {
         .unauthenticated_input_notes([(custom_note, Some(secret.into()))])
         .build()
         .unwrap();
-    let tx_result = client
-        .new_transaction(bob_account.id(), consume_custom_request)
-        .await
-        .unwrap();
+
+    let tx_id = client
+        .submit_new_transaction(bob_account.id(), consume_custom_request)
+        .await?;
     println!(
         "Consumed Note Tx on MidenScan: https://testnet.midenscan.com/tx/{:?} \n",
-        tx_result.executed_transaction().id()
+        tx_id
     );
-    println!("account delta: {:?}", tx_result.account_delta().vault());
-    let _ = client.submit_transaction(tx_result).await;
 
     Ok(())
 }

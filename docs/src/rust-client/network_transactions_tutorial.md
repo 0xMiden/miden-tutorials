@@ -49,11 +49,12 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11", default-features = false }
-miden-objects = { version = "0.11", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.15.9", features = ["executable"] }
-miden-assembly = "0.17.0"
+miden-client = { version = "0.12", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
+miden-lib = { version = "0.12", default-features = false }
+miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
+miden-crypto = { version = "0.17.1", features = ["executable"] }
+miden-assembly = "0.18.3"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -77,26 +78,33 @@ We'll use the same counter contract MASM code as the regular counter tutorial. T
 Create `masm/accounts/counter.masm`:
 
 ```masm
-use.miden::account
+use.miden::active_account
+use miden::native_account
 use.std::sys
 
 const.COUNTER_SLOT=0
 
-# => []
+#! Inputs:  []
+#! Outputs: [count]
 export.get_count
     push.COUNTER_SLOT
     # => [index]
 
-    exec.account::get_item
+    exec.active_account::get_item
+    # => [count]
+
+    # clean up stack
+    movdn.4 dropw
     # => [count]
 end
 
-# => []
+#! Inputs:  []
+#! Outputs: []
 export.increment_count
     push.COUNTER_SLOT
     # => [index]
 
-    exec.account::get_item
+    exec.active_account::get_item
     # => [count]
 
     add.1
@@ -107,10 +115,10 @@ export.increment_count
     push.COUNTER_SLOT
     # [index, count+1]
 
-    exec.account::set_item
-    # => []
+    exec.native_account::set_item
+    # => [OLD_VALUE]
 
-    exec.sys::truncate_stack
+    dropw
     # => []
 end
 ```
@@ -152,41 +160,35 @@ Copy and paste the following code into your `src/main.rs` file:
 ```rust no_run
 use std::{fs, path::Path, sync::Arc};
 
+use miden_client::account::component::BasicWallet;
 use miden_client::{
-    account::{
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface, StorageSlot,
-    },
+    address::NetworkId,
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::SecretKey,
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
         NoteType,
     },
-    rpc::{Endpoint, TonicRpcClient},
+    rpc::{Endpoint, GrpcClient},
     store::TransactionFilter,
     transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
     Client, ClientError, Felt, Word,
 };
-use miden_lib::account::{
-    auth::{self, AuthRpoFalcon512},
-    wallets::BasicWallet,
-};
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_lib::account::auth::{self, AuthRpoFalcon512};
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
 use miden_objects::{
-    account::AccountComponent,
-    account::NetworkId,
+    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
     assembly::{Assembler, DefaultSourceManager, Library, LibraryPath, Module, ModuleKind},
 };
-use rand::RngCore;
+use rand::{rngs::StdRng, RngCore};
 use tokio::time::{sleep, Duration};
 
 /// Waits for a specific transaction to be committed.
 async fn wait_for_tx(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
     tx_id: TransactionId,
 ) -> Result<(), ClientError> {
     loop {
@@ -234,21 +236,24 @@ fn create_library(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
-
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
@@ -262,34 +267,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = SecretKey::with_rng(client.rng());
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
 
     // Build the account
-    let builder = AccountBuilder::new(init_seed)
+    let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicWallet);
-
-    let (alice_account, seed) = builder.build().unwrap();
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicWallet)
+        .build()
+        .unwrap();
 
     // Add the account to the client
-    client
-        .add_account(&alice_account, Some(seed), false)
-        .await?;
+    client.add_account(&alice_account, false).await?;
 
     // Add the key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
-        .unwrap();
+    keystore.add_key(&key_pair).unwrap();
 
     println!(
         "Alice's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            alice_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        alice_account.id().to_bech32(NetworkId::Testnet)
     );
 
     Ok(())
@@ -305,50 +302,43 @@ Now we'll create a network smart contract. The key difference from regular contr
 Add this code to your `main()` function:
 
 ```rust ignore
-    // -------------------------------------------------------------------------
-    // STEP 2: Create Network Counter Smart Contract
-    // -------------------------------------------------------------------------
-    println!("\n[STEP 2] Creating a network counter smart contract");
+// -------------------------------------------------------------------------
+// STEP 2: Create Network Counter Smart Contract
+// -------------------------------------------------------------------------
+println!("\n[STEP 2] Creating a network counter smart contract");
 
-    let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
+let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
 
-    // Create the network counter smart contract account
-    // First, compile the MASM code into an account component
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let counter_component = AccountComponent::compile(
-        counter_code.to_string(),
-        assembler.clone(),
-        vec![StorageSlot::Value([Felt::new(0); 4].into())], // Initialize counter storage to 0
-    )
-    .unwrap()
-    .with_supports_all_types();
+// Create the network counter smart contract account
+// First, compile the MASM code into an account component
+let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+let counter_component = AccountComponent::compile(
+    &counter_code,
+    assembler.clone(),
+    vec![StorageSlot::Value([Felt::new(0); 4].into())], // Initialize counter storage to 0
+)
+.unwrap()
+.with_supports_all_types();
 
-    // Generate a random seed for the account
-    let mut init_seed = [0_u8; 32];
-    client.rng().fill_bytes(&mut init_seed);
+// Generate a random seed for the account
+let mut init_seed = [0_u8; 32];
+client.rng().fill_bytes(&mut init_seed);
 
-    // Build the immutable network account with no authentication
-    let (counter_contract, counter_seed) = AccountBuilder::new(init_seed)
-        .account_type(AccountType::RegularAccountImmutableCode) // Immutable code
-        .storage_mode(AccountStorageMode::Network) // Stored on network
-        .with_auth_component(auth::NoAuth) // No authentication required
-        .with_component(counter_component)
-        .build()
-        .unwrap();
+// Build the immutable network account with no authentication
+let counter_contract = AccountBuilder::new(init_seed)
+    .account_type(AccountType::RegularAccountImmutableCode) // Immutable code
+    .storage_mode(AccountStorageMode::Network) // Stored on network
+    .with_auth_component(auth::NoAuth) // No authentication required
+    .with_component(counter_component)
+    .build()
+    .unwrap();
 
-    client
-        .add_account(&counter_contract, Some(counter_seed), false)
-        .await
-        .unwrap();
+client.add_account(&counter_contract, false).await.unwrap();
 
-    println!(
-        "contract id: {:?}",
-        Address::from(AccountIdAddress::new(
-            counter_contract.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
-    );
+println!(
+    "contract id: {:?}",
+    counter_contract.id().to_bech32(NetworkId::Testnet)
+);
 ```
 
 This step creates a network smart contract with `AccountStorageMode::Network`, which enables the contract to be executed by the network operator.
@@ -372,23 +362,21 @@ let library_path = "external_contract::counter_contract";
 
 let library = create_library(account_code, library_path).unwrap();
 
-let tx_script = ScriptBuilder::default()
+let tx_script = client
+    .script_builder()
     .with_dynamically_linked_library(&library)?
-    .compile_tx_script(script_code)?;
+    .compile_tx_script(&script_code)?;
 
 let tx_increment_request = TransactionRequestBuilder::new()
     .custom_script(tx_script)
     .build()
     .unwrap();
 
-let tx_result = client
-    .new_transaction(counter_contract.id(), tx_increment_request)
+let tx_id = client
+    .submit_new_transaction(counter_contract.id(), tx_increment_request)
     .await
     .unwrap();
 
-let _ = client.submit_transaction(tx_result.clone()).await;
-
-let tx_id = tx_result.executed_transaction().id();
 println!(
     "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
     tx_id
@@ -396,7 +384,6 @@ println!(
 
 // Wait for the transaction to be committed
 wait_for_tx(&mut client, tx_id).await.unwrap();
-
 ```
 
 This step uses a transaction script to deploy the network account and ensure it's properly registered on-chain. The script calls the `increment` function, which initializes the counter to 1.
@@ -408,82 +395,80 @@ We create a public note that the network operator can consume to execute the inc
 Add this code to your `main()` function:
 
 ```rust ignore
-    // -------------------------------------------------------------------------
-    // STEP 4: Prepare & Create the Network Note
-    // -------------------------------------------------------------------------
-    println!("\n[STEP 4] Creating a network note for network counter contract");
+// -------------------------------------------------------------------------
+// STEP 4: Prepare & Create the Network Note
+// -------------------------------------------------------------------------
+println!("\n[STEP 4] Creating a network note for network counter contract");
 
-    let network_note_code =
-        fs::read_to_string(Path::new("../masm/notes/network_increment_note.masm")).unwrap();
-    let account_code =
-        fs::read_to_string(Path::new("../masm/accounts/network_counter.masm")).unwrap();
+let network_note_code =
+    fs::read_to_string(Path::new("../masm/notes/network_increment_note.masm")).unwrap();
+let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
 
-    let library_path = "external_contract::counter_contract";
-    let library = create_library(account_code, library_path).unwrap();
+let library_path = "external_contract::counter_contract";
+let library = create_library(account_code, library_path).unwrap();
 
-    // Create and submit the network note that will increment the counter
-    // Generate a random serial number for the note
-    let rng = client.rng();
-    let serial_num = rng.inner_mut().draw_word();
+// Create and submit the network note that will increment the counter
+// Generate a random serial number for the note
+let serial_num = client.rng().draw_word();
 
-    // Compile the note script with the counter contract library
-    let note_script = ScriptBuilder::default()
-        .with_dynamically_linked_library(&library)?
-        .compile_note_script(network_note_code)?;
+// Compile the note script with the counter contract library
+let note_script = client
+    .script_builder()
+    .with_dynamically_linked_library(&library)?
+    .compile_note_script(&network_note_code)?;
 
-    // Create note recipient with empty inputs
-    let note_inputs = NoteInputs::new([].to_vec())?;
-    let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+// Create note recipient with empty inputs
+let note_inputs = NoteInputs::new([].to_vec())?;
+let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
 
-    // Set up note metadata - tag it with the counter contract ID so it gets consumed
-    let tag = NoteTag::from_account_id(counter_contract.id());
-    let metadata = NoteMetadata::new(
-        alice_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::none(),
-        Felt::new(0),
-    )?;
+// Set up note metadata - tag it with the counter contract ID so it gets consumed
+let tag = NoteTag::from_account_id(counter_contract.id());
+let metadata = NoteMetadata::new(
+    alice_account.id(),
+    NoteType::Public,
+    tag,
+    NoteExecutionHint::none(),
+    Felt::new(0),
+)?;
 
-    // Create the complete note
-    let increment_note = Note::new(NoteAssets::default(), metadata, recipient);
+// Create the complete note
+let increment_note = Note::new(NoteAssets::default(), metadata, recipient);
 
-    // Build and submit the transaction containing the note
-    let note_req = TransactionRequestBuilder::new()
-        .own_output_notes(vec![OutputNote::Full(increment_note)])
-        .build()?;
+// Build and submit the transaction containing the note
+let note_req = TransactionRequestBuilder::new()
+    .own_output_notes(vec![OutputNote::Full(increment_note)])
+    .build()?;
 
-    let tx_result = client.new_transaction(alice_account.id(), note_req).await?;
+let note_tx_id = client
+    .submit_new_transaction(alice_account.id(), note_req)
+    .await?;
 
-    let _ = client.submit_transaction(tx_result.clone()).await;
+println!(
+    "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
+    note_tx_id
+);
 
-    let note_tx_id = tx_result.executed_transaction().id();
-    println!(
-        "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
-        note_tx_id
-    );
+client.sync_state().await?;
 
-    client.sync_state().await?;
+println!("network increment note creation tx submitted, waiting for onchain commitment");
 
-    println!("network increment note creation tx submitted, waiting for onchain commitment");
+// Wait for the note transaction to be committed
+wait_for_tx(&mut client, note_tx_id).await.unwrap();
 
-    // Wait for the note transaction to be committed
-    wait_for_tx(&mut client, note_tx_id).await.unwrap();
+// Waiting for network note to be picked up by the network transaction builder
+sleep(Duration::from_secs(6)).await;
 
-    // Waiting for network note to be picked up by the network transaction builder
-    sleep(Duration::from_secs(6)).await;
+client.sync_state().await?;
 
-    client.sync_state().await?;
+// Checking updated state
+let new_account_state = client.get_account(counter_contract.id()).await.unwrap();
 
-    // Checking updated state
-    let new_account_state = client.get_account(counter_contract.id()).await.unwrap();
-
-    if let Some(account) = new_account_state.as_ref() {
-        let count: Word = account.account().storage().get_item(0).unwrap().into();
-        let val = count.get(3).unwrap().as_int();
-        assert_eq!(val, 2);
-        println!("🔢 Final counter value: {}", val);
-    }
+if let Some(account) = new_account_state.as_ref() {
+    let count: Word = account.account().storage().get_item(0).unwrap().into();
+    let val = count.get(3).unwrap().as_int();
+    assert_eq!(val, 2);
+    println!("🔢 Final counter value: {}", val);
+}
 ```
 
 This step creates a public note that the network operator can consume to execute the increment function. This increments the counter from 1 to 2.
@@ -495,41 +480,35 @@ Your complete `main()` function should look like this:
 ```rust
 use std::{fs, path::Path, sync::Arc};
 
+use miden_client::account::component::BasicWallet;
 use miden_client::{
-    account::{
-        AccountBuilder, AccountIdAddress, AccountStorageMode, AccountType, Address,
-        AddressInterface, StorageSlot,
-    },
+    address::NetworkId,
     auth::AuthSecretKey,
     builder::ClientBuilder,
-    crypto::SecretKey,
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
         NoteType,
     },
-    rpc::{Endpoint, TonicRpcClient},
+    rpc::{Endpoint, GrpcClient},
     store::TransactionFilter,
     transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
     Client, ClientError, Felt, Word,
 };
-use miden_lib::account::{
-    auth::{self, AuthRpoFalcon512},
-    wallets::BasicWallet,
-};
+use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_lib::account::auth::{self, AuthRpoFalcon512};
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
 use miden_objects::{
-    account::AccountComponent,
-    account::NetworkId,
+    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
     assembly::{Assembler, DefaultSourceManager, Library, LibraryPath, Module, ModuleKind},
 };
-use rand::RngCore;
+use rand::{rngs::StdRng, RngCore};
 use tokio::time::{sleep, Duration};
 
 /// Waits for a specific transaction to be committed.
 async fn wait_for_tx(
-    client: &mut Client<FilesystemKeyStore<rand::prelude::StdRng>>,
+    client: &mut Client<FilesystemKeyStore<StdRng>>,
     tx_id: TransactionId,
 ) -> Result<(), ClientError> {
     loop {
@@ -577,21 +556,24 @@ fn create_library(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize client & keystore
+    // Initialize client
     let endpoint = Endpoint::testnet();
     let timeout_ms = 10_000;
-    let rpc_api = Arc::new(TonicRpcClient::new(&endpoint, timeout_ms));
+    let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap().into();
+    // Initialize keystore
+    let keystore_path = std::path::PathBuf::from("./keystore");
+    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+
+    let store_path = std::path::PathBuf::from("./store.sqlite3");
 
     let mut client = ClientBuilder::new()
-        .rpc(rpc_api)
-        .authenticator(keystore)
+        .rpc(rpc_client)
+        .sqlite_store(store_path)
+        .authenticator(keystore.clone())
         .in_debug_mode(true.into())
         .build()
         .await?;
-
-    let keystore = FilesystemKeyStore::new("./keystore".into()).unwrap();
 
     let sync_summary = client.sync_state().await.unwrap();
     println!("Latest block: {}", sync_summary.block_num);
@@ -605,34 +587,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = SecretKey::with_rng(client.rng());
+    let key_pair = AuthSecretKey::new_rpo_falcon512();
 
     // Build the account
-    let builder = AccountBuilder::new(init_seed)
+    let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key()))
-        .with_component(BasicWallet);
-
-    let (alice_account, seed) = builder.build().unwrap();
+        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_component(BasicWallet)
+        .build()
+        .unwrap();
 
     // Add the account to the client
-    client
-        .add_account(&alice_account, Some(seed), false)
-        .await?;
+    client.add_account(&alice_account, false).await?;
 
     // Add the key pair to the keystore
-    keystore
-        .add_key(&AuthSecretKey::RpoFalcon512(key_pair))
-        .unwrap();
+    keystore.add_key(&key_pair).unwrap();
 
     println!(
         "Alice's account ID: {:?}",
-        Address::from(AccountIdAddress::new(
-            alice_account.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        alice_account.id().to_bech32(NetworkId::Testnet)
     );
 
     // -------------------------------------------------------------------------
@@ -640,13 +614,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 2] Creating a network counter smart contract");
 
-    let counter_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
+    let counter_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
 
     // Create the network counter smart contract account
     // First, compile the MASM code into an account component
     let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
     let counter_component = AccountComponent::compile(
-        counter_code.to_string(),
+        &counter_code,
         assembler.clone(),
         vec![StorageSlot::Value([Felt::new(0); 4].into())], // Initialize counter storage to 0
     )
@@ -658,7 +632,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.rng().fill_bytes(&mut init_seed);
 
     // Build the immutable network account with no authentication
-    let (counter_contract, counter_seed) = AccountBuilder::new(init_seed)
+    let counter_contract = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode) // Immutable code
         .storage_mode(AccountStorageMode::Network) // Stored on network
         .with_auth_component(auth::NoAuth) // No authentication required
@@ -666,18 +640,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .unwrap();
 
-    client
-        .add_account(&counter_contract, Some(counter_seed), false)
-        .await
-        .unwrap();
+    client.add_account(&counter_contract, false).await.unwrap();
 
     println!(
         "contract id: {:?}",
-        Address::from(AccountIdAddress::new(
-            counter_contract.id(),
-            AddressInterface::Unspecified
-        ))
-        .to_bech32(NetworkId::Testnet)
+        counter_contract.id().to_bech32(NetworkId::Testnet)
     );
 
     // -------------------------------------------------------------------------
@@ -685,30 +652,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Deploy network counter smart contract");
 
-    let script_code = fs::read_to_string(Path::new("./masm/scripts/counter_script.masm")).unwrap();
+    let script_code = fs::read_to_string(Path::new("../masm/scripts/counter_script.masm")).unwrap();
 
-    let account_code = fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
+    let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
     let library_path = "external_contract::counter_contract";
 
     let library = create_library(account_code, library_path).unwrap();
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = client
+        .script_builder()
         .with_dynamically_linked_library(&library)?
-        .compile_tx_script(script_code)?;
+        .compile_tx_script(&script_code)?;
 
     let tx_increment_request = TransactionRequestBuilder::new()
         .custom_script(tx_script)
         .build()
         .unwrap();
 
-    let tx_result = client
-        .new_transaction(counter_contract.id(), tx_increment_request)
+    let tx_id = client
+        .submit_new_transaction(counter_contract.id(), tx_increment_request)
         .await
         .unwrap();
 
-    let _ = client.submit_transaction(tx_result.clone()).await;
-
-    let tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         tx_id
@@ -723,22 +688,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n[STEP 4] Creating a network note for network counter contract");
 
     let network_note_code =
-        fs::read_to_string(Path::new("./masm/notes/network_increment_note.masm")).unwrap();
-    let account_code =
-        fs::read_to_string(Path::new("./masm/accounts/counter.masm")).unwrap();
+        fs::read_to_string(Path::new("../masm/notes/network_increment_note.masm")).unwrap();
+    let account_code = fs::read_to_string(Path::new("../masm/accounts/counter.masm")).unwrap();
 
     let library_path = "external_contract::counter_contract";
     let library = create_library(account_code, library_path).unwrap();
 
     // Create and submit the network note that will increment the counter
     // Generate a random serial number for the note
-    let rng = client.rng();
-    let serial_num = rng.inner_mut().draw_word();
+    let serial_num = client.rng().draw_word();
 
     // Compile the note script with the counter contract library
-    let note_script = ScriptBuilder::default()
+    let note_script = client
+        .script_builder()
         .with_dynamically_linked_library(&library)?
-        .compile_note_script(network_note_code)?;
+        .compile_note_script(&network_note_code)?;
 
     // Create note recipient with empty inputs
     let note_inputs = NoteInputs::new([].to_vec())?;
@@ -762,11 +726,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .own_output_notes(vec![OutputNote::Full(increment_note)])
         .build()?;
 
-    let tx_result = client.new_transaction(alice_account.id(), note_req).await?;
+    let note_tx_id = client
+        .submit_new_transaction(alice_account.id(), note_req)
+        .await?;
 
-    let _ = client.submit_transaction(tx_result.clone()).await;
-
-    let note_tx_id = tx_result.executed_transaction().id();
     println!(
         "View transaction on MidenScan: https://testnet.midenscan.com/tx/{:?}",
         note_tx_id
