@@ -6,7 +6,7 @@ use tokio::time::{sleep, Duration};
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        Account, AccountId,
+        Account,
     },
     address::NetworkId,
     auth::AuthSecretKey,
@@ -15,11 +15,11 @@ use miden_client::{
     keystore::FilesystemKeyStore,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteRelevance, NoteTag, NoteType,
+        NoteRecipient, NoteTag, NoteType,
     },
     rpc::{Endpoint, GrpcClient},
-    store::InputNoteRecord,
-    transaction::{OutputNote, TransactionRequestBuilder},
+    store::TransactionFilter,
+    transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
     Client, ClientError, Felt, ScriptBuilder,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
@@ -79,27 +79,34 @@ async fn create_basic_faucet(
     Ok(account)
 }
 
-// Helper to wait until an account has the expected number of consumable notes
-pub async fn wait_for_note(
+/// Waits for a specific transaction to be committed.
+async fn wait_for_tx(
     client: &mut Client<FilesystemKeyStore<StdRng>>,
-    account_id: &Account,
-    expected: &Note,
+    tx_id: TransactionId,
 ) -> Result<(), ClientError> {
     loop {
         client.sync_state().await?;
 
-        let notes: Vec<(InputNoteRecord, Vec<(AccountId, NoteRelevance)>)> =
-            client.get_consumable_notes(Some(account_id.id())).await?;
+        // Check transaction status
+        let txs = client
+            .get_transactions(TransactionFilter::Ids(vec![tx_id]))
+            .await?;
+        let tx_committed = if !txs.is_empty() {
+            matches!(txs[0].status, TransactionStatus::Committed { .. })
+        } else {
+            false
+        };
 
-        let found = notes.iter().any(|(rec, _)| rec.id() == expected.id());
-
-        if found {
-            println!("✅ note found {}", expected.id().to_hex());
+        if tx_committed {
+            println!("✅ transaction {} committed", tx_id.to_hex());
             break;
         }
 
-        println!("Note {} not found. Waiting...", expected.id().to_hex());
-        sleep(Duration::from_secs(3)).await;
+        println!(
+            "Transaction {} not yet committed. Waiting...",
+            tx_id.to_hex()
+        );
+        sleep(Duration::from_secs(2)).await;
     }
     Ok(())
 }
@@ -174,7 +181,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Wait for the note to be available
     client.sync_state().await?;
-    sleep(Duration::from_secs(3)).await;
+    wait_for_tx(&mut client, tx_id).await?;
 
     // Consume the minted note
     let consumable_notes = client
