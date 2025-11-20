@@ -60,7 +60,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 tokio = { version = "1.46", features = ["rt-multi-thread", "net", "macros", "fs"] }
 rand_chacha = "0.9.0"
-dotenv = "0.15"
 ```
 
 ## Step 2: Set up MASM files
