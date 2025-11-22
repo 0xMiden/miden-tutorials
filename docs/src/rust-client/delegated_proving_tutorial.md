@@ -126,7 +126,7 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     let remote_tx_prover: RemoteTransactionProver =
         RemoteTransactionProver::new("https://tx-prover.testnet.miden.io");
-    let _tx_prover: Arc<dyn TransactionProver> = Arc::new(remote_tx_prover);
+    let tx_prover: Arc<dyn TransactionProver> = Arc::new(remote_tx_prover);
 
     // We use a dummy transaction request to showcase delegated proving.
     // The only effect of this tx should be increasing Alice's nonce.
@@ -142,18 +142,28 @@ async fn main() -> Result<(), ClientError> {
         .build()
         .unwrap();
 
-    // Note: The delegated prover API has changed in v0.12
-    // The new API would be:
-    // 1. Execute transaction locally to get execution result
-    // 2. Use prove_transaction_with() to generate proof with remote prover
-    // 3. Submit the proven transaction
-    // However, since the delegated prover is not live yet, we'll use the standard flow
-
-    let _tx_id = client
-        .submit_new_transaction(alice_account.id(), transaction_request)
+    // Step 1: Execute the transaction locally
+    println!("Executing transaction...");
+    let tx_result = client
+        .execute_transaction(alice_account.id(), transaction_request)
         .await?;
 
-    println!("Transaction submitted (delegated proving not available yet)");
+    // Step 2: Prove the transaction using the remote prover
+    println!("Proving transaction with remote prover...");
+    let proven_transaction = client.prove_transaction_with(&tx_result, tx_prover).await?;
+
+    // Step 3: Submit the proven transaction
+    println!("Submitting proven transaction...");
+    let submission_height = client
+        .submit_proven_transaction(proven_transaction, &tx_result)
+        .await?;
+
+    // Step 4: Apply the transaction to local store
+    client
+        .apply_transaction(&tx_result, submission_height)
+        .await?;
+
+    println!("Transaction submitted successfully using delegated prover!");
 
     client.sync_state().await.unwrap();
 
