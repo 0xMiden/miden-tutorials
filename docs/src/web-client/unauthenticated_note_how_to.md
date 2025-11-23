@@ -80,13 +80,13 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
    pnpm install @demox-labs/miden-sdk@0.11.1
    ```
 
-**NOTE!**: Be sure to remove the `--turbopack` command from your `package.json` when running the `dev script`. The dev script should look like this:
+**NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
 
 `package.json`
 
 ```json
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     ...
   }
 ```
