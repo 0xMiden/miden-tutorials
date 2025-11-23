@@ -183,7 +183,8 @@ export async function createMintConsume(): Promise<void> {
   console.log("Creating account for Alice…");
   const alice = await client.newWallet(
     AccountStorageMode.public(),  // Public: account state is visible on-chain
-    true                          // Mutable: account code can be upgraded later
+    true,                         // Mutable: account code can be upgraded later
+    0                             // Auth Scheme: 0 for RPO Falcon 512, 1 for ECDSA 256 Keccak
   );
   console.log("Alice ID:", alice.id().toString());
 }
@@ -206,7 +207,8 @@ const faucetAccount = await client.newFaucet(
   false,                        // Immutable: faucet rules cannot be changed
   "MID",                        // Token symbol (like ETH, BTC, etc.)
   8,                            // Decimals (8 means 1 MID = 100,000,000 base units)
-  BigInt(1_000_000)             // Max supply: total tokens that can ever be minted
+  BigInt(1_000_000),            // Max supply: total tokens that can ever be minted
+  0                             // Auth Scheme: 0 for RPO Falcon 512, 1 for ECDSA 256 Keccak
 );
 console.log("Faucet account ID:", faucetAccount.id().toString());
 
@@ -256,7 +258,7 @@ export async function createMintConsume(): Promise<void> {
 
   // 2. Create Alice's account
   console.log("Creating account for Alice…");
-  const alice = await client.newWallet(AccountStorageMode.public(), true);
+  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
   console.log("Alice ID:", alice.id().toString());
 
   // 3. Deploy a fungible faucet
@@ -267,6 +269,7 @@ export async function createMintConsume(): Promise<void> {
     "MID",
     8,
     BigInt(1_000_000),
+    0,
   );
   console.log("Faucet ID:", faucet.id().toString());
 
