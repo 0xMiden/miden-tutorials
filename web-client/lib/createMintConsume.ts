@@ -19,7 +19,7 @@ export async function createMintConsume(): Promise<void> {
 
   // 2. Create Alice’s account
   console.log("Creating account for Alice…");
-  const alice = await client.newWallet(AccountStorageMode.public(), true);
+  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
   console.log("Alice ID:", alice.id().toString());
 
   // 3. Deploy faucet
@@ -30,6 +30,7 @@ export async function createMintConsume(): Promise<void> {
     "MID",
     8,
     BigInt(1_000_000),
+    0,
   );
   console.log("Faucet ID:", faucet.id().toString());
 
@@ -39,16 +40,14 @@ export async function createMintConsume(): Promise<void> {
   await client.syncState();
 
   console.log("Minting tokens to Alice...");
-  let mintTxRequest = client.newMintTransactionRequest(
+  const mintTxRequest = client.newMintTransactionRequest(
     alice.id(),
     faucet.id(),
     NoteType.Public,
     BigInt(1000),
   );
 
-  let txResult = await client.newTransaction(faucet.id(), mintTxRequest);
-
-  await client.submitTransaction(txResult);
+  await client.submitNewTransaction(faucet.id(), mintTxRequest);
 
   console.log("Waiting 10 seconds for transaction confirmation...");
   await new Promise((resolve) => setTimeout(resolve, 10000));
@@ -63,11 +62,9 @@ export async function createMintConsume(): Promise<void> {
 
   // 6. Consume minted notes
   console.log("Consuming minted notes...");
-  let consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
+  const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
 
-  let txResult_2 = await client.newTransaction(alice.id(), consumeTxRequest);
-
-  await client.submitTransaction(txResult_2);
+  await client.submitNewTransaction(alice.id(), consumeTxRequest);
 
   await client.syncState();
   console.log("Notes consumed.");
@@ -75,7 +72,7 @@ export async function createMintConsume(): Promise<void> {
   // 7. Send tokens to Bob
   const bobAccountId = "0x599a54603f0cf9000000ed7a11e379";
   console.log("Sending tokens to Bob's account...");
-  let sendTxRequest = client.newSendTransactionRequest(
+  const sendTxRequest = client.newSendTransactionRequest(
     alice.id(),
     AccountId.fromHex(bobAccountId),
     faucet.id(),
@@ -83,7 +80,6 @@ export async function createMintConsume(): Promise<void> {
     BigInt(100),
   );
 
-  let txResult_3 = await client.newTransaction(alice.id(), sendTxRequest);
-
-  await client.submitTransaction(txResult_3);
+  await client.submitNewTransaction(alice.id(), sendTxRequest);
+  console.log("Tokens sent successfully!");
 }
