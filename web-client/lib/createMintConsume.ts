@@ -6,7 +6,7 @@ export async function createMintConsume(): Promise<void> {
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
-  const { WebClient, AccountStorageMode, AccountId, NoteType } = await import(
+  const { WebClient, AccountStorageMode, NoteType, Address } = await import(
     '@demox-labs/miden-sdk'
   );
 
@@ -70,11 +70,13 @@ export async function createMintConsume(): Promise<void> {
   console.log('Notes consumed.');
 
   // 7. Send tokens to Bob
-  const bobAccountId = '0x599a54603f0cf9000000ed7a11e379';
+  const bobAccountId = Address.fromBech32(
+    'mtst1apve54rq8ux0jqqqqrkh5y0r0y8cwza6_qruqqypuyph',
+  ).accountId();
   console.log("Sending tokens to Bob's account...");
   const sendTxRequest = client.newSendTransactionRequest(
     alice.id(),
-    AccountId.fromHex(bobAccountId),
+    bobAccountId,
     faucet.id(),
     NoteType.Public,
     BigInt(100),
