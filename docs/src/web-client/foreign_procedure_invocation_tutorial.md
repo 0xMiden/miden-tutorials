@@ -453,7 +453,8 @@ Foreign Procedure Invocation Transaction completed!
 The count reader smart contract contains a `copy_count` procedure that uses `tx::execute_foreign_procedure` to call the `get_count` procedure in the counter contract.
 
 ```masm
-use.miden::account
+use.miden::active_account
+use miden::native_account
 use.miden::tx
 use.std::sys
 
@@ -461,17 +462,13 @@ use.std::sys
 export.copy_count
     exec.tx::execute_foreign_procedure
     # => [count]
-
-    debug.stack
-    # => [count]
-
+    
     push.0
     # [index, count]
 
-    exec.account::set_item
-    # => []
+    debug.stack
 
-    push.1 exec.account::incr_nonce
+    exec.native_account::set_item dropw
     # => []
 
     exec.sys::truncate_stack
