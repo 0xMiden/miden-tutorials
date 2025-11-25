@@ -10,19 +10,19 @@ export async function createMintConsume(): Promise<void> {
     "@demox-labs/miden-sdk"
   );
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io";
+  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
   const client = await WebClient.createClient(nodeEndpoint);
 
-  // 1. Sync and log block
+  // 1. Sync with the latest blockchain state
   const state = await client.syncState();
   console.log("Latest block number:", state.blockNum());
 
-  // 2. Create Alice’s account
+  // 2. Create Alice's account
   console.log("Creating account for Alice…");
   const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
   console.log("Alice ID:", alice.id().toString());
 
-  // 3. Deploy faucet
+  // 3. Deploy a fungible faucet
   console.log("Creating faucet…");
   const faucet = await client.newFaucet(
     AccountStorageMode.public(),
