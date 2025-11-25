@@ -523,7 +523,7 @@ This script:
 
 ### Getting Procedure Hashes
 
-In the WebClient, we get the procedure hash using the [`getProcedureHash`](https://github.com/0xMiden/miden-tutorials/blob/b281dea26ab0946e1c0aa68d4ea30e15765d456b/web-client/lib/foreignProcedureInvocation.ts#L178) method:
+In the WebClient, we get the procedure hash using the [`getProcedureHash`](https://github.com/0xMiden/miden-tutorials/blob/7bfa1996979cbb221b8cab455596093535787784/web-client/lib/foreignProcedureInvocation.ts#L176) method:
 
 ```ts
 let getCountProcHash = counterContractComponent.getProcedureHash('get_count');
