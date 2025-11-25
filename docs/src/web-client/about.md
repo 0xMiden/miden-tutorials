@@ -1,5 +1,5 @@
 ---
-title: "Web Client"
+title: 'Web Client'
 sidebar_position: 1
 ---
 

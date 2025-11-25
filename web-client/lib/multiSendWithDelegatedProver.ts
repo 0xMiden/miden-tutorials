@@ -6,7 +6,7 @@
  */
 export async function multiSendWithDelegatedProver(): Promise<void> {
   // Ensure this runs only in a browser context
-  if (typeof window === "undefined") return console.warn("Run in browser");
+  if (typeof window === 'undefined') return console.warn('Run in browser');
 
   const {
     WebClient,
@@ -21,32 +21,32 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     FungibleAsset,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import("@demox-labs/miden-sdk");
+  } = await import('@demox-labs/miden-sdk');
 
   const client = await WebClient.createClient(
-    "https://rpc.testnet.miden.io:443",
+    'https://rpc.testnet.miden.io:443',
   );
   const prover = TransactionProver.newRemoteProver(
-    "https://tx-prover.testnet.miden.io",
+    'https://tx-prover.testnet.miden.io',
   );
 
-  console.log("Latest block:", (await client.syncState()).blockNum());
+  console.log('Latest block:', (await client.syncState()).blockNum());
 
   // ── Creating new account ──────────────────────────────────────────────────────
-  console.log("Creating account for Alice…");
+  console.log('Creating account for Alice…');
   const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
-  console.log("Alice accout ID:", alice.id().toString());
+  console.log('Alice accout ID:', alice.id().toString());
 
   // ── Creating new faucet ──────────────────────────────────────────────────────
   const faucet = await client.newFaucet(
     AccountStorageMode.public(),
     false,
-    "MID",
+    'MID',
     8,
     BigInt(1_000_000),
     0,
   );
-  console.log("Faucet ID:", faucet.id().toString());
+  console.log('Faucet ID:', faucet.id().toString());
 
   // ── mint 10 000 MID to Alice ──────────────────────────────────────────────────────
   {
@@ -66,7 +66,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     );
     await client.applyTransaction(txResult, submissionHeight);
 
-    console.log("waiting for settlement");
+    console.log('waiting for settlement');
     await new Promise((r) => setTimeout(r, 7_000));
     await client.syncState();
   }
@@ -92,9 +92,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
   const recipientAddresses = [
-    "0xbf1db1694c83841000008cefd4fce0",
-    "0xee1a75244282c32000010a29bed5f4",
-    "0x67dc56bd0cbe629000006f36d81029",
+    '0xbf1db1694c83841000008cefd4fce0',
+    '0xee1a75244282c32000010a29bed5f4',
+    '0x67dc56bd0cbe629000006f36d81029',
   ];
 
   const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
@@ -120,5 +120,5 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
       .build(),
   );
 
-  console.log("All notes created ✅");
+  console.log('All notes created ✅');
 }
