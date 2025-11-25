@@ -14,33 +14,27 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     AccountId,
     NoteType,
     TransactionProver,
-    NoteInputs,
     Note,
     NoteAssets,
-    NoteRecipient,
-    Word,
-    OutputNotesArray,
-    NoteExecutionHint,
-    NoteTag,
-    NoteExecutionMode,
-    NoteMetadata,
-    FeltArray,
+    OutputNoteArray,
     Felt,
     FungibleAsset,
     TransactionRequestBuilder,
     OutputNote,
   } = await import("@demox-labs/miden-sdk");
 
-  const client = await WebClient.createClient("https://rpc.testnet.miden.io");
+  const client = await WebClient.createClient(
+    "https://rpc.testnet.miden.io:443",
+  );
   const prover = TransactionProver.newRemoteProver(
-    "https://tx-prover.devnet.miden.io",
+    "https://tx-prover.testnet.miden.io",
   );
 
   console.log("Latest block:", (await client.syncState()).blockNum());
 
   // ── Creating new account ──────────────────────────────────────────────────────
   console.log("Creating account for Alice…");
-  const alice = await client.newWallet(AccountStorageMode.public(), true);
+  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
   console.log("Alice accout ID:", alice.id().toString());
 
   // ── Creating new faucet ──────────────────────────────────────────────────────
@@ -50,12 +44,13 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     "MID",
     8,
     BigInt(1_000_000),
+    0,
   );
   console.log("Faucet ID:", faucet.id().toString());
 
   // ── mint 10 000 MID to Alice ──────────────────────────────────────────────────────
-  await client.submitTransaction(
-    await client.newTransaction(
+  {
+    const txResult = await client.executeTransaction(
       faucet.id(),
       client.newMintTransactionRequest(
         alice.id(),
@@ -63,27 +58,37 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
         NoteType.Public,
         BigInt(10_000),
       ),
-    ),
-    prover,
-  );
+    );
+    const proven = await client.proveTransaction(txResult, prover);
+    const submissionHeight = await client.submitProvenTransaction(
+      proven,
+      txResult,
+    );
+    await client.applyTransaction(txResult, submissionHeight);
 
-  console.log("waiting for settlement");
-  await new Promise((r) => setTimeout(r, 7_000));
-  await client.syncState();
+    console.log("waiting for settlement");
+    await new Promise((r) => setTimeout(r, 7_000));
+    await client.syncState();
+  }
 
   // ── consume the freshly minted notes ──────────────────────────────────────────────
   const noteIds = (await client.getConsumableNotes(alice.id())).map((rec) =>
     rec.inputNoteRecord().id().toString(),
   );
 
-  await client.submitTransaction(
-    await client.newTransaction(
+  {
+    const txResult = await client.executeTransaction(
       alice.id(),
       client.newConsumeTransactionRequest(noteIds),
-    ),
-    prover,
-  );
-  await client.syncState();
+    );
+    const proven = await client.proveTransaction(txResult, prover);
+    await client.syncState();
+    const submissionHeight = await client.submitProvenTransaction(
+      proven,
+      txResult,
+    );
+    await client.applyTransaction(txResult, submissionHeight);
+  }
 
   // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
   const recipientAddresses = [
@@ -96,7 +101,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   const p2idNotes = recipientAddresses.map((addr) => {
     const receiverAccountId = AccountId.fromHex(addr);
-    let note = Note.createP2IDNote(
+    const note = Note.createP2IDNote(
       alice.id(),
       receiverAccountId,
       assets,
@@ -108,15 +113,12 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   });
 
   // ── create all P2ID notes ───────────────────────────────────────────────────────────────
-  let transaction = await client.newTransaction(
+  await client.submitNewTransaction(
     alice.id(),
     new TransactionRequestBuilder()
-      .withOwnOutputNotes(new OutputNotesArray(p2idNotes))
+      .withOwnOutputNotes(new OutputNoteArray(p2idNotes))
       .build(),
   );
-
-  // ── submit tx ───────────────────────────────────────────────────────────────
-  await client.submitTransaction(transaction, prover);
 
   console.log("All notes created ✅");
 }
