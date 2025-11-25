@@ -1,9 +1,7 @@
 ---
-title: "Creating Multiple Notes in a Single Transaction"
+title: 'Creating Multiple Notes in a Single Transaction'
 sidebar_position: 4
 ---
-
-# Creating Multiple Notes in a Single Transaction
 
 _Using the Miden WebClient in TypeScript to create several P2ID notes in a single transaction_
 
@@ -27,7 +25,7 @@ The entire flow is wrapped in a helper called `multiSendWithDelegatedProver()` t
 
 - Node `v20` or greater
 - Familiarity with TypeScript
-- `pnpm`
+- `yarn`
 
 ## What is Delegated Proving?
 
@@ -44,7 +42,7 @@ Anyone can run their own delegated prover server. If you are building a product 
 1. Create a new Next.js app with TypeScript:
 
    ```bash
-   npx create-next-app@latest miden-web-app --typescript
+   yarn create next-app@latest miden-web-app --typescript
    ```
 
    Hit enter for all terminal prompts.
@@ -57,7 +55,7 @@ Anyone can run their own delegated prover server. If you are building a product 
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm install @demox-labs/miden-sdk@0.11.1
+   yarn add @demox-labs/miden-sdk@0.12.3
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -76,9 +74,9 @@ Anyone can run their own delegated prover server. If you are building a product 
 Add the following code to the `app/page.tsx` file:
 
 ```tsx
-"use client";
-import { useState } from "react";
-import { multiSendWithDelegatedProver } from "../lib/multiSendWithDelegatedProver";
+'use client';
+import { useState } from 'react';
+import { multiSendWithDelegatedProver } from '../lib/multiSendWithDelegatedProver';
 
 export default function Home() {
   const [isMultiSendNotes, setIsMultiSendNotes] = useState(false);
@@ -101,8 +99,8 @@ export default function Home() {
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isMultiSendNotes
-              ? "Working..."
-              : "Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving"}
+              ? 'Working...'
+              : 'Tutorial #2: Send 1 to N P2ID Notes with Delegated Proving'}
           </button>
         </div>
       </div>
@@ -123,7 +121,7 @@ touch lib/multiSendWithDelegatedProver.ts
 ```ts
 export async function multiSendWithDelegatedProver(): Promise<void> {
   // Ensure this runs only in a browser context
-  if (typeof window === "undefined") return console.warn("Run in browser");
+  if (typeof window === 'undefined') return console.warn('Run in browser');
 
   const {
     WebClient,
@@ -138,16 +136,16 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     FungibleAsset,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import("@demox-labs/miden-sdk");
+  } = await import('@demox-labs/miden-sdk');
 
   const client = await WebClient.createClient(
-    "https://rpc.testnet.miden.io:443",
+    'https://rpc.testnet.miden.io:443',
   );
   const prover = TransactionProver.newRemoteProver(
-    "https://tx-prover.testnet.miden.io",
+    'https://tx-prover.testnet.miden.io',
   );
 
-  console.log("Latest block:", (await client.syncState()).blockNum());
+  console.log('Latest block:', (await client.syncState()).blockNum());
 }
 ```
 
@@ -157,20 +155,20 @@ Add the code snippet below to the `multiSendWithDelegatedProver` function. This 
 
 ```ts
 // ── Creating new account ──────────────────────────────────────────────────────
-console.log("Creating account for Alice…");
+console.log('Creating account for Alice…');
 const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
-console.log("Alice accout ID:", alice.id().toString());
+console.log('Alice accout ID:', alice.id().toString());
 
 // ── Creating new faucet ──────────────────────────────────────────────────────
 const faucet = await client.newFaucet(
   AccountStorageMode.public(),
   false,
-  "MID",
+  'MID',
   8,
   BigInt(1_000_000),
   0,
 );
-console.log("Faucet ID:", faucet.id().toString());
+console.log('Faucet ID:', faucet.id().toString());
 
 // ── mint 10 000 MID to Alice ──────────────────────────────────────────────────────
 {
@@ -190,7 +188,7 @@ console.log("Faucet ID:", faucet.id().toString());
   );
   await client.applyTransaction(txResult, submissionHeight);
 
-  console.log("waiting for settlement");
+  console.log('waiting for settlement');
   await new Promise((r) => setTimeout(r, 7_000));
   await client.syncState();
 }
@@ -222,9 +220,9 @@ Add the following code to the `multiSendWithDelegatedProver` function. This code
 ```ts
 // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
 const recipientAddresses = [
-  "0xbf1db1694c83841000008cefd4fce0",
-  "0xee1a75244282c32000010a29bed5f4",
-  "0x67dc56bd0cbe629000006f36d81029",
+  '0xbf1db1694c83841000008cefd4fce0',
+  '0xee1a75244282c32000010a29bed5f4',
+  '0x67dc56bd0cbe629000006f36d81029',
 ];
 
 const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
@@ -250,7 +248,7 @@ await client.submitNewTransaction(
     .build(),
 );
 
-console.log("All notes created ✅");
+console.log('All notes created ✅');
 ```
 
 ## Summary
@@ -266,7 +264,7 @@ Your `lib/multiSendWithDelegatedProver.ts` file sould now look like this:
  */
 export async function multiSendWithDelegatedProver(): Promise<void> {
   // Ensure this runs only in a browser context
-  if (typeof window === "undefined") return console.warn("Run in browser");
+  if (typeof window === 'undefined') return console.warn('Run in browser');
 
   const {
     WebClient,
@@ -281,32 +279,32 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     FungibleAsset,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import("@demox-labs/miden-sdk");
+  } = await import('@demox-labs/miden-sdk');
 
   const client = await WebClient.createClient(
-    "https://rpc.testnet.miden.io:443",
+    'https://rpc.testnet.miden.io:443',
   );
   const prover = TransactionProver.newRemoteProver(
-    "https://tx-prover.testnet.miden.io",
+    'https://tx-prover.testnet.miden.io',
   );
 
-  console.log("Latest block:", (await client.syncState()).blockNum());
+  console.log('Latest block:', (await client.syncState()).blockNum());
 
   // ── Creating new account ──────────────────────────────────────────────────────
-  console.log("Creating account for Alice…");
+  console.log('Creating account for Alice…');
   const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
-  console.log("Alice accout ID:", alice.id().toString());
+  console.log('Alice accout ID:', alice.id().toString());
 
   // ── Creating new faucet ──────────────────────────────────────────────────────
   const faucet = await client.newFaucet(
     AccountStorageMode.public(),
     false,
-    "MID",
+    'MID',
     8,
     BigInt(1_000_000),
     0,
   );
-  console.log("Faucet ID:", faucet.id().toString());
+  console.log('Faucet ID:', faucet.id().toString());
 
   // ── mint 10 000 MID to Alice ──────────────────────────────────────────────────────
   {
@@ -326,7 +324,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     );
     await client.applyTransaction(txResult, submissionHeight);
 
-    console.log("waiting for settlement");
+    console.log('waiting for settlement');
     await new Promise((r) => setTimeout(r, 7_000));
     await client.syncState();
   }
@@ -352,9 +350,9 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
   const recipientAddresses = [
-    "0xbf1db1694c83841000008cefd4fce0",
-    "0xee1a75244282c32000010a29bed5f4",
-    "0x67dc56bd0cbe629000006f36d81029",
+    '0xbf1db1694c83841000008cefd4fce0',
+    '0xee1a75244282c32000010a29bed5f4',
+    '0x67dc56bd0cbe629000006f36d81029',
   ];
 
   const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
@@ -380,7 +378,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
       .build(),
   );
 
-  console.log("All notes created ✅");
+  console.log('All notes created ✅');
 }
 ```
 
@@ -390,8 +388,8 @@ To run a full working example navigate to the `web-client` directory in the [mid
 
 ```bash
 cd web-client
-pnpm i
-pnpm run start
+yarn install
+yarn start
 ```
 
 ### Resetting the `MidenClientDB`
@@ -405,6 +403,6 @@ The Miden webclient stores account and note data in the browser. To clear the ac
     await indexedDB.deleteDatabase(db.name);
     console.log(`Deleted database: ${db.name}`);
   }
-  console.log("All databases deleted.");
+  console.log('All databases deleted.');
 })();
 ```

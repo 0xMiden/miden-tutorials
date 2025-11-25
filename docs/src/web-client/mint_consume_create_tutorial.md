@@ -1,9 +1,7 @@
 ---
-title: "Mint, Consume, and Create Notes"
+title: 'Mint, Consume, and Create Notes'
 sidebar_position: 3
 ---
-
-# Mint, Consume, and Transfer Assets
 
 _Using the Miden WebClient in TypeScript to mint, consume, and transfer assets_
 
@@ -82,7 +80,7 @@ console.log(`Found ${consumableNotes.length} note(s) to consume`);
 const noteIds = consumableNotes.map((note) =>
   note.inputNoteRecord().id().toString(),
 );
-console.log("Consumable note IDs:", noteIds);
+console.log('Consumable note IDs:', noteIds);
 ```
 
 ## Step 3: Consume notes in a single transaction
@@ -91,13 +89,13 @@ Now let's consume the notes to add the tokens to Alice's account balance:
 
 ```ts
 // 6. Consume the notes to add tokens to Alice's balance
-console.log("Consuming minted notes...");
+console.log('Consuming minted notes...');
 const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
 
 await client.submitNewTransaction(alice.id(), consumeTxRequest);
 
 await client.syncState();
-console.log("Notes consumed.");
+console.log('Notes consumed.');
 ```
 
 ## Step 4: Sending tokens to other accounts
@@ -147,48 +145,47 @@ Here's the complete `lib/createMintConsume.ts` file:
 
 ```ts
 // lib/createMintConsume.ts
-// lib/createMintConsume.ts
 export async function createMintConsume(): Promise<void> {
-  if (typeof window === "undefined") {
-    console.warn("webClient() can only run in the browser");
+  if (typeof window === 'undefined') {
+    console.warn('webClient() can only run in the browser');
     return;
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const { WebClient, AccountStorageMode, AccountId, NoteType } = await import(
-    "@demox-labs/miden-sdk"
+    '@demox-labs/miden-sdk'
   );
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io";
+  const nodeEndpoint = 'https://rpc.testnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync and log block
   const state = await client.syncState();
-  console.log("Latest block number:", state.blockNum());
+  console.log('Latest block number:', state.blockNum());
 
   // 2. Create Alice’s account
-  console.log("Creating account for Alice…");
+  console.log('Creating account for Alice…');
   const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
-  console.log("Alice ID:", alice.id().toString());
+  console.log('Alice ID:', alice.id().toString());
 
   // 3. Deploy faucet
-  console.log("Creating faucet…");
+  console.log('Creating faucet…');
   const faucet = await client.newFaucet(
     AccountStorageMode.public(),
     false,
-    "MID",
+    'MID',
     8,
     BigInt(1_000_000),
     0,
   );
-  console.log("Faucet ID:", faucet.id().toString());
+  console.log('Faucet ID:', faucet.id().toString());
 
   await client.syncState();
 
   // 4. Mint tokens to Alice
   await client.syncState();
 
-  console.log("Minting tokens to Alice...");
+  console.log('Minting 1000 tokens to Alice...');
   const mintTxRequest = client.newMintTransactionRequest(
     alice.id(),
     faucet.id(),
@@ -198,7 +195,7 @@ export async function createMintConsume(): Promise<void> {
 
   await client.submitNewTransaction(faucet.id(), mintTxRequest);
 
-  console.log("Waiting 10 seconds for transaction confirmation...");
+  console.log('Waiting 10 seconds for transaction confirmation...');
   await new Promise((resolve) => setTimeout(resolve, 10000));
   await client.syncState();
 
@@ -207,19 +204,19 @@ export async function createMintConsume(): Promise<void> {
   const mintedNoteIds = mintedNotes.map((n) =>
     n.inputNoteRecord().id().toString(),
   );
-  console.log("Minted note IDs:", mintedNoteIds);
+  console.log('Consumable note IDs:', mintedNoteIds);
 
   // 6. Consume minted notes
-  console.log("Consuming minted notes...");
+  console.log('Consuming minted notes...');
   const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
 
   await client.submitNewTransaction(alice.id(), consumeTxRequest);
 
   await client.syncState();
-  console.log("Notes consumed.");
+  console.log('Notes consumed.');
 
   // 7. Send tokens to Bob
-  const bobAccountId = "0x599a54603f0cf9000000ed7a11e379";
+  const bobAccountId = '0x599a54603f0cf9000000ed7a11e379';
   console.log("Sending tokens to Bob's account...");
   const sendTxRequest = client.newSendTransactionRequest(
     alice.id(),
@@ -230,7 +227,7 @@ export async function createMintConsume(): Promise<void> {
   );
 
   await client.submitNewTransaction(alice.id(), sendTxRequest);
-  console.log("Tokens sent successfully!");
+  console.log('Tokens sent successfully!');
 }
 ```
 
@@ -249,7 +246,7 @@ Waiting 10 seconds for transaction confirmation...
 Consumable note IDs: ['0x4edbb3d5dbdf694...']
 Consuming notes...
 Notes consumed.
-Sending 100 tokens to Bob...
+Sending tokens to Bob's account...
 Tokens sent successfully!
 ```
 
@@ -264,7 +261,7 @@ The Miden webclient stores account and note data in the browser. To clear the ac
     await indexedDB.deleteDatabase(db.name);
     console.log(`Deleted database: ${db.name}`);
   }
-  console.log("All databases deleted.");
+  console.log('All databases deleted.');
 })();
 ```
 

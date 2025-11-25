@@ -1,5 +1,5 @@
 ---
-title: "Foreign Procedure Invocation"
+title: 'Foreign Procedure Invocation'
 sidebar_position: 7
 ---
 
@@ -35,7 +35,7 @@ The diagram above depicts the "count copy" smart contract using foreign procedur
 
 - Node `v20` or greater
 - Familiarity with TypeScript
-- `pnpm`
+- `yarn`
 
 This tutorial assumes you have a basic understanding of Miden assembly and completed the previous tutorial on incrementing the counter contract. To quickly get up to speed with Miden assembly (MASM), please play around with running basic Miden assembly programs in the [Miden playground](https://0xmiden.github.io/examples/).
 
@@ -44,7 +44,7 @@ This tutorial assumes you have a basic understanding of Miden assembly and compl
 1. Create a new Next.js app with TypeScript:
 
    ```bash
-   npx create-next-app@latest miden-fpi-app --typescript
+   yarn create next-app@latest miden-fpi-app --typescript
    ```
 
    Hit enter for all terminal prompts.
@@ -57,7 +57,7 @@ This tutorial assumes you have a basic understanding of Miden assembly and compl
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm i @demox-labs/miden-sdk@0.11.1
+   yarn install @demox-labs/miden-sdk@0.12.3
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -76,9 +76,9 @@ This tutorial assumes you have a basic understanding of Miden assembly and compl
 Add the following code to the `app/page.tsx` file. This code defines the main page of our web application:
 
 ```tsx
-"use client";
-import { useState } from "react";
-import { foreignProcedureInvocation } from "../lib/foreignProcedureInvocation";
+'use client';
+import { useState } from 'react';
+import { foreignProcedureInvocation } from '../lib/foreignProcedureInvocation';
 
 export default function Home() {
   const [isFPIRunning, setIsFPIRunning] = useState(false);
@@ -101,8 +101,8 @@ export default function Home() {
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isFPIRunning
-              ? "Working..."
-              : "Foreign Procedure Invocation Tutorial"}
+              ? 'Working...'
+              : 'Foreign Procedure Invocation Tutorial'}
           </button>
         </div>
       </div>
@@ -125,8 +125,8 @@ Copy and paste the following code into the `lib/foreignProcedureInvocation.ts` f
 ```ts
 // lib/foreignProcedureInvocation.ts
 export async function foreignProcedureInvocation(): Promise<void> {
-  if (typeof window === "undefined") {
-    console.warn("foreignProcedureInvocation() can only run in the browser");
+  if (typeof window === 'undefined') {
+    console.warn('foreignProcedureInvocation() can only run in the browser');
     return;
   }
 
@@ -144,16 +144,16 @@ export async function foreignProcedureInvocation(): Promise<void> {
     AccountStorageRequirements,
     WebClient,
     AccountStorageMode,
-  } = await import("@demox-labs/miden-sdk");
+  } = await import('@demox-labs/miden-sdk');
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io";
+  const nodeEndpoint = 'https://rpc.testnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
-  console.log("Current block number: ", (await client.syncState()).blockNum());
+  console.log('Current block number: ', (await client.syncState()).blockNum());
 
   // -------------------------------------------------------------------------
   // STEP 1: Create the Count Reader Contract
   // -------------------------------------------------------------------------
-  console.log("\n[STEP 1] Creating count reader contract.");
+  console.log('\n[STEP 1] Creating count reader contract.');
 
   // Count reader contract code in Miden Assembly (exactly from count_reader.masm)
   const countReaderCode = `
@@ -166,7 +166,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
     export.copy_count
         exec.tx::execute_foreign_procedure
         # => [count]
-
+        
         push.0
         # [index, count]
 
@@ -204,9 +204,9 @@ export async function foreignProcedureInvocation(): Promise<void> {
   await client.syncState();
 
   // Create the count reader contract account (using available WebClient API)
-  console.log("Creating count reader contract account...");
+  console.log('Creating count reader contract account...');
   console.log(
-    "Count reader contract ID:",
+    'Count reader contract ID:',
     countReaderContract.account.id().toString(),
   );
 
@@ -215,11 +215,11 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // -------------------------------------------------------------------------
   // STEP 2: Build & Get State of the Counter Contract
   // -------------------------------------------------------------------------
-  console.log("\n[STEP 2] Building counter contract from public state");
+  console.log('\n[STEP 2] Building counter contract from public state');
 
   // Define the Counter Contract account id from counter contract deploy (same as Rust)
   const counterContractId = AccountId.fromHex(
-    "0xe59d8cd3c9ff2a0055da0b83ed6432",
+    '0xe59d8cd3c9ff2a0055da0b83ed6432',
   );
 
   // Import the counter contract
@@ -233,7 +233,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
     }
   }
   console.log(
-    "Account storage slot 0:",
+    'Account storage slot 0:',
     counterContractAccount.storage().getItem(0)?.toHex(),
   );
 
@@ -241,7 +241,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // STEP 3: Call the Counter Contract via Foreign Procedure Invocation (FPI)
   // -------------------------------------------------------------------------
   console.log(
-    "\n[STEP 3] Call counter contract with FPI from count reader contract",
+    '\n[STEP 3] Call counter contract with FPI from count reader contract',
   );
 
   // Counter contract code (exactly from counter.masm)
@@ -299,7 +299,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   ).withSupportsAllTypes();
 
   const getCountProcHash =
-    counterContractComponent.getProcedureHash("get_count");
+    counterContractComponent.getProcedureHash('get_count');
 
   // Build the script that calls the count reader contract (exactly from reader_script.masm with replacements)
   const fpiScriptCode = `
@@ -327,11 +327,11 @@ export async function foreignProcedureInvocation(): Promise<void> {
 
   // Create the library for the count reader contract
   const countReaderLib = builder.buildLibrary(
-    "external_contract::count_reader_contract",
+    'external_contract::count_reader_contract',
     countReaderCode,
   );
   builder.linkDynamicLibrary(countReaderLib);
-.
+
   // Compile the transaction script with the count reader library
   const txScript = builder.compileTxScript(fpiScriptCode);
 
@@ -355,7 +355,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   );
 
   console.log(
-    "View transaction on MidenScan: https://testnet.midenscan.com/tx/" +
+    'View transaction on MidenScan: https://testnet.midenscan.com/tx/' +
       txResult.toHex(),
   );
 
@@ -366,7 +366,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
     counterContractAccount.id(),
   );
   console.log(
-    "counter contract storage:",
+    'counter contract storage:',
     updatedCounterContract?.storage().getItem(0)?.toHex(),
   );
 
@@ -374,7 +374,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
     countReaderContract.account.id(),
   );
   console.log(
-    "count reader contract storage:",
+    'count reader contract storage:',
     updatedCountReaderContract?.storage().getItem(0)?.toHex(),
   );
 
@@ -383,26 +383,26 @@ export async function foreignProcedureInvocation(): Promise<void> {
   if (countReaderStorage) {
     const countValue = Number(
       BigInt(
-        "0x" +
+        '0x' +
           countReaderStorage
             .toHex()
             .slice(-16)
             .match(/../g)!
             .reverse()
-            .join(""),
+            .join(''),
       ),
     );
-    console.log("Count copied via Foreign Procedure Invocation:", countValue);
+    console.log('Count copied via Foreign Procedure Invocation:', countValue);
   }
 
-  console.log("\nForeign Procedure Invocation Transaction completed!");
+  console.log('\nForeign Procedure Invocation Transaction completed!');
 }
 ```
 
 To run the code above in our frontend, run the following command:
 
 ```bash
-pnpm run dev
+yarn dev
 ```
 
 Open the browser console and click the button "Foreign Procedure Invocation Tutorial".
@@ -526,7 +526,7 @@ This script:
 In the WebClient, we get the procedure hash using the [`getProcedureHash`](https://github.com/0xMiden/miden-tutorials/blob/b281dea26ab0946e1c0aa68d4ea30e15765d456b/web-client/lib/foreignProcedureInvocation.ts#L178) method:
 
 ```ts
-let getCountProcHash = counterContractComponent.getProcedureHash("get_count");
+let getCountProcHash = counterContractComponent.getProcedureHash('get_count');
 ```
 
 ### Foreign Accounts
@@ -551,7 +551,7 @@ We create a library for the count reader contract so our transaction script can 
 
 ```ts
 const countReaderLib = builder.buildLibrary(
-  "external_contract::count_reader_contract",
+  'external_contract::count_reader_contract',
   countReaderCode,
 );
 builder.linkDynamicLibrary(countReaderLib);
@@ -575,8 +575,8 @@ To run a full working example navigate to the `web-client` directory in the [mid
 
 ```bash
 cd web-client
-pnpm i
-pnpm run start
+yarn install
+yarn start
 ```
 
 ### Resetting the `MidenClientDB`
@@ -590,7 +590,7 @@ The Miden webclient stores account and note data in the browser. If you get erro
     await indexedDB.deleteDatabase(db.name);
     console.log(`Deleted database: ${db.name}`);
   }
-  console.log("All databases deleted.");
+  console.log('All databases deleted.');
 })();
 ```
 

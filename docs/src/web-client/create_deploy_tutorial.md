@@ -1,9 +1,7 @@
 ---
-title: "Creating Accounts and Faucets"
+title: 'Creating Accounts and Deploying Faucets'
 sidebar_position: 2
 ---
-
-## Creating Accounts and Deploying Faucets
 
 _Using the Miden WebClient in TypeScript to create accounts and deploy faucets_
 
@@ -22,7 +20,7 @@ In this tutorial, we'll build a simple Next.js application that demonstrates the
 
 - Node `v20` or greater
 - Familiarity with TypeScript
-- `pnpm`
+- `yarn`
 
 ## Public vs. private accounts & notes
 
@@ -42,7 +40,7 @@ It is useful to think of notes on Miden as "cryptographic cashier's checks" that
 1. Create a new Next.js app with TypeScript:
 
    ```bash
-   npx create-next-app@latest miden-web-app --typescript
+   yarn create next-app@latest miden-web-app --typescript
    ```
 
    Hit enter for all terminal prompts.
@@ -55,7 +53,7 @@ It is useful to think of notes on Miden as "cryptographic cashier's checks" that
 
 3. Install the Miden WebClient SDK:
    ```bash
-   pnpm install @demox-labs/miden-sdk@0.11.1
+   yarn add @demox-labs/miden-sdk@0.12.3
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -85,24 +83,24 @@ touch lib/createMintConsume.ts
 ```ts
 // lib/createMintConsume.ts
 export async function createMintConsume(): Promise<void> {
-  if (typeof window === "undefined") {
-    console.warn("webClient() can only run in the browser");
+  if (typeof window === 'undefined') {
+    console.warn('webClient() can only run in the browser');
     return;
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const { WebClient, AccountStorageMode, AccountId, NoteType } = await import(
-    "@demox-labs/miden-sdk"
+    '@demox-labs/miden-sdk'
   );
 
   // Connect to Miden testnet RPC endpoint
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = 'https://rpc.testnet.miden.io:443';
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync with the latest blockchain state
   // This fetches the latest block header and state commitments
   const state = await client.syncState();
-  console.log("Latest block number:", state.blockNum());
+  console.log('Latest block number:', state.blockNum());
 
   // At this point, your client is connected and synchronized
   // Ready to create accounts and deploy contracts!
@@ -118,9 +116,9 @@ Now let's create a simple UI that will trigger our blockchain interactions. We'l
 Edit `app/page.tsx` to call `createMintConsume()` on a button click:
 
 ```tsx
-"use client";
-import { useState } from "react";
-import { createMintConsume } from "../lib/createMintConsume";
+'use client';
+import { useState } from 'react';
+import { createMintConsume } from '../lib/createMintConsume';
 
 export default function Home() {
   const [isCreatingNotes, setIsCreatingNotes] = useState(false);
@@ -143,8 +141,8 @@ export default function Home() {
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isCreatingNotes
-              ? "Working..."
-              : "Tutorial #1: Create a wallet and deploy a faucet"}
+              ? 'Working...'
+              : 'Tutorial #1: Create a wallet and deploy a faucet'}
           </button>
         </div>
       </div>
@@ -163,8 +161,8 @@ Back in `lib/createMintConsume.ts`, extend the `createMintConsume()` function:
 ```ts
 // lib/createMintConsume.ts
 export async function createMintConsume(): Promise<void> {
-  if (typeof window === "undefined") {
-    console.warn("webClient() can only run in the browser");
+  if (typeof window === 'undefined') {
+    console.warn('webClient() can only run in the browser');
     return;
   }
 
@@ -172,21 +170,21 @@ export async function createMintConsume(): Promise<void> {
     "@demox-labs/miden-sdk"
   );
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = 'https://rpc.testnet.miden.io:443';
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync with the latest blockchain state
   const state = await client.syncState();
-  console.log("Latest block number:", state.blockNum());
+  console.log('Latest block number:', state.blockNum());
 
   // 2. Create Alice's account
-  console.log("Creating account for Alice…");
+  console.log('Creating account for Alice…');
   const alice = await client.newWallet(
     AccountStorageMode.public(),  // Public: account state is visible on-chain
     true,                         // Mutable: account code can be upgraded later
     0                             // Auth Scheme: 0 for RPO Falcon 512, 1 for ECDSA 256 Keccak
   );
-  console.log("Alice ID:", alice.id().toString());
+  console.log('Alice ID:', alice.id().toString());
 }
 ```
 <!-- prettier-ignore-end -->
@@ -201,7 +199,7 @@ Add this code after creating Alice's account:
 ```ts
 // 3. Deploy a fungible faucet
 // A faucet is an account that can mint new tokens
-console.log("Creating faucet…");
+console.log('Creating faucet…');
 const faucetAccount = await client.newFaucet(
   AccountStorageMode.public(),  // Public: faucet operations are transparent
   false,                        // Immutable: faucet rules cannot be changed
@@ -210,9 +208,9 @@ const faucetAccount = await client.newFaucet(
   BigInt(1_000_000),            // Max supply: total tokens that can ever be minted
   0                             // Auth Scheme: 0 for RPO Falcon 512, 1 for ECDSA 256 Keccak
 );
-console.log("Faucet account ID:", faucetAccount.id().toString());
+console.log('Faucet account ID:', faucetAccount.id().toString());
 
-console.log("Setup complete.");
+console.log('Setup complete.');
 ```
 <!-- prettier-ignore-end -->
 
@@ -240,40 +238,40 @@ Your final `lib/createMintConsume.ts` should look like:
 ```ts
 // lib/createMintConsume.ts
 export async function createMintConsume(): Promise<void> {
-  if (typeof window === "undefined") {
-    console.warn("webClient() can only run in the browser");
+  if (typeof window === 'undefined') {
+    console.warn('webClient() can only run in the browser');
     return;
   }
 
   const { WebClient, AccountStorageMode } = await import(
-    "@demox-labs/miden-sdk"
+    '@demox-labs/miden-sdk'
   );
 
-  const nodeEndpoint = "https://rpc.testnet.miden.io:443";
+  const nodeEndpoint = 'https://rpc.testnet.miden.io:443';
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync with the latest blockchain state
   const state = await client.syncState();
-  console.log("Latest block number:", state.blockNum());
+  console.log('Latest block number:', state.blockNum());
 
   // 2. Create Alice's account
-  console.log("Creating account for Alice…");
+  console.log('Creating account for Alice…');
   const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
-  console.log("Alice ID:", alice.id().toString());
+  console.log('Alice ID:', alice.id().toString());
 
   // 3. Deploy a fungible faucet
-  console.log("Creating faucet…");
+  console.log('Creating faucet…');
   const faucet = await client.newFaucet(
     AccountStorageMode.public(),
     false,
-    "MID",
+    'MID',
     8,
     BigInt(1_000_000),
     0,
   );
-  console.log("Faucet ID:", faucet.id().toString());
+  console.log('Faucet ID:', faucet.id().toString());
 
-  console.log("Setup complete.");
+  console.log('Setup complete.');
 }
 ```
 
@@ -281,8 +279,8 @@ export async function createMintConsume(): Promise<void> {
 
 ```bash
 cd miden-web-app
-npm i
-npm run dev
+yarn install
+yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser, click **Tutorial #1: Create a wallet and deploy a faucet**, and check the browser console (F12 or right-click → Inspect → Console):
