@@ -37,22 +37,18 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 ## Step-by-step process
 
 1. **Next.js Project Setup:**
-
    - Create a new Next.js application with TypeScript.
    - Install the Miden WebClient SDK.
 
 2. **WebClient Initialization:**
-
    - Set up the WebClient to connect with the Miden testnet.
    - Configure a delegated prover for improved performance.
 
 3. **Account Creation:**
-
    - Create wallet accounts for Alice and multiple transfer recipients.
    - Deploy a fungible faucet for token minting.
 
 4. **Initial Token Setup:**
-
    - Mint tokens from the faucet to Alice's account.
    - Consume the minted tokens to prepare for transfers.
 
