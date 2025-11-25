@@ -166,16 +166,12 @@ export.increment_count
 end
 `;
 
-  console.log('PRE ');
-
   // Create the counter contract component to get the procedure hash (following Rust pattern)
   const counterContractComponent = AccountComponent.compile(
     counterContractCode,
     builder,
     [StorageSlot.emptyValue()],
   ).withSupportsAllTypes();
-
-  console.log(' POST ');
 
   const getCountProcHash =
     counterContractComponent.getProcedureHash('get_count');
@@ -204,8 +200,6 @@ exec.sys::truncate_stack
 end
 `;
 
-  console.log('fpiScript', fpiScriptCode);
-
   // Create the library for the count reader contract
   const countReaderLib = builder.buildLibrary(
     'external_contract::count_reader_contract',
@@ -229,15 +223,12 @@ end
     .withForeignAccounts(new MidenArrays.ForeignAccountArray([foreignAccount]))
     .build();
 
-  console.log('HERE');
-
   // Execute the transaction on the count reader contract and send it to the network (following Rust pattern)
   const txResult = await client.submitNewTransaction(
     countReaderContract.account.id(),
     txRequest,
   );
 
-  console.log('HERE1');
   console.log(
     'View transaction on MidenScan: https://testnet.midenscan.com/tx/' +
       txResult.toHex(),
