@@ -157,27 +157,27 @@ export async function foreignProcedureInvocation(): Promise<void> {
 
   // Count reader contract code in Miden Assembly (exactly from count_reader.masm)
   const countReaderCode = `
-use.miden::active_account
-use miden::native_account
-use.miden::tx
-use.std::sys
+    use.miden::active_account
+    use miden::native_account
+    use.miden::tx
+    use.std::sys
 
-# => [account_id_prefix, account_id_suffix, get_count_proc_hash]
-export.copy_count
-    exec.tx::execute_foreign_procedure
-    # => [count]
-    
-    push.0
-    # [index, count]
+    # => [account_id_prefix, account_id_suffix, get_count_proc_hash]
+    export.copy_count
+        exec.tx::execute_foreign_procedure
+        # => [count]
+        
+        push.0
+        # [index, count]
 
-    debug.stack
+        debug.stack
 
-    exec.native_account::set_item dropw
-    # => []
+        exec.native_account::set_item dropw
+        # => []
 
-    exec.sys::truncate_stack
-    # => []
-end
+        exec.sys::truncate_stack
+        # => []
+    end
 `;
 
   const builder = client.createScriptBuilder();
@@ -246,49 +246,49 @@ end
 
   // Counter contract code (exactly from counter.masm)
   const counterContractCode = `
-use.miden::active_account
-use miden::native_account
-use.std::sys
+    use.miden::active_account
+    use miden::native_account
+    use.std::sys
 
-const.COUNTER_SLOT=0
+    const.COUNTER_SLOT=0
 
-#! Inputs:  []
-#! Outputs: [count]
-export.get_count
-    push.COUNTER_SLOT
-    # => [index]
+    #! Inputs:  []
+    #! Outputs: [count]
+    export.get_count
+        push.COUNTER_SLOT
+        # => [index]
 
-    exec.active_account::get_item
-    # => [count]
+        exec.active_account::get_item
+        # => [count]
 
-    # clean up stack
-    movdn.4 dropw
-    # => [count]
-end
+        # clean up stack
+        movdn.4 dropw
+        # => [count]
+    end
 
-#! Inputs:  []
-#! Outputs: []
-export.increment_count
-    push.COUNTER_SLOT
-    # => [index]
+    #! Inputs:  []
+    #! Outputs: []
+    export.increment_count
+        push.COUNTER_SLOT
+        # => [index]
 
-    exec.active_account::get_item
-    # => [count]
+        exec.active_account::get_item
+        # => [count]
 
-    add.1
-    # => [count+1]
+        add.1
+        # => [count+1]
 
-    debug.stack
+        debug.stack
 
-    push.COUNTER_SLOT
-    # [index, count+1]
+        push.COUNTER_SLOT
+        # [index, count+1]
 
-    exec.native_account::set_item
-    # => [OLD_VALUE]
+        exec.native_account::set_item
+        # => [OLD_VALUE]
 
-    dropw
-    # => []
-end
+        dropw
+        # => []
+    end
 `;
 
   // Create the counter contract component to get the procedure hash (following Rust pattern)
@@ -303,26 +303,26 @@ end
 
   // Build the script that calls the count reader contract (exactly from reader_script.masm with replacements)
   const fpiScriptCode = `
-use.external_contract::count_reader_contract
-use.std::sys
+    use.external_contract::count_reader_contract
+    use.std::sys
 
-begin
-push.${getCountProcHash}
-# => [GET_COUNT_HASH]
+    begin
+    push.${getCountProcHash}
+    # => [GET_COUNT_HASH]
 
-push.${counterContractAccount.id().suffix()}
-# => [account_id_suffix, GET_COUNT_HASH]
+    push.${counterContractAccount.id().suffix()}
+    # => [account_id_suffix, GET_COUNT_HASH]
 
-push.${counterContractAccount.id().prefix()}
-# => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
+    push.${counterContractAccount.id().prefix()}
+    # => [account_id_prefix, account_id_suffix, GET_COUNT_HASH]
 
-call.count_reader_contract::copy_count
-# => []
+    call.count_reader_contract::copy_count
+    # => []
 
-exec.sys::truncate_stack
-# => []
+    exec.sys::truncate_stack
+    # => []
 
-end
+    end
 `;
 
   // Create the library for the count reader contract
