@@ -356,9 +356,9 @@ end
 
 ### Authentication Component
 
-**Important**: Starting with Miden Client 0.10.0, all accounts must have an authentication component. For smart contracts that don't require authentication (like our counter contract), we use a `NoAuth` component.
+**Important**: All accounts must have an authentication component. For smart contracts that do not require authentication (like our counter contract), we use a `NoAuth` component.
 
-This `NoAuth` component allows any user to interact with the smart contract without requiring signature verification.ivate key of the account can execute transactions that result in a state change.
+This `NoAuth` component allows any user to interact with the smart contract without requiring signature verification.
 
 **Note**: _Adding the `account::incr_nonce` to a state changing procedure allows any user to call the procedure._
 
