@@ -19,7 +19,7 @@ There are two ways to connect to a Miden node:
 Next, install the miden-node crate using this command:
 
 ```bash
-cargo install miden-node --locked --version 0.11.0
+cargo install miden-node --locked --version 0.12.3
 ```
 
 ### Step 2: Initializing the node
