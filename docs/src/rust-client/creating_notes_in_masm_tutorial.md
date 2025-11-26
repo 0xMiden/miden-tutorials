@@ -51,11 +51,12 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.11", features = ["testing", "tonic", "sqlite"] }
-miden-lib = { version = "0.11", default-features = false }
-miden-objects = { version = "0.11", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.15.9", features = ["executable"] }
-miden-assembly = "0.17.0"
+miden-client = { version = "0.12", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
+miden-lib = { version = "0.12", default-features = false }
+miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
+miden-crypto = { version = "0.17.1", features = ["executable"] }
+miden-assembly = "0.18.3"
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
