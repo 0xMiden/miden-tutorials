@@ -46,7 +46,7 @@ Inside of the `masm/accounts/` directory, create the `count_reader.masm` file. T
 
 ```masm
 use.miden::active_account
-use miden::native_account
+use.miden::native_account
 use.miden::tx
 use.std::sys
 

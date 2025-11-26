@@ -73,7 +73,7 @@ Inside of the `masm/accounts/` directory, create the `counter.masm` file:
 
 ```masm
 use.miden::active_account
-use miden::native_account
+use.miden::native_account
 use.std::sys
 
 const.COUNTER_SLOT=0

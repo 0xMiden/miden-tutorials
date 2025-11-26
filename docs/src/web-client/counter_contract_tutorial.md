@@ -136,7 +136,7 @@ export async function incrementCounterContract(): Promise<void> {
   // Counter contract code in Miden Assembly
   const counterContractCode = `
   use.miden::active_account
-  use miden::native_account
+  use.miden::native_account
   use.std::sys
 
   const.COUNTER_SLOT=0
@@ -308,7 +308,7 @@ incrementCounterContract.ts:153 Count:  3
 
 ```masm
 use.miden::active_account
-use miden::native_account
+use.miden::native_account
 use.std::sys
 
 const.COUNTER_SLOT=0
