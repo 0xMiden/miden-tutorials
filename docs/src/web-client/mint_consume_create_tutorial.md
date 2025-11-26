@@ -119,8 +119,8 @@ const bobAccountId = Address.fromBech32(
 console.log("Sending tokens to Bob's account...");
   
 const sendTxRequest = client.newSendTransactionRequest(
-  alice.id(),                      // Sender account
-  boxAccountId,                    // Recipient account
+  alice.id(),                      // Sender account ID
+  bobAccountId,                    // Recipient account ID
   faucet.id(),                     // Asset ID (faucet that created the tokens)
   NoteType.Public,                 // Note visibility
   BigInt(100),                     // Amount to send
