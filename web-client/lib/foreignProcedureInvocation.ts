@@ -33,7 +33,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Count reader contract code in Miden Assembly (exactly from count_reader.masm)
   const countReaderCode = `
     use.miden::active_account
-    use miden::native_account
+    use.miden::native_account
     use.miden::tx
     use.std::sys
 

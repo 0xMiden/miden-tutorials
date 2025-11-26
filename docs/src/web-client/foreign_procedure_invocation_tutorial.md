@@ -158,7 +158,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Count reader contract code in Miden Assembly (exactly from count_reader.masm)
   const countReaderCode = `
     use.miden::active_account
-    use miden::native_account
+    use.miden::native_account
     use.miden::tx
     use.std::sys
 
@@ -247,7 +247,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Counter contract code (exactly from counter.masm)
   const counterContractCode = `
     use.miden::active_account
-    use miden::native_account
+    use.miden::native_account
     use.std::sys
 
     const.COUNTER_SLOT=0
@@ -454,7 +454,7 @@ The count reader smart contract contains a `copy_count` procedure that uses `tx:
 
 ```masm
 use.miden::active_account
-use miden::native_account
+use.miden::native_account
 use.miden::tx
 use.std::sys
 
