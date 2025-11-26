@@ -1,0 +1,68 @@
+use.miden::active_account
+use miden::native_account
+use.std::sys
+
+const.COUNTER_SLOT=0
+
+#! Inputs:  []
+#! Outputs: [count]
+export.get_count
+    push.COUNTER_SLOT
+    # => [index]
+
+    exec.active_account::get_item
+    # => [count]
+
+    # clean up stack
+    movdn.4 dropw
+    # => [count]
+end
+
+#! Inputs:  []
+#! Outputs: []
+pub proc increment_count
+    push.COUNTER_SLOT
+    # => [index]
+
+    exec.active_account::get_item
+    # => [count]
+
+    add.1
+    # => [count+1]
+
+    debug.stack
+
+    push.COUNTER_SLOT
+    # [index, count+1]
+
+    exec.native_account::set_item
+    # => [OLD_VALUE]
+
+    dropw
+    # => []
+end
+
+
+#! Inputs:  []
+#! Outputs: []
+pub proc increment_count_two
+    push.COUNTER_SLOT
+    # => [index]
+
+    exec.active_account::get_item
+    # => [count]
+
+    add.2
+    # => [count+1]
+
+    debug.stack
+
+    push.COUNTER_SLOT
+    # [index, count+1]
+
+    exec.native_account::set_item
+    # => [OLD_VALUE]
+
+    dropw
+    # => []
+end
