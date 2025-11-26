@@ -117,7 +117,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const {
-    AccountId,
+    Address,
     AccountBuilder,
     AccountComponent,
     AccountStorageMode,
@@ -182,9 +182,9 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Building the counter contract
   // Counter contract account id on testnet
-  const counterContractId = AccountId.fromHex(
-    '0xe59d8cd3c9ff2a0055da0b83ed6432',
-  );
+  const counterContractId = Address.fromBech32(
+    'mtst1arjemrxne8lj5qz4mg9c8mtyxg954483',
+  ).accountId();
 
   // Reading the public state of the counter contract from testnet,
   // and importing it into the WebClient

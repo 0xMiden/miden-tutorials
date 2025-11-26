@@ -243,7 +243,8 @@ export async function createMintConsume(): Promise<void> {
     return;
   }
 
-  const { WebClient, AccountStorageMode } = await import(
+  // dynamic import → only in the browser, so WASM is loaded client‑side
+  const { WebClient, AccountStorageMode, NoteType, Address } = await import(
     '@demox-labs/miden-sdk'
   );
 

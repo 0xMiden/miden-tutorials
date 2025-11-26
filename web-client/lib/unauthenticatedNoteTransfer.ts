@@ -11,7 +11,6 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
   const {
     WebClient,
     AccountStorageMode,
-    AccountId,
     NoteType,
     TransactionProver,
     Note,
@@ -112,11 +111,9 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
     console.log('Receiver:', receiver.id().toString());
 
     const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(50))]);
-    const receiverAccountId = AccountId.fromHex(receiver.id().toString());
-
     const p2idNote = Note.createP2IDNote(
       sender.id(),
-      receiverAccountId,
+      receiver.id(),
       assets,
       NoteType.Public,
       new Felt(BigInt(0)), // aux value

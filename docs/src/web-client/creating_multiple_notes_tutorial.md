@@ -267,9 +267,10 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const {
     WebClient,
     AccountStorageMode,
-    AccountId,
+    Address,
     NoteType,
     TransactionProver,
+    NetworkId,
     Note,
     NoteAssets,
     OutputNoteArray,
@@ -346,15 +347,15 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
 
   // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
   const recipientAddresses = [
-    '0xbf1db1694c83841000008cefd4fce0',
-    '0xee1a75244282c32000010a29bed5f4',
-    '0x67dc56bd0cbe629000006f36d81029',
+    'mtst1aqezqc90x7dkzypr9m5fmlpp85w6cl04',
+    'mtst1apjg2ul76wrkxyr5qlcnczaskypa4ljn',
+    'mtst1arpee6y9cm8t7ypn33pc8fzj6gkzz7kd',
   ];
 
   const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
 
   const p2idNotes = recipientAddresses.map((addr) => {
-    const receiverAccountId = AccountId.fromHex(addr);
+    const receiverAccountId = Address.fromBech32(addr).accountId();
     const note = Note.createP2IDNote(
       alice.id(),
       receiverAccountId,
