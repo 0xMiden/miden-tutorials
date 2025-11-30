@@ -75,6 +75,10 @@
   --doc-sidebar-width: 250px !important;
 }
 
+html[data-theme="dark"] {
+  --color-border: color-mix(in oklab, var(--color-text) 50%, transparent);
+}
+
 /* ==========================================
    1) MAP SEMANTIC → INFIMA (core variables)
    ========================================== */
@@ -775,6 +779,10 @@ code {
   font-size: 1.2rem;
   font-family: var(--font-mono);
   color: color-mix(in oklab, #292929bf 75%, #000);
+}
+
+[data-theme="dark"] .pagination-nav__label {
+  color: #ffffff;
 }
 
 /* Arrow text characters (>> and <<) */
