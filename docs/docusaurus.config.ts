@@ -97,7 +97,7 @@ const config: Config = {
     {
       colorMode: {
         defaultMode: "light",
-        disableSwitch: true,
+        disableSwitch: false,
       },
       prism: {
         theme: prismThemes.oneLight,
