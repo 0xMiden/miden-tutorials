@@ -954,6 +954,10 @@ code {
   color: var(--color-muted);
 }
 
+.aa-DetachedSearchButton {
+  min-width: calc(1.25 * 10rem);
+}
+
 /* ==========================================
    17) NUMERED LISTS
    ========================================== */
