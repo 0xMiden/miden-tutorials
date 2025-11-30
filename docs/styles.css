@@ -75,6 +75,7 @@
   --doc-sidebar-width: 250px !important;
 }
 
+/* TODO: DocSearch dark-mode hack - search button loads in light colors; remove when upstream fixes theme persistence */
 html[data-theme="dark"] {
   --color-border: color-mix(in oklab, var(--color-text) 50%, transparent);
   /* Ensure DocSearch/Autocomplete dark tokens are available immediately */
