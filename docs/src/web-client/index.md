@@ -3,8 +3,6 @@ title: 'Web Client'
 sidebar_position: 1
 ---
 
-# WebClient
-
 TypeScript library, which can be used to programmatically interact with the Miden rollup.
 
 The Miden WebClient can be used for a variety of things, including:
