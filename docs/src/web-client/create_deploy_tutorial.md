@@ -89,9 +89,8 @@ export async function createMintConsume(): Promise<void> {
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
-  const { WebClient, AccountStorageMode, AccountId, NoteType } = await import(
-    '@demox-labs/miden-sdk'
-  );
+  const { WebClient, AccountStorageMode, AccountId, NoteType } =
+    await import('@demox-labs/miden-sdk');
 
   // Connect to Miden testnet RPC endpoint
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
@@ -244,9 +243,8 @@ export async function createMintConsume(): Promise<void> {
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
-  const { WebClient, AccountStorageMode, NoteType, Address } = await import(
-    '@demox-labs/miden-sdk'
-  );
+  const { WebClient, AccountStorageMode, NoteType, Address } =
+    await import('@demox-labs/miden-sdk');
 
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
