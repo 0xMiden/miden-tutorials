@@ -5,3 +5,7 @@ docs/Cargo.lock
 
 keystore
 *.sqlite3
+
+# macOS
+.DS_Store
+**/.DS_Store
