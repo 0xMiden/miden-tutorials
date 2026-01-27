@@ -5,3 +5,7 @@ docs/Cargo.lock
 
 keystore
 *.sqlite3
+rust-client/.tutorial-runs/
+web-client/.next/
+web-client/playwright-report/
+web-client/test-results/
