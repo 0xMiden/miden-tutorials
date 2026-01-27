@@ -1,28 +1,31 @@
-use.miden::active_account
-use.miden::native_account
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::core::word
+use miden::core::sys
+
+const MAP_SLOT = word("miden::tutorials::mapping::map")
 
 # Inputs: [KEY, VALUE]
 # Outputs: []
-export.write_to_map
-    # The storage map is in storage slot 1
-    push.1
-    # => [index, KEY, VALUE]
+pub proc write_to_map
+    # The storage map is in the mapping slot.
+    push.MAP_SLOT[0..2]
+    # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
 
     # Setting the key value pair in the map
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # => [OLD_VALUE]
 
-    dropw dropw dropw dropw
+    dropw
     # => []
 end
 
 # Inputs: [KEY]
 # Outputs: [VALUE]
-export.get_value_in_map
-    # The storage map is in storage slot 1
-    push.1
-    # => [index]
+pub proc get_value_in_map
+    # The storage map is in the mapping slot.
+    push.MAP_SLOT[0..2]
+    # => [slot_id_prefix, slot_id_suffix, KEY]
 
     exec.active_account::get_map_item
     # => [VALUE]
@@ -30,9 +33,9 @@ end
 
 # Inputs: []
 # Outputs: [CURRENT_ROOT]
-export.get_current_map_root
-    # Getting the current root from slot 1
-    push.1 exec.active_account::get_item
+pub proc get_current_map_root
+    # Getting the current root from the mapping slot.
+    push.MAP_SLOT[0..2] exec.active_account::get_item
     # => [CURRENT_ROOT]
 
     exec.sys::truncate_stack

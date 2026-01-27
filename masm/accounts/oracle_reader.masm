@@ -1,9 +1,9 @@
-use.miden::tx
+use miden::protocol::tx
 
 # Fetches the current price from the `get_median` 
 # procedure from the Pragma oracle
 # => []
-export.get_price
+pub proc get_price
     push.0.0.0.120195681
     # => [PAIR]
 

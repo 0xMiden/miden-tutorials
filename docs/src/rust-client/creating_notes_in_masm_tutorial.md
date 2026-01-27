@@ -51,12 +51,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.12", features = ["testing", "tonic"] }
-miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
-miden-lib = { version = "0.12", default-features = false }
-miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.17.1", features = ["executable"] }
-miden-assembly = "0.18.3"
+miden-client = { version = "0.13.0", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.13.0", package = "miden-client-sqlite-store" }
+miden-protocol = { version = "0.13.0" }
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -86,29 +83,22 @@ masm/
 Inside the `masm/notes/` directory, create the file `iterative_output_note.masm`:
 
 ```masm
-use.miden::active_note
-use.miden::tx
-use.miden::note
-use.miden::output_note
-use.std::sys
-use.std::crypto::hashes::rpo
-use.miden::contracts::wallets::basic->wallet
+use miden::protocol::active_note
+use miden::protocol::note
+use miden::protocol::output_note
+use miden::core::sys
+use miden::standards::wallets::basic->wallet
 
 # Memory Addresses
-const.ASSET=0
-const.ASSET_HALF=4
-const.ACCOUNT_ID_PREFIX=8
-const.ACCOUNT_ID_SUFFIX=9
-const.TAG=10
+const ASSET=0
+const ASSET_HALF=4
+const ACCOUNT_ID_PREFIX=8
+const TAG=10
 
 # => []
 begin
     # Drop word if user accidentally pushes note_args
     dropw
-    # => []
-
-    # Get note inputs
-    push.ACCOUNT_ID_PREFIX exec.active_note::get_inputs drop drop
     # => []
 
     # Get asset contained in note
@@ -132,36 +122,36 @@ begin
     call.wallet::receive_asset
     # => []
 
-    # Get note inputs commitment
-    push.8.ACCOUNT_ID_PREFIX
-    # => [memory_address_pointer, number_of_inputs]
-
-    # Note: Must pad with 0s to nearest multiple of 8
-    exec.rpo::hash_memory
-    # => [INPUTS_COMMITMENT]
-
     # Push script hash
     exec.active_note::get_script_root
-    # => [SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SCRIPT_HASH]
 
     # Get the current note serial number
     exec.active_note::get_serial_number
-    # => [SERIAL_NUM, SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SERIAL_NUM, SCRIPT_HASH]
 
     # Increment serial number by 1
     push.1 add
-    # => [SERIAL_NUM+1, SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SERIAL_NUM+1, SCRIPT_HASH]
 
-    exec.note::build_recipient_hash
+    # Load note inputs into memory for recipient and tag
+    push.ACCOUNT_ID_PREFIX
+    exec.active_note::get_inputs
+    # => [num_inputs, dest_ptr, SERIAL_NUM+1, SCRIPT_HASH]
+
+    swap
+    # => [dest_ptr, num_inputs, SERIAL_NUM+1, SCRIPT_HASH]
+
+    exec.note::build_recipient
     # => [RECIPIENT]
 
-    # Push hint, note type, and aux to stack
-    push.1.1.0
-    # => [aux, public_note, execution_hint_always, RECIPIENT]
+    # Push note type to stack (public note)
+    push.1
+    # => [note_type, RECIPIENT]
 
     # Load tag from memory
     mem_load.TAG
-    # => [tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [tag, note_type, RECIPIENT]
 
     call.output_note::create
     # => [note_idx, pad(15) ...]
@@ -182,25 +172,17 @@ end
 
 ### How the Assembly Code Works:
 
-1. **Reads note inputs:**  
-   The note begins by writing the note inputs to memory by calling the `note::get_inputs` procedure. It writes the note inputs starting at memory address 8, which is defined as the constant `ACCOUNT_ID_PREFIX`.
-2. **Retrieving the asset:**  
-   The note then calls `active_note::get_assets` to write the asset contained in the note to memory address 0, defined as `ASSET`. It computes half of the asset and stores the value at memory address 4, defined as `ASSET_HALF`. Finally, the note calls the `wallet::receive_asset` procedure to move the asset contained in the note to the consuming account.
-3. **Computing note inputs hash in MASM:**  
-   The script calls the `rpo::hash_memory` procedure with the number of inputs and the memory address where the inputs begin. This procedure returns the note inputs commitment.
-4. **Getting the script hash:**  
-   Next, the note script calls the `active_note::get_script_root` procedure, which returns the note's script hash.
-5. **Getting the serial number for the future note:**  
-   Although not strictly necessary in this scenario, preventing two identical notes from having the same serial number is important. If an account creates two identical notes with the same serial number, recipient, and asset vault, one of the notes may not be consumed. Therefore, the MASM code increments the serial number of the current note by 1.
-6. **Computing the `RECIPIENT` hash:**  
-   The `RECIPIENT` hash is defined as:  
-   `hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)`  
-   To compute it in MASM, the script calls the `note::build_recipient_hash` procedure with the serial number, script hash, and inputs commitment on the stack.
-7. **Creating the note:**  
-   To create the note, the script pushes the execution hint, note type, aux value, and tag onto the stack, then calls the `output_note::create` procedure, which returns a pointer to the note.
-8. **Moving assets to the note:**  
-   After the note is created, the script loads the half asset value computed in step 2 onto the stack and calls the `wallet::move_asset_to_note` procedure.
-9. **Stack cleanup:**  
+1. **Retrieving the asset:**  
+   The note calls `active_note::get_assets` to write the asset contained in the note to memory address 0, defined as `ASSET`. It computes half of the asset and stores the value at memory address 4, defined as `ASSET_HALF`. Finally, the note calls the `wallet::receive_asset` procedure to move the asset contained in the note to the consuming account.
+2. **Getting the script hash and serial number:**  
+   The note script calls `active_note::get_script_root` to fetch the script hash and `active_note::get_serial_number` to fetch the current serial number, then increments it by 1 to avoid duplicate recipients.
+3. **Building the `RECIPIENT`:**  
+   The script loads the note inputs into memory with `active_note::get_inputs`, then calls `note::build_recipient`. This computes the inputs commitment and stores the inputs preimage in the advice map, which is required for public notes.
+4. **Creating the note:**  
+   To create the note, the script pushes the note type and tag onto the stack, then calls the `output_note::create` procedure, which returns a pointer to the note.
+5. **Moving assets to the note:**  
+   After the note is created, the script loads the half asset value computed in step 1 onto the stack and calls the `wallet::move_asset_to_note` procedure.
+6. **Stack cleanup:**  
    Finally, the script cleans up the stack by calling `sys::truncate_stack` after creating the note and adding the assets.
 
 ## Step 3: Rust Program
@@ -210,9 +192,8 @@ With the Miden assembly note script written, we can move on to writing the Rust 
 Copy and paste the following code into your `src/main.rs` file.
 
 ```rust
-use miden_lib::account::auth::AuthRpoFalcon512;
-use miden_lib::transaction::TransactionKernel;
-use rand::{rngs::StdRng, RngCore};
+use miden_client::auth::AuthFalcon512Rpo;
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 use tokio::time::{sleep, Duration};
 
@@ -228,33 +209,32 @@ use miden_client::{
     crypto::FeltRng,
     keystore::FilesystemKeyStore,
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
+        Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType,
     },
     rpc::{Endpoint, GrpcClient},
     transaction::{OutputNote, TransactionRequestBuilder},
     Client, ClientError, Felt,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
+use miden_client::{
     account::{AccountBuilder, AccountStorageMode, AccountType},
     note::NoteDetails,
 };
 
 // Helper to create a basic account
 async fn create_basic_account(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
-    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
+    keystore: &Arc<FilesystemKeyStore>,
 ) -> Result<Account, ClientError> {
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicWallet)
         .build()
         .unwrap();
@@ -266,13 +246,13 @@ async fn create_basic_account(
 }
 
 async fn create_basic_faucet(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
-    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
+    keystore: &Arc<FilesystemKeyStore>,
 ) -> Result<Account, ClientError> {
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
     let symbol = TokenSymbol::new("MID").unwrap();
     let decimals = 8;
     let max_supply = Felt::new(1_000_000);
@@ -280,7 +260,7 @@ async fn create_basic_faucet(
     let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
         .build()
         .unwrap();
@@ -293,7 +273,7 @@ async fn create_basic_faucet(
 
 // Helper to wait until an account has the expected number of consumable notes
 async fn wait_for_notes(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
     account_id: &Account,
     expected: usize,
 ) -> Result<(), ClientError> {
@@ -322,7 +302,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -388,9 +368,8 @@ async fn main() -> Result<(), ClientError> {
         .await?;
 
     if let Some((note_record, _)) = consumable_notes.first() {
-        let consume_req = TransactionRequestBuilder::new()
-            .build_consume_notes(vec![note_record.id()])
-            .unwrap();
+        let note: Note = note_record.clone().try_into()?;
+        let consume_req = TransactionRequestBuilder::new().build_consume_notes(vec![note])?;
 
         let tx_id = client
             .submit_new_transaction(alice_account.id(), consume_req)
@@ -405,21 +384,13 @@ async fn main() -> Result<(), ClientError> {
     // -------------------------------------------------------------------------
     println!("\n[STEP 3] Create iterative output note");
 
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let code = fs::read_to_string(Path::new("../masm/notes/iterative_output_note.masm")).unwrap();
     let serial_num = client.rng().draw_word();
 
     // Create note metadata and tag
-    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let metadata = NoteMetadata::new(
-        alice_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Felt::new(0),
-    )?;
-    let program = assembler.clone().assemble_program(&code).unwrap();
-    let note_script = NoteScript::new(program);
+    let tag = NoteTag::new(0);
+    let metadata = NoteMetadata::new(alice_account.id(), NoteType::Public, tag);
+    let note_script = client.code_builder().compile_note_script(&code).unwrap();
     let note_inputs = NoteInputs::new(vec![
         alice_account.id().prefix().as_felt(),
         alice_account.id().suffix(),
@@ -465,20 +436,14 @@ async fn main() -> Result<(), ClientError> {
     let recipient = NoteRecipient::new(serial_num_1, note_script, note_inputs);
 
     // Note: Change metadata to include Bob's account as the creator
-    let metadata = NoteMetadata::new(
-        bob_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Felt::new(0),
-    )?;
+    let metadata = NoteMetadata::new(bob_account.id(), NoteType::Public, tag);
 
     let asset_amount_1 = FungibleAsset::new(faucet_id, 50).unwrap();
     let vault = NoteAssets::new(vec![asset_amount_1.into()])?;
     let output_note = Note::new(vault, metadata, recipient);
 
     let consume_custom_req = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(custom_note, None)])
+        .input_notes([(custom_note, None)])
         .expected_future_notes(vec![(
             NoteDetails::from(output_note.clone()),
             output_note.metadata().tag(),

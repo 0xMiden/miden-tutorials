@@ -109,7 +109,7 @@ Now that Alice has tokens in her account, she can send some to Bob:
 <!-- prettier-ignore-start -->
 ```ts
 // Add this import at the top of the file
-import { NoteType } from "@demox-labs/miden-sdk";
+import { NoteType } from "@miden-sdk/miden-sdk";
 // ...
 
 // 7. Send tokens from Alice to Bob
@@ -154,8 +154,8 @@ export async function createMintConsume(): Promise<void> {
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
-  const { WebClient, AccountStorageMode, NoteType, Address } =
-    await import('@demox-labs/miden-sdk');
+  const { WebClient, AccountStorageMode, AuthScheme, NoteType, Address } =
+    await import('@miden-sdk/miden-sdk');
 
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
@@ -166,7 +166,14 @@ export async function createMintConsume(): Promise<void> {
 
   // 2. Create Alice's account
   console.log('Creating account for Alice…');
-  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+  const aliceSeed = new Uint8Array(32);
+  crypto.getRandomValues(aliceSeed);
+  const alice = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+    AuthScheme.AuthRpoFalcon512,
+    aliceSeed,
+  );
   console.log('Alice ID:', alice.id().toString());
 
   // 3. Deploy a fungible faucet
@@ -177,7 +184,7 @@ export async function createMintConsume(): Promise<void> {
     'MID',
     8,
     BigInt(1_000_000),
-    0,
+    AuthScheme.AuthRpoFalcon512,
   );
   console.log('Faucet ID:', faucet.id().toString());
 
@@ -202,14 +209,17 @@ export async function createMintConsume(): Promise<void> {
 
   // 5. Fetch minted notes
   const mintedNotes = await client.getConsumableNotes(alice.id());
-  const mintedNoteIds = mintedNotes.map((n) =>
-    n.inputNoteRecord().id().toString(),
+  const mintedNoteList = mintedNotes.map((n) =>
+    n.inputNoteRecord().toNote(),
   );
-  console.log('Minted note IDs:', mintedNoteIds);
+  console.log(
+    'Minted notes:',
+    mintedNoteList.map((note) => note.id().toString()),
+  );
 
   // 6. Consume minted notes
   console.log('Consuming minted notes...');
-  const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
+  const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteList);
 
   await client.submitNewTransaction(alice.id(), consumeTxRequest);
 
@@ -246,7 +256,7 @@ Creating faucet...
 Faucet ID: 0xaa86a6f05ae40b2000000f26054d5d
 Minting 1000 tokens to Alice...
 Waiting 10 seconds for transaction confirmation...
-Consumable note IDs: ['0x4edbb3d5dbdf694...']
+Minted notes: ['0x4edbb3d5dbdf694...']
 Consuming notes...
 Notes consumed.
 Sending tokens to Bob's account...

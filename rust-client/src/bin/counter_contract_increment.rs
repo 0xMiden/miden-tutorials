@@ -1,14 +1,20 @@
-use miden_lib::transaction::TransactionKernel;
-use rand::rngs::StdRng;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
-    account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    account::{AccountId, StorageSlotName},
+    assembly::{
+        Assembler,
+        DefaultSourceManager,
+        Library,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
-    transaction::TransactionRequestBuilder,
+    store::AccountRecordData,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
@@ -17,12 +23,12 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -31,13 +37,13 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -66,19 +72,19 @@ async fn main() -> Result<(), ClientError> {
         .await
         .unwrap();
 
-    let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
-
-    let counter_contract = if let Some(account_record) = counter_contract_details {
-        // Clone the account to get an owned instance
-        let account = account_record.account().clone();
-        println!(
-            "Account details: {:?}",
-            account.storage().slots().first().unwrap()
-        );
-        account // Now returns an owned account
-    } else {
-        panic!("Counter contract not found!");
+    let counter_contract_details = client
+        .get_account(counter_contract_id)
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let counter_contract = match counter_contract_details.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
     };
+    println!(
+        "Account details: {:?}",
+        counter_contract.storage().slots().first().unwrap()
+    );
 
     // -------------------------------------------------------------------------
     // STEP 2: Call the Counter Contract with a script
@@ -92,7 +98,7 @@ async fn main() -> Result<(), ClientError> {
     let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler = TransactionKernel::assembler();
     let account_component_lib = create_library(
         assembler.clone(),
         "external_contract::counter_contract",
@@ -101,7 +107,7 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(&script_code)
@@ -115,7 +121,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Execute and submit the transaction
     let tx_id = client
-        .submit_new_transaction(counter_contract.id(), tx_increment_request)
+        .submit_new_transaction(counter_contract_id, tx_increment_request)
         .await
         .unwrap();
 
@@ -127,10 +133,20 @@ async fn main() -> Result<(), ClientError> {
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented counter
-    let account = client.get_account(counter_contract.id()).await.unwrap();
+    let account_record = client
+        .get_account(counter_contract_id)
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
+    };
+    let counter_slot_name =
+        StorageSlotName::new("miden::tutorials::counter").expect("valid slot name");
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        account.storage().get_item(&counter_slot_name)
     );
     Ok(())
 }

@@ -1,43 +1,32 @@
-use.miden::active_account
-use miden::native_account
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::core::word
+use miden::core::sys
 
-const.COUNTER_SLOT=0
+const COUNTER_SLOT = word("miden::tutorials::counter")
 
 #! Inputs:  []
 #! Outputs: [count]
-export.get_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc get_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
-    # clean up stack
-    movdn.4 dropw
+    exec.sys::truncate_stack
     # => [count]
 end
 
 #! Inputs:  []
 #! Outputs: []
-export.increment_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc increment_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
     add.1
     # => [count+1]
 
-    debug.stack
+    push.COUNTER_SLOT[0..2] exec.native_account::set_item
+    # => []
 
-    push.COUNTER_SLOT
-    # [index, count+1]
-
-    exec.native_account::set_item
-    # => [OLD_VALUE]
-
-    dropw
+    exec.sys::truncate_stack
     # => []
 end

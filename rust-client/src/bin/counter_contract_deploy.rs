@@ -1,33 +1,45 @@
-use miden_lib::account::auth::NoAuth;
-use miden_lib::transaction::TransactionKernel;
-use rand::{rngs::StdRng, RngCore};
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
+    account::{
+        AccountBuilder,
+        AccountComponent,
+        AccountStorageMode,
+        AccountType,
+        StorageSlot,
+        StorageSlotName,
+    },
     address::NetworkId,
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{
+        Assembler,
+        CodeBuilder,
+        DefaultSourceManager,
+        Library,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
+    auth::NoAuth,
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
-    transaction::TransactionRequestBuilder,
-    ClientError,
+    store::AccountRecordData,
+    transaction::{TransactionKernel, TransactionRequestBuilder},
+    ClientError, Word,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
-    Word,
-};
 
 fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -36,13 +48,13 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -67,10 +79,14 @@ async fn main() -> Result<(), ClientError> {
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     // Compile the account code into `AccountComponent` with one storage slot
-    let counter_component = AccountComponent::compile(
-        &counter_code,
-        TransactionKernel::assembler(),
-        vec![StorageSlot::Value(Word::default())],
+    let counter_slot_name =
+        StorageSlotName::new("miden::tutorials::counter").expect("valid slot name");
+    let component_code = CodeBuilder::new()
+        .compile_component_code("external_contract::counter_contract", &counter_code)
+        .unwrap();
+    let counter_component = AccountComponent::new(
+        component_code,
+        vec![StorageSlot::with_value(counter_slot_name.clone(), Word::default())],
     )
     .unwrap()
     .with_supports_all_types();
@@ -107,7 +123,7 @@ async fn main() -> Result<(), ClientError> {
     let script_code = fs::read_to_string(script_path).unwrap();
 
     // Create a library from the counter contract code
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler = TransactionKernel::assembler();
     let account_component_lib = create_library(
         assembler.clone(),
         "external_contract::counter_contract",
@@ -116,7 +132,7 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(&script_code)
@@ -147,10 +163,20 @@ async fn main() -> Result<(), ClientError> {
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented counter
-    let account = client.get_account(counter_contract.id()).await.unwrap();
+    let account_record = client
+        .get_account(counter_contract.id())
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => {
+            panic!("counter contract is missing full account data")
+        }
+    };
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        account.storage().get_item(&counter_slot_name)
     );
 
     Ok(())

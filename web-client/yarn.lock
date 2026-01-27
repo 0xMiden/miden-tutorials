@@ -7,15 +7,6 @@
   resolved "https://registry.yarnpkg.com/@alloc/quick-lru/-/quick-lru-5.2.0.tgz#7bf68b20c0a350f936915fcae06f58e32007ce30"
   integrity sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==
 
-"@demox-labs/miden-sdk@0.12.3":
-  version "0.12.3"
-  resolved "https://registry.yarnpkg.com/@demox-labs/miden-sdk/-/miden-sdk-0.12.3.tgz#f216af222760356f8bcfeb39b93d65ae45f87471"
-  integrity sha512-iHomtLaZrY1cb8FVevij9x2foXo33qxRnUNNszKDmdlvgEgt1XmZlZUP8+bb4OFPMJF5lRsJaLcfd5pODvF6JQ==
-  dependencies:
-    "@rollup/plugin-typescript" "^12.3.0"
-    dexie "^4.0.1"
-    glob "^11.0.0"
-
 "@emnapi/core@^1.5.0", "@emnapi/core@^1.6.0":
   version "1.7.1"
   resolved "https://registry.yarnpkg.com/@emnapi/core/-/core-1.7.1.tgz#3a79a02dbc84f45884a1806ebb98e5746bdfaac4"
@@ -242,6 +233,15 @@
   dependencies:
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
+
+"@miden-sdk/miden-sdk@0.13.0-next.4":
+  version "0.13.0-next.4"
+  resolved "https://registry.yarnpkg.com/@miden-sdk/miden-sdk/-/miden-sdk-0.13.0-next.4.tgz#f216af222760356f8bcfeb39b93d65ae45f87471"
+  integrity "sha1-w42UbK5KvYtTC3zzsAklx+uGXkI= sha512-tQ5L1bnv3Er9dPKGlf0doOF4m/aM72o7lqYuEJH6kIDJFpd450zC+AWvNeaLHrw3rpF/jo6X/Aa2qv6brnYpcg=="
+  dependencies:
+    "@rollup/plugin-typescript" "^12.3.0"
+    dexie "^4.0.1"
+    glob "^11.0.0"
 
 "@napi-rs/wasm-runtime@^1.0.7":
   version "1.0.7"

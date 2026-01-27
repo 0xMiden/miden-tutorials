@@ -1,26 +1,19 @@
-use.miden::active_note
-use.miden::tx
-use.miden::note
-use.miden::output_note
-use.std::sys
-use.std::crypto::hashes::rpo
-use.miden::contracts::wallets::basic->wallet
+use miden::protocol::active_note
+use miden::protocol::note
+use miden::protocol::output_note
+use miden::core::sys
+use miden::standards::wallets::basic->wallet
 
 # Memory Addresses
-const.ASSET=0
-const.ASSET_HALF=4
-const.ACCOUNT_ID_PREFIX=8
-const.ACCOUNT_ID_SUFFIX=9
-const.TAG=10
+const ASSET=0
+const ASSET_HALF=4
+const ACCOUNT_ID_PREFIX=8
+const TAG=10
 
 # => []
 begin
     # Drop word if user accidentally pushes note_args
     dropw
-    # => []
-
-    # Get note inputs
-    push.ACCOUNT_ID_PREFIX exec.active_note::get_inputs drop drop
     # => []
 
     # Get asset contained in note
@@ -44,36 +37,36 @@ begin
     call.wallet::receive_asset
     # => []
 
-    # Get note inputs commitment
-    push.8.ACCOUNT_ID_PREFIX
-    # => [memory_address_pointer, number_of_inputs]
-
-    # Note: Must pad with 0s to nearest multiple of 8
-    exec.rpo::hash_memory
-    # => [INPUTS_COMMITMENT]
-
     # Push script hash
     exec.active_note::get_script_root
-    # => [SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SCRIPT_HASH]
 
     # Get the current note serial number
     exec.active_note::get_serial_number
-    # => [SERIAL_NUM, SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SERIAL_NUM, SCRIPT_HASH]
 
     # Increment serial number by 1
     push.1 add
-    # => [SERIAL_NUM+1, SCRIPT_HASH, INPUTS_COMMITMENT]
+    # => [SERIAL_NUM+1, SCRIPT_HASH]
 
-    exec.note::build_recipient_hash
+    # Load note inputs into memory for recipient and tag
+    push.ACCOUNT_ID_PREFIX
+    exec.active_note::get_inputs
+    # => [num_inputs, dest_ptr, SERIAL_NUM+1, SCRIPT_HASH]
+
+    swap
+    # => [dest_ptr, num_inputs, SERIAL_NUM+1, SCRIPT_HASH]
+
+    exec.note::build_recipient
     # => [RECIPIENT]
 
-    # Push hint, note type, and aux to stack
-    push.1.1.0
-    # => [aux, public_note, execution_hint_always, RECIPIENT]
+    # Push note type to stack (public note)
+    push.1
+    # => [note_type, RECIPIENT]
 
     # Load tag from memory
     mem_load.TAG
-    # => [tag, aux, note_type, execution_hint, RECIPIENT]
+    # => [tag, note_type, RECIPIENT]
 
     call.output_note::create
     # => [note_idx, pad(15) ...]

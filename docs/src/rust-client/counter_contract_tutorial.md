@@ -37,12 +37,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.12", features = ["testing", "tonic"] }
-miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
-miden-lib = { version = "0.12", default-features = false }
-miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.17.1", features = ["executable"] }
-miden-assembly = "0.18.3"
+miden-client = { version = "0.13.0", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.13.0", package = "miden-client-sqlite-store" }
+miden-protocol = { version = "0.13.0" }
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -57,23 +54,34 @@ In the previous section, we explained how to instantiate the Miden client. We ca
 Copy and paste the following code into your `src/main.rs` file:
 
 ```rust no_run
-use miden_lib::account::auth::NoAuth;
-use miden_lib::transaction::TransactionKernel;
-use rand::{rngs::StdRng, RngCore};
+use miden_client::auth::NoAuth;
+use miden_client::transaction::TransactionKernel;
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     address::NetworkId,
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{
+        Assembler,
+        CodeBuilder,
+        DefaultSourceManager,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
+    store::AccountRecordData,
     transaction::TransactionRequestBuilder,
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
+use miden_client::{
+    account::{
+        AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot,
+        StorageSlotName,
+    },
     Word,
 };
 
@@ -81,12 +89,12 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_client::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -101,7 +109,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -148,74 +156,68 @@ masm/
 
 Below is our counter contract. It has a two exported procedures: `get_count` and `increment_count`.
 
-At the beginning of the MASM file, we define our imports. In this case, we import `miden::account` and `std::sys`.
+At the beginning of the MASM file, we define our imports. In this case, we import
+`miden::protocol::active_account`, `miden::protocol::native_account`, `miden::core::word`, and
+`miden::core::sys`.
 
-The import `miden::account` contains useful procedures for interacting with a smart contract's state.
+The `miden::protocol::active_account` and `miden::protocol::native_account` modules contain
+procedures for reading and writing contract state. We use `miden::core::word` to convert the slot
+name into a slot ID for the account storage APIs.
 
-The import `std::sys` contains a useful procedure for truncating the operand stack at the end of a procedure.
+The import `miden::core::sys` contains a useful procedure for truncating the operand stack at the
+end of a procedure.
 
 #### Here's a breakdown of what the `get_count` procedure does:
 
-1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
-2. Calls `account::get_item` with the index of `0`.
+1. Pushes the slot ID prefix and suffix for `miden::tutorials::counter` onto the stack.
+2. Calls `active_account::get_item` with the slot ID.
 3. Calls `sys::truncate_stack` to truncate the stack to size 16.
-4. The value returned from `account::get_item` is still on the stack and will be returned when this procedure is called.
+4. The value returned from `active_account::get_item` is still on the stack and will be returned
+   when this procedure is called.
 
 #### Here's a breakdown of what the `increment_count` procedure does:
 
-1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
-2. Calls `active_account::get_item` with the index of `0`.
+1. Pushes the slot ID prefix and suffix for `miden::tutorials::counter` onto the stack.
+2. Calls `active_account::get_item` with the slot ID.
 3. Pushes `1` onto the stack.
 4. Adds `1` to the count value returned from `active_account::get_item`.
-5. _For demonstration purposes_, calls `debug.stack` to see the state of the stack
-6. Pushes `0` (COUNTER_SLOT) onto the stack, which is the index of the storage slot we want to write to.
-7. Calls `native_account::set_item` which saves the incremented count to storage at index `0`
-8. Uses `dropw` to clear the top 4 Stack elements, which is the old count value returned by the previous call
+5. Pushes the slot ID prefix and suffix again so we can write the updated count.
+6. Calls `native_account::set_item` which saves the incremented count to storage.
+7. Calls `sys::truncate_stack` to clean up the stack.
 
 Inside of the `masm/accounts/` directory, create the `counter.masm` file:
 
 ```masm
-use.miden::active_account
-use.miden::native_account
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::core::word
+use miden::core::sys
 
-const.COUNTER_SLOT=0
+const COUNTER_SLOT = word("miden::tutorials::counter")
 
 #! Inputs:  []
 #! Outputs: [count]
-export.get_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc get_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
-    # clean up stack
-    movdn.4 dropw
+    exec.sys::truncate_stack
     # => [count]
 end
 
 #! Inputs:  []
 #! Outputs: []
-export.increment_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc increment_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
     add.1
     # => [count+1]
 
-    debug.stack
+    push.COUNTER_SLOT[0..2] exec.native_account::set_item
+    # => []
 
-    push.COUNTER_SLOT
-    # [index, count+1]
-
-    exec.native_account::set_item
-    # => [OLD_VALUE]
-
-    dropw
+    exec.sys::truncate_stack
     # => []
 end
 
@@ -238,7 +240,7 @@ The string `{increment_count}` will be replaced with the hash of the `increment_
 Inside of the `masm/scripts/` directory, create the `counter_script.masm` file:
 
 ```masm
-use.external_contract::counter_contract
+use external_contract::counter_contract
 
 begin
     call.counter_contract::increment_count
@@ -260,10 +262,14 @@ let counter_path = Path::new("../masm/accounts/counter.masm");
 let counter_code = fs::read_to_string(counter_path).unwrap();
 
 // Compile the account code into `AccountComponent` with one storage slot
-let counter_component = AccountComponent::compile(
-    &counter_code,
-    TransactionKernel::assembler(),
-    vec![StorageSlot::Value(Word::default())],
+let counter_slot_name =
+    StorageSlotName::new("miden::tutorials::counter").expect("valid slot name");
+let component_code = CodeBuilder::new()
+    .compile_component_code("external_contract::counter_contract", &counter_code)
+    .unwrap();
+let counter_component = AccountComponent::new(
+    component_code,
+    vec![StorageSlot::with_value(counter_slot_name.clone(), Word::default())],
 )
 .unwrap()
 .with_supports_all_types();
@@ -323,7 +329,7 @@ let script_path = Path::new("../masm/scripts/counter_script.masm");
 let script_code = fs::read_to_string(script_path).unwrap();
 
 // Create a library from the counter contract code
-let assembler = TransactionKernel::assembler().with_debug_mode(true);
+let assembler = TransactionKernel::assembler();
 let account_component_lib = create_library(
     assembler.clone(),
     "external_contract::counter_contract",
@@ -332,7 +338,7 @@ let account_component_lib = create_library(
 .unwrap();
 
 let tx_script = client
-    .script_builder()
+    .code_builder()
     .with_dynamically_linked_library(&account_component_lib)
     .unwrap()
     .compile_tx_script(&script_code)
@@ -363,10 +369,18 @@ println!(
 client.sync_state().await.unwrap();
 
 // Retrieve updated contract data to see the incremented counter
-let account = client.get_account(counter_contract.id()).await.unwrap();
+let account_record = client
+    .get_account(counter_contract.id())
+    .await
+    .unwrap()
+    .expect("counter contract not found");
+let account = match account_record.account_data() {
+    AccountRecordData::Full(account) => account,
+    AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
+};
 println!(
     "counter contract storage: {:?}",
-    account.unwrap().account().storage().get_item(0)
+    account.storage().get_item(&counter_slot_name)
 );
 ```
 
@@ -377,23 +391,34 @@ println!(
 The final `src/main.rs` file should look like this:
 
 ```rust
-use miden_lib::account::auth::NoAuth;
-use miden_lib::transaction::TransactionKernel;
-use rand::{rngs::StdRng, RngCore};
+use miden_client::auth::NoAuth;
+use miden_client::transaction::TransactionKernel;
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     address::NetworkId,
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{
+        Assembler,
+        CodeBuilder,
+        DefaultSourceManager,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
+    store::AccountRecordData,
     transaction::TransactionRequestBuilder,
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot},
+use miden_client::{
+    account::{
+        AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot,
+        StorageSlotName,
+    },
     Word,
 };
 
@@ -401,12 +426,12 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_client::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -421,7 +446,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -446,10 +471,14 @@ async fn main() -> Result<(), ClientError> {
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
     // Compile the account code into `AccountComponent` with one storage slot
-    let counter_component = AccountComponent::compile(
-        &counter_code,
-        TransactionKernel::assembler(),
-        vec![StorageSlot::Value(Word::default())],
+    let counter_slot_name =
+        StorageSlotName::new("miden::tutorials::counter").expect("valid slot name");
+    let component_code = CodeBuilder::new()
+        .compile_component_code("external_contract::counter_contract", &counter_code)
+        .unwrap();
+    let counter_component = AccountComponent::new(
+        component_code,
+        vec![StorageSlot::with_value(counter_slot_name.clone(), Word::default())],
     )
     .unwrap()
     .with_supports_all_types();
@@ -486,7 +515,7 @@ async fn main() -> Result<(), ClientError> {
     let script_code = fs::read_to_string(script_path).unwrap();
 
     // Create a library from the counter contract code
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler = TransactionKernel::assembler();
     let account_component_lib = create_library(
         assembler.clone(),
         "external_contract::counter_contract",
@@ -495,7 +524,7 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(&script_code)
@@ -526,10 +555,18 @@ async fn main() -> Result<(), ClientError> {
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented counter
-    let account = client.get_account(counter_contract.id()).await.unwrap();
+    let account_record = client
+        .get_account(counter_contract.id())
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
+    };
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        account.storage().get_item(&counter_slot_name)
     );
 
     Ok(())
