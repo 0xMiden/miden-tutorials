@@ -4,21 +4,11 @@ use tokio::time::sleep;
 
 use miden_client::{
     account::{
-        AccountBuilder,
-        AccountComponent,
-        AccountId,
-        AccountStorageMode,
-        AccountType,
-        StorageSlot,
+        AccountBuilder, AccountComponent, AccountId, AccountStorageMode, AccountType, StorageSlot,
         StorageSlotName,
     },
     assembly::{
-        Assembler,
-        CodeBuilder,
-        DefaultSourceManager,
-        Library,
-        Module,
-        ModuleKind,
+        Assembler, CodeBuilder, DefaultSourceManager, Library, Module, ModuleKind,
         Path as AssemblyPath,
     },
     auth::NoAuth,
@@ -86,7 +76,10 @@ async fn main() -> Result<(), ClientError> {
     let count_reader_slot_name =
         StorageSlotName::new("miden::tutorials::count_reader").expect("valid slot name");
     let count_reader_component_code = CodeBuilder::new()
-        .compile_component_code("external_contract::count_reader_contract", &count_reader_code)
+        .compile_component_code(
+            "external_contract::count_reader_contract",
+            &count_reader_code,
+        )
         .unwrap();
     let count_reader_component = AccountComponent::new(
         count_reader_component_code,
@@ -129,7 +122,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_id) =
-        AccountId::from_bech32("mtst1arjemrxne8lj5qz4mg9c8mtyxg954483").unwrap();
+        AccountId::from_bech32("mtst1apfclszryn8a5qqae6sa6hscfgn4mnqp").unwrap();
 
     println!("counter contract id: {:?}", counter_contract_id);
 
@@ -161,12 +154,14 @@ async fn main() -> Result<(), ClientError> {
     let counter_contract_code = fs::read_to_string(counter_contract_path).unwrap();
 
     let counter_contract_component_code = CodeBuilder::new()
-        .compile_component_code("external_contract::counter_contract", &counter_contract_code)
+        .compile_component_code(
+            "external_contract::counter_contract",
+            &counter_contract_code,
+        )
         .unwrap();
-    let counter_contract_component =
-        AccountComponent::new(counter_contract_component_code, vec![])
-            .unwrap()
-            .with_supports_all_types();
+    let counter_contract_component = AccountComponent::new(counter_contract_component_code, vec![])
+        .unwrap()
+        .with_supports_all_types();
 
     let library = counter_contract_component.component_code().as_library();
     let get_count_hash = library
