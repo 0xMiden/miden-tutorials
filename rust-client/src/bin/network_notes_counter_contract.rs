@@ -2,38 +2,26 @@ use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::{
-        component::BasicWallet,
-        AccountBuilder,
-        AccountComponent,
-        AccountStorageMode,
-        AccountType,
-        StorageSlot,
-        StorageSlotName,
+        component::BasicWallet, AccountBuilder, AccountComponent, AccountStorageMode, AccountType,
+        StorageSlot, StorageSlotName,
     },
-    crypto::FeltRng,
     address::NetworkId,
     assembly::{
-        Assembler,
-        CodeBuilder,
-        DefaultSourceManager,
-        Library,
-        Module,
-        ModuleKind,
+        Assembler, CodeBuilder, DefaultSourceManager, Library, Module, ModuleKind,
         Path as AssemblyPath,
     },
     auth::{self, AuthFalcon512Rpo, AuthSecretKey},
     builder::ClientBuilder,
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
-    note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType},
+    note::{
+        NetworkAccountTarget, Note, NoteAssets, NoteError, NoteExecutionHint, NoteInputs,
+        NoteMetadata, NoteRecipient, NoteTag, NoteType,
+    },
     rpc::{Endpoint, GrpcClient},
-    store::AccountRecordData,
-    store::TransactionFilter,
+    store::{AccountRecordData, TransactionFilter},
     transaction::{
-        OutputNote,
-        TransactionId,
-        TransactionKernel,
-        TransactionRequestBuilder,
-        TransactionStatus,
+        OutputNote, TransactionId, TransactionKernel, TransactionRequestBuilder, TransactionStatus,
     },
     Client, ClientError, Felt, Word,
 };
@@ -159,7 +147,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .compile_component_code("external_contract::counter_contract", &counter_code)?;
     let counter_component = AccountComponent::new(
         component_code,
-        vec![StorageSlot::with_value(counter_slot_name.clone(), [Felt::new(0); 4].into())],
+        vec![StorageSlot::with_value(
+            counter_slot_name.clone(),
+            [Felt::new(0); 4].into(),
+        )],
     )?
     .with_supports_all_types();
 
@@ -246,7 +237,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set up note metadata - tag it with the counter contract ID so it gets consumed
     let tag = NoteTag::with_account_target(counter_contract.id());
-    let metadata = NoteMetadata::new(alice_account.id(), NoteType::Public, tag);
+
+    let attachment = NetworkAccountTarget::new(counter_contract.id(), NoteExecutionHint::Always)
+        .map_err(|e| NoteError::other(e.to_string()))?
+        .into();
+    let metadata =
+        NoteMetadata::new(alice_account.id(), NoteType::Public, tag).with_attachment(attachment);
 
     // Create the complete note
     let increment_note = Note::new(NoteAssets::default(), metadata, recipient);

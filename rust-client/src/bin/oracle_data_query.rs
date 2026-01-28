@@ -1,21 +1,10 @@
 use miden_client::{
     account::{
-        AccountBuilder,
-        AccountComponent,
-        AccountId,
-        AccountStorageMode,
-        AccountType,
-        StorageSlot,
-        StorageSlotName,
-        StorageSlotType,
+        AccountBuilder, AccountComponent, AccountId, AccountStorageMode, AccountType, StorageSlot,
+        StorageSlotName, StorageSlotType,
     },
     assembly::{
-        Assembler,
-        CodeBuilder,
-        DefaultSourceManager,
-        Module,
-        ModuleKind,
-        Path as AssemblyPath,
+        Assembler, CodeBuilder, DefaultSourceManager, Module, ModuleKind, Path as AssemblyPath,
     },
     auth::NoAuth,
     builder::ClientBuilder,
@@ -26,7 +15,7 @@ use miden_client::{
     },
     store::AccountRecordData,
     transaction::{ForeignAccount, TransactionKernel, TransactionRequestBuilder},
-    Client, ClientError, Felt, Word, ZERO,
+    Client, ClientError, Word,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
 use rand::RngCore;
@@ -196,7 +185,10 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
     let contract_component = AccountComponent::new(
         contract_component_code,
-        vec![StorageSlot::with_value(contract_slot_name.clone(), Word::default())],
+        vec![StorageSlot::with_value(
+            contract_slot_name.clone(),
+            Word::default(),
+        )],
     )
     .unwrap()
     .with_supports_all_types();

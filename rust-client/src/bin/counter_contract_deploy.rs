@@ -3,21 +3,12 @@ use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::{
-        AccountBuilder,
-        AccountComponent,
-        AccountStorageMode,
-        AccountType,
-        StorageSlot,
+        AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageSlot,
         StorageSlotName,
     },
     address::NetworkId,
     assembly::{
-        Assembler,
-        CodeBuilder,
-        DefaultSourceManager,
-        Library,
-        Module,
-        ModuleKind,
+        Assembler, CodeBuilder, DefaultSourceManager, Library, Module, ModuleKind,
         Path as AssemblyPath,
     },
     auth::NoAuth,
@@ -86,7 +77,10 @@ async fn main() -> Result<(), ClientError> {
         .unwrap();
     let counter_component = AccountComponent::new(
         component_code,
-        vec![StorageSlot::with_value(counter_slot_name.clone(), Word::default())],
+        vec![StorageSlot::with_value(
+            counter_slot_name.clone(),
+            Word::default(),
+        )],
     )
     .unwrap()
     .with_supports_all_types();

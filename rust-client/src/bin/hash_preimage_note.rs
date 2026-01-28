@@ -5,20 +5,15 @@ use tokio::time::{sleep, Duration};
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        Account,
-        AccountBuilder,
-        AccountStorageMode,
-        AccountType,
+        Account, AccountBuilder, AccountStorageMode, AccountType,
     },
-    crypto::FeltRng,
     address::NetworkId,
     asset::{FungibleAsset, TokenSymbol},
     auth::{AuthFalcon512Rpo, AuthSecretKey},
     builder::ClientBuilder,
+    crypto::FeltRng,
     keystore::FilesystemKeyStore,
-    note::{
-        Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType,
-    },
+    note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType},
     rpc::{Endpoint, GrpcClient},
     store::TransactionFilter,
     transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
