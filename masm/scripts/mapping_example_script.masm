@@ -1,5 +1,5 @@
-use.miden_by_example::mapping_example_contract
-use.std::sys
+use miden_by_example::mapping_example_contract
+use miden::core::sys
 
 begin
     push.1.2.3.4

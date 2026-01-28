@@ -1,5 +1,5 @@
-use.external_contract::count_reader_contract
-use.std::sys
+use external_contract::count_reader_contract
+use miden::core::sys
 
 begin
     push.{get_count_proc_hash}

@@ -1,29 +1,33 @@
-use miden_client::auth::AuthSecretKey;
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+use rand::RngCore;
 use std::sync::Arc;
 
 use miden_client::{
-    account::component::BasicWallet,
+    account::{component::BasicWallet, AccountBuilder, AccountStorageMode, AccountType},
+    auth::{AuthFalcon512Rpo, AuthSecretKey},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
-    transaction::{TransactionProver, TransactionRequestBuilder},
-    ClientError, RemoteTransactionProver,
+    store::AccountRecordData,
+    transaction::{
+        LocalTransactionProver,
+        ProvingOptions,
+        TransactionProver,
+        TransactionRequestBuilder,
+    },
+    ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::account::{AccountBuilder, AccountStorageMode, AccountType};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -42,12 +46,12 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Private)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicWallet)
         .build()
         .unwrap();
@@ -56,18 +60,17 @@ async fn main() -> Result<(), ClientError> {
     keystore.add_key(&key_pair).unwrap();
 
     // -------------------------------------------------------------------------
-    // Setup the remote tx prover
+    // Setup the local tx prover
     // -------------------------------------------------------------------------
-    let remote_tx_prover: RemoteTransactionProver =
-        RemoteTransactionProver::new("https://tx-prover.testnet.miden.io");
-    let tx_prover: Arc<dyn TransactionProver> = Arc::new(remote_tx_prover);
+    let local_tx_prover = LocalTransactionProver::new(ProvingOptions::default());
+    let tx_prover: Arc<dyn TransactionProver> = Arc::new(local_tx_prover);
 
     // We use a dummy transaction request to showcase delegated proving.
     // The only effect of this tx should be increasing Alice's nonce.
     println!("Alice nonce initial: {:?}", alice_account.nonce());
     let script_code = "begin push.1 drop end";
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .compile_tx_script(script_code)
         .unwrap();
 
@@ -82,8 +85,8 @@ async fn main() -> Result<(), ClientError> {
         .execute_transaction(alice_account.id(), transaction_request)
         .await?;
 
-    // Step 2: Prove the transaction using the remote prover
-    println!("Proving transaction with remote prover...");
+    // Step 2: Prove the transaction using the local prover
+    println!("Proving transaction with local prover...");
     let proven_transaction = client.prove_transaction_with(&tx_result, tx_prover).await?;
 
     // Step 3: Submit the proven transaction
@@ -97,17 +100,21 @@ async fn main() -> Result<(), ClientError> {
         .apply_transaction(&tx_result, submission_height)
         .await?;
 
-    println!("Transaction submitted successfully using delegated prover!");
+    println!("Transaction submitted successfully using local prover!");
 
     client.sync_state().await.unwrap();
 
-    let account = client
+    let account_record = client
         .get_account(alice_account.id())
         .await
         .unwrap()
-        .unwrap();
+        .expect("alice account not found");
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("alice account is missing full account data"),
+    };
 
-    println!("Alice nonce has increased: {:?}", account.account().nonce());
+    println!("Alice nonce has increased: {:?}", account.nonce());
 
     Ok(())
 }

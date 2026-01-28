@@ -1,5 +1,5 @@
 /**
- * Demonstrates multi-send functionality using a delegated prover on the Miden Network
+ * Demonstrates multi-send functionality using a local prover on the Miden Network
  * Creates multiple P2ID (Pay to ID) notes for different recipients
  *
  * @throws {Error} If the function cannot be executed in a browser environment
@@ -11,29 +11,31 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const {
     WebClient,
     AccountStorageMode,
+    AuthScheme,
     Address,
     NoteType,
     TransactionProver,
-    NetworkId,
     Note,
     NoteAssets,
     OutputNoteArray,
-    Felt,
     FungibleAsset,
+    NoteAttachment,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import('@demox-labs/miden-sdk');
+  } = await import('@miden-sdk/miden-sdk');
 
-  const client = await WebClient.createClient('https://rpc.testnet.miden.io');
-  const prover = TransactionProver.newRemoteProver(
-    'https://tx-prover.testnet.miden.io',
-  );
+  const client = await WebClient.createClient('https://rpc.devnet.miden.io');
+  const prover = TransactionProver.newLocalProver();
 
   console.log('Latest block:', (await client.syncState()).blockNum());
 
   // ── Creating new account ──────────────────────────────────────────────────────
   console.log('Creating account for Alice…');
-  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+  const alice = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+    AuthScheme.AuthRpoFalcon512,
+  );
   console.log('Alice accout ID:', alice.id().toString());
 
   // ── Creating new faucet ──────────────────────────────────────────────────────
@@ -43,7 +45,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     'MID',
     8,
     BigInt(1_000_000),
-    0,
+    AuthScheme.AuthRpoFalcon512,
   );
   console.log('Faucet ID:', faucet.id().toString());
 
@@ -71,14 +73,14 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   }
 
   // ── consume the freshly minted notes ──────────────────────────────────────────────
-  const noteIds = (await client.getConsumableNotes(alice.id())).map((rec) =>
-    rec.inputNoteRecord().id().toString(),
+  const noteList = (await client.getConsumableNotes(alice.id())).map((rec) =>
+    rec.inputNoteRecord().toNote(),
   );
 
   {
     const txResult = await client.executeTransaction(
       alice.id(),
-      client.newConsumeTransactionRequest(noteIds),
+      client.newConsumeTransactionRequest(noteList),
     );
     const proven = await client.proveTransaction(txResult, prover);
     await client.syncState();
@@ -105,7 +107,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
       receiverAccountId,
       assets,
       NoteType.Public,
-      new Felt(BigInt(0)),
+      new NoteAttachment(),
     );
 
     return OutputNote.full(note);

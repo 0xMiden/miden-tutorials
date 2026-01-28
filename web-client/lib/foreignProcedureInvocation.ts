@@ -11,17 +11,17 @@ export async function foreignProcedureInvocation(): Promise<void> {
     AccountComponent,
     Address,
     AccountType,
-    MidenArrays,
-    SecretKey,
+    AuthSecretKey,
     StorageSlot,
     TransactionRequestBuilder,
     ForeignAccount,
+    ForeignAccountArray,
     AccountStorageRequirements,
     WebClient,
     AccountStorageMode,
-  } = await import('@demox-labs/miden-sdk');
+  } = await import('@miden-sdk/miden-sdk');
 
-  const nodeEndpoint = 'https://rpc.testnet.miden.io';
+  const nodeEndpoint = 'https://rpc.devnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
   console.log('Current block number: ', (await client.syncState()).blockNum());
 
@@ -32,22 +32,26 @@ export async function foreignProcedureInvocation(): Promise<void> {
 
   // Count reader contract code in Miden Assembly (exactly from count_reader.masm)
   const countReaderCode = `
-    use.miden::active_account
-    use.miden::native_account
-    use.miden::tx
-    use.std::sys
+    use miden::protocol::active_account
+    use miden::protocol::native_account
+    use miden::protocol::tx
+    use miden::core::word
+    use miden::core::sys
+
+    const COUNT_READER_SLOT = word("miden::tutorials::count_reader")
 
     # => [account_id_prefix, account_id_suffix, get_count_proc_hash]
-    export.copy_count
+    pub proc copy_count
         exec.tx::execute_foreign_procedure
         # => [count]
         
-        push.0
-        # [index, count]
+        push.COUNT_READER_SLOT[0..2]
+        # [slot_id_prefix, slot_id_suffix, count]
 
-        debug.stack
+        exec.native_account::set_item
+        # => [OLD_VALUE]
 
-        exec.native_account::set_item dropw
+        dropw
         # => []
 
         exec.sys::truncate_stack
@@ -55,18 +59,24 @@ export async function foreignProcedureInvocation(): Promise<void> {
     end
 `;
 
-  const builder = client.createScriptBuilder();
+  const countReaderSlotName = 'miden::tutorials::count_reader';
+  const counterSlotName = 'miden::tutorials::counter';
+
+  const builder = client.createCodeBuilder();
+  const countReaderComponentCode =
+    builder.compileAccountComponentCode(countReaderCode);
   const countReaderComponent = AccountComponent.compile(
-    countReaderCode,
-    builder,
-    [StorageSlot.emptyValue()],
+    countReaderComponentCode,
+    [StorageSlot.emptyValue(countReaderSlotName)],
   ).withSupportsAllTypes();
 
   const walletSeed = new Uint8Array(32);
   crypto.getRandomValues(walletSeed);
 
-  const secretKey = SecretKey.rpoFalconWithRNG(walletSeed);
-  const authComponent = AccountComponent.createAuthComponent(secretKey);
+  const secretKey = AuthSecretKey.rpoFalconWithRNG(walletSeed);
+  const authComponent = AccountComponent.createAuthComponentFromSecretKey(
+    secretKey,
+  );
 
   const countReaderContract = new AccountBuilder(walletSeed)
     .accountType(AccountType.RegularAccountImmutableCode)
@@ -75,7 +85,10 @@ export async function foreignProcedureInvocation(): Promise<void> {
     .withComponent(countReaderComponent)
     .build();
 
-  await client.addAccountSecretKeyToWebStore(secretKey);
+  await client.addAccountSecretKeyToWebStore(
+    countReaderContract.account.id(),
+    secretKey,
+  );
   await client.syncState();
 
   // Create the count reader contract account (using available WebClient API)
@@ -108,8 +121,8 @@ export async function foreignProcedureInvocation(): Promise<void> {
     }
   }
   console.log(
-    'Account storage slot 0:',
-    counterContractAccount.storage().getItem(0)?.toHex(),
+    'Account storage slot:',
+    counterContractAccount.storage().getItem(counterSlotName)?.toHex(),
   );
 
   // -------------------------------------------------------------------------
@@ -121,56 +134,46 @@ export async function foreignProcedureInvocation(): Promise<void> {
 
   // Counter contract code (exactly from counter.masm)
   const counterContractCode = `
-    use.miden::active_account
-    use miden::native_account
-    use.std::sys
+    use miden::protocol::active_account
+    use miden::protocol::native_account
+    use miden::core::word
+    use miden::core::sys
 
-    const.COUNTER_SLOT=0
+    const COUNTER_SLOT = word("miden::tutorials::counter")
 
     #! Inputs:  []
     #! Outputs: [count]
-    export.get_count
-        push.COUNTER_SLOT
-        # => [index]
-
-        exec.active_account::get_item
+    pub proc get_count
+        push.COUNTER_SLOT[0..2] exec.active_account::get_item
         # => [count]
 
-        # clean up stack
-        movdn.4 dropw
+        exec.sys::truncate_stack
         # => [count]
     end
 
     #! Inputs:  []
     #! Outputs: []
-    export.increment_count
-        push.COUNTER_SLOT
-        # => [index]
-
-        exec.active_account::get_item
+    pub proc increment_count
+        push.COUNTER_SLOT[0..2] exec.active_account::get_item
         # => [count]
 
         add.1
         # => [count+1]
 
-        debug.stack
+        push.COUNTER_SLOT[0..2] exec.native_account::set_item
+        # => []
 
-        push.COUNTER_SLOT
-        # [index, count+1]
-
-        exec.native_account::set_item
-        # => [OLD_VALUE]
-
-        dropw
+        exec.sys::truncate_stack
         # => []
     end
 `;
 
   // Create the counter contract component to get the procedure hash (following Rust pattern)
+  const counterContractComponentCode =
+    builder.compileAccountComponentCode(counterContractCode);
   const counterContractComponent = AccountComponent.compile(
-    counterContractCode,
-    builder,
-    [StorageSlot.emptyValue()],
+    counterContractComponentCode,
+    [StorageSlot.emptyValue(counterSlotName)],
   ).withSupportsAllTypes();
 
   const getCountProcHash =
@@ -178,8 +181,8 @@ export async function foreignProcedureInvocation(): Promise<void> {
 
   // Build the script that calls the count reader contract (exactly from reader_script.masm with replacements)
   const fpiScriptCode = `
-    use.external_contract::count_reader_contract
-    use.std::sys
+    use external_contract::count_reader_contract
+    use miden::core::sys
 
     begin
     push.${getCountProcHash}
@@ -220,7 +223,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   // Build a transaction request with the custom script
   const txRequest = new TransactionRequestBuilder()
     .withCustomScript(txScript)
-    .withForeignAccounts(new MidenArrays.ForeignAccountArray([foreignAccount]))
+    .withForeignAccounts(new ForeignAccountArray([foreignAccount]))
     .build();
 
   // Execute the transaction on the count reader contract and send it to the network (following Rust pattern)
@@ -242,7 +245,7 @@ export async function foreignProcedureInvocation(): Promise<void> {
   );
   console.log(
     'counter contract storage:',
-    updatedCounterContract?.storage().getItem(0)?.toHex(),
+    updatedCounterContract?.storage().getItem(counterSlotName)?.toHex(),
   );
 
   const updatedCountReaderContract = await client.getAccount(
@@ -250,11 +253,13 @@ export async function foreignProcedureInvocation(): Promise<void> {
   );
   console.log(
     'count reader contract storage:',
-    updatedCountReaderContract?.storage().getItem(0)?.toHex(),
+    updatedCountReaderContract?.storage().getItem(countReaderSlotName)?.toHex(),
   );
 
   // Log the count value copied via FPI
-  const countReaderStorage = updatedCountReaderContract?.storage().getItem(0);
+  const countReaderStorage = updatedCountReaderContract
+    ?.storage()
+    .getItem(countReaderSlotName);
   if (countReaderStorage) {
     const countValue = Number(
       BigInt(

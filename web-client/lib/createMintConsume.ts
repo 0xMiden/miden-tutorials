@@ -6,11 +6,15 @@ export async function createMintConsume(): Promise<void> {
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
-  const { WebClient, AccountStorageMode, NoteType, Address } = await import(
-    '@demox-labs/miden-sdk'
-  );
+  const {
+    WebClient,
+    AccountStorageMode,
+    AuthScheme,
+    NoteType,
+    Address,
+  } = await import('@miden-sdk/miden-sdk');
 
-  const nodeEndpoint = 'https://rpc.testnet.miden.io';
+  const nodeEndpoint = 'https://rpc.devnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
 
   // 1. Sync with the latest blockchain state
@@ -19,7 +23,14 @@ export async function createMintConsume(): Promise<void> {
 
   // 2. Create Alice's account
   console.log('Creating account for Alice…');
-  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+  const aliceSeed = new Uint8Array(32);
+  crypto.getRandomValues(aliceSeed);
+  const alice = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+    AuthScheme.AuthRpoFalcon512,
+    aliceSeed,
+  );
   console.log('Alice ID:', alice.id().toString());
 
   // 3. Deploy a fungible faucet
@@ -30,7 +41,7 @@ export async function createMintConsume(): Promise<void> {
     'MID',
     8,
     BigInt(1_000_000),
-    0,
+    AuthScheme.AuthRpoFalcon512,
   );
   console.log('Faucet ID:', faucet.id().toString());
 
@@ -55,14 +66,17 @@ export async function createMintConsume(): Promise<void> {
 
   // 5. Fetch minted notes
   const mintedNotes = await client.getConsumableNotes(alice.id());
-  const mintedNoteIds = mintedNotes.map((n) =>
-    n.inputNoteRecord().id().toString(),
+  const mintedNoteList = mintedNotes.map((n) =>
+    n.inputNoteRecord().toNote(),
   );
-  console.log('Minted note IDs:', mintedNoteIds);
+  console.log(
+    'Minted notes:',
+    mintedNoteList.map((note) => note.id().toString()),
+  );
 
   // 6. Consume minted notes
   console.log('Consuming minted notes...');
-  const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteIds);
+  const consumeTxRequest = client.newConsumeTransactionRequest(mintedNoteList);
 
   await client.submitNewTransaction(alice.id(), consumeTxRequest);
 

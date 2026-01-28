@@ -1,28 +1,31 @@
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration, Instant};
 
 use miden_client::{
-    account::component::{BasicFungibleFaucet, BasicWallet},
+    account::{
+        component::{BasicFungibleFaucet, BasicWallet},
+        AccountBuilder,
+        AccountStorageMode,
+        AccountType,
+    },
     address::NetworkId,
     asset::{FungibleAsset, TokenSymbol},
-    auth::AuthSecretKey,
+    auth::{AuthFalcon512Rpo, AuthSecretKey},
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
-    note::{create_p2id_note, Note, NoteType},
+    note::{create_p2id_note, Note, NoteAttachment, NoteType},
     rpc::{Endpoint, GrpcClient},
-    store::TransactionFilter,
+    store::{AccountRecordData, TransactionFilter},
     transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
     utils::{Deserializable, Serializable},
     Client, ClientError, Felt,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::account::{AccountBuilder, AccountStorageMode, AccountType};
 
 /// Waits for a specific transaction to be committed.
 async fn wait_for_tx(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
     tx_id: TransactionId,
 ) -> Result<(), ClientError> {
     loop {
@@ -55,13 +58,13 @@ async fn wait_for_tx(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -86,7 +89,7 @@ async fn main() -> Result<(), ClientError> {
     client.rng().fill_bytes(&mut init_seed);
 
     // Generate key pair
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     // Faucet parameters
     let symbol = TokenSymbol::new("MID").unwrap();
@@ -97,7 +100,7 @@ async fn main() -> Result<(), ClientError> {
     let faucet_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
         .build()
         .unwrap();
@@ -123,18 +126,18 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Creating new accounts");
 
     let mut accounts = vec![];
-    let number_of_accounts = 10;
+    let number_of_accounts = 2;
 
     for i in 0..number_of_accounts {
         let mut init_seed = [0_u8; 32];
         client.rng().fill_bytes(&mut init_seed);
 
-        let key_pair = AuthSecretKey::new_rpo_falcon512();
+        let key_pair = AuthSecretKey::new_falcon512_rpo();
 
         let account = AccountBuilder::new(init_seed)
             .account_type(AccountType::RegularAccountUpdatableCode)
             .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+            .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
             .with_component(BasicWallet)
             .build()
             .unwrap();
@@ -182,9 +185,9 @@ async fn main() -> Result<(), ClientError> {
     let consumable_notes = client.get_consumable_notes(Some(alice.id())).await?;
 
     if let Some((note_record, _)) = consumable_notes.first() {
-        let transaction_request = TransactionRequestBuilder::new()
-            .build_consume_notes(vec![note_record.id()])
-            .unwrap();
+        let note: Note = note_record.clone().try_into()?;
+        let transaction_request =
+            TransactionRequestBuilder::new().build_consume_notes(vec![note])?;
 
         let consume_tx_id = client
             .submit_new_transaction(alice.id(), transaction_request)
@@ -227,7 +230,7 @@ async fn main() -> Result<(), ClientError> {
             accounts[i + 1].id(),
             vec![fungible_asset_send_amount.into()],
             note_type,
-            Felt::new(0),
+            NoteAttachment::default(),
             client.rng(),
         )
         .unwrap();
@@ -252,7 +255,7 @@ async fn main() -> Result<(), ClientError> {
 
         // Time consume note request building
         let consume_note_request = TransactionRequestBuilder::new()
-            .unauthenticated_input_notes([(deserialized_p2id_note, None)])
+            .input_notes([(deserialized_p2id_note, None)])
             .build()
             .unwrap();
 
@@ -280,12 +283,14 @@ async fn main() -> Result<(), ClientError> {
     tokio::time::sleep(Duration::from_secs(3)).await;
     client.sync_state().await?;
     for account in accounts.clone() {
-        let new_account = client.get_account(account.id()).await.unwrap().unwrap();
-        let balance = new_account
-            .account()
-            .vault()
-            .get_balance(faucet_account.id())
-            .unwrap();
+        let new_account_record = client.get_account(account.id()).await.unwrap().unwrap();
+        let new_account = match new_account_record.account_data() {
+            AccountRecordData::Full(account) => account,
+            AccountRecordData::Partial(_) => {
+                panic!("account is missing full account data")
+            }
+        };
+        let balance = new_account.vault().get_balance(faucet_account.id()).unwrap();
         println!(
             "Account: {} balance: {}",
             account.id().to_bech32(NetworkId::Testnet),

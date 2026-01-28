@@ -1,5 +1,4 @@
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 use tokio::time::{sleep, Duration};
 
@@ -7,42 +6,41 @@ use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
         Account,
+        AccountBuilder,
+        AccountStorageMode,
+        AccountType,
     },
-    address::NetworkId,
-    auth::AuthSecretKey,
-    builder::ClientBuilder,
     crypto::FeltRng,
+    address::NetworkId,
+    asset::{FungibleAsset, TokenSymbol},
+    auth::{AuthFalcon512Rpo, AuthSecretKey},
+    builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteTag, NoteType,
+        Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteTag, NoteType,
     },
     rpc::{Endpoint, GrpcClient},
     store::TransactionFilter,
     transaction::{OutputNote, TransactionId, TransactionRequestBuilder, TransactionStatus},
-    Client, ClientError, Felt, ScriptBuilder,
+    Client, ClientError, Felt,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountStorageMode, AccountType},
-    asset::{FungibleAsset, TokenSymbol},
-    Hasher,
-};
+use miden_protocol::Hasher;
 
 // Helper to create a basic account
 async fn create_basic_account(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
-    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
+    keystore: &Arc<FilesystemKeyStore>,
 ) -> Result<Account, ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicWallet)
         .build()
         .unwrap();
@@ -54,13 +52,13 @@ async fn create_basic_account(
 }
 
 async fn create_basic_faucet(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
-    keystore: &Arc<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
+    keystore: &Arc<FilesystemKeyStore>,
 ) -> Result<Account, ClientError> {
     let mut init_seed = [0u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
     let symbol = TokenSymbol::new("MID").unwrap();
     let decimals = 8;
     let max_supply = Felt::new(1_000_000);
@@ -68,7 +66,7 @@ async fn create_basic_faucet(
     let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
         .build()
         .unwrap();
@@ -81,7 +79,7 @@ async fn create_basic_faucet(
 
 /// Waits for a specific transaction to be committed.
 async fn wait_for_tx(
-    client: &mut Client<FilesystemKeyStore<StdRng>>,
+    client: &mut Client<FilesystemKeyStore>,
     tx_id: TransactionId,
 ) -> Result<(), ClientError> {
     loop {
@@ -114,13 +112,13 @@ async fn wait_for_tx(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -189,9 +187,8 @@ async fn main() -> Result<(), ClientError> {
         .await?;
 
     if let Some((note_record, _)) = consumable_notes.first() {
-        let consume_request = TransactionRequestBuilder::new()
-            .build_consume_notes(vec![note_record.id()])
-            .unwrap();
+        let note: Note = note_record.clone().try_into()?;
+        let consume_request = TransactionRequestBuilder::new().build_consume_notes(vec![note])?;
 
         let tx_id = client
             .submit_new_transaction(alice_account.id(), consume_request)
@@ -212,17 +209,11 @@ async fn main() -> Result<(), ClientError> {
     let code = fs::read_to_string(Path::new("../masm/notes/hash_preimage_note.masm")).unwrap();
     let serial_num = client.rng().draw_word();
 
-    let note_script = ScriptBuilder::new(true).compile_note_script(code).unwrap();
+    let note_script = client.code_builder().compile_note_script(code).unwrap();
     let note_inputs = NoteInputs::new(digest.to_vec()).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
-    let tag = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
-    let metadata = NoteMetadata::new(
-        alice_account.id(),
-        NoteType::Public,
-        tag,
-        NoteExecutionHint::always(),
-        Felt::new(0),
-    )?;
+    let tag = NoteTag::new(0);
+    let metadata = NoteMetadata::new(alice_account.id(), NoteType::Public, tag);
     let vault = NoteAssets::new(vec![mint_amount.into()])?;
     let custom_note = Note::new(vault, metadata, recipient);
     println!("note hash: {:?}", custom_note.id().to_hex());
@@ -249,7 +240,7 @@ async fn main() -> Result<(), ClientError> {
 
     let secret = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
     let consume_custom_request = TransactionRequestBuilder::new()
-        .unauthenticated_input_notes([(custom_note, Some(secret.into()))])
+        .input_notes([(custom_note, Some(secret.into()))])
         .build()
         .unwrap();
 

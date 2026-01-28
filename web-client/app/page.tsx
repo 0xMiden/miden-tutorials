@@ -6,6 +6,45 @@ import { incrementCounterContract } from "../lib/incrementCounterContract";
 import { unauthenticatedNoteTransfer } from "../lib/unauthenticatedNoteTransfer";
 import { foreignProcedureInvocation } from "../lib/foreignProcedureInvocation";
 
+type TutorialState = "running" | "passed" | "failed";
+type TutorialStatus = { state: TutorialState; error?: string };
+type TutorialStatusMap = Record<string, TutorialStatus>;
+
+const updateTutorialStatus = (
+  name: string,
+  state: TutorialState,
+  error?: unknown,
+) => {
+  if (typeof window === "undefined") return;
+  const win = window as Window & { __tutorialStatus?: TutorialStatusMap };
+  const current = win.__tutorialStatus ?? {};
+  current[name] = {
+    state,
+    error: error instanceof Error ? `${error.name}: ${error.message}` : error
+      ? String(error)
+      : undefined,
+  };
+  win.__tutorialStatus = current;
+};
+
+const runTutorial = async (
+  name: string,
+  action: () => Promise<void>,
+  setIsRunning: (value: boolean) => void,
+) => {
+  setIsRunning(true);
+  updateTutorialStatus(name, "running");
+  try {
+    await action();
+    updateTutorialStatus(name, "passed");
+  } catch (error) {
+    console.error(`[tutorial:${name}]`, error);
+    updateTutorialStatus(name, "failed", error);
+  } finally {
+    setIsRunning(false);
+  }
+};
+
 export default function Home() {
   const [isCreatingNotes, setIsCreatingNotes] = useState(false);
   const [isMultiSendNotes, setIsMultiSendNotes] = useState(false);
@@ -14,33 +53,39 @@ export default function Home() {
   const [isForeignProcedureInvocation, setIsForeignProcedureInvocation] = useState(false);
 
   const handleCreateMintConsume = async () => {
-    setIsCreatingNotes(true);
-    await createMintConsume();
-    setIsCreatingNotes(false);
+    await runTutorial("createMintConsume", createMintConsume, setIsCreatingNotes);
   };
 
   const handleMultiSendNotes = async () => {
-    setIsMultiSendNotes(true);
-    await multiSendWithDelegatedProver();
-    setIsMultiSendNotes(false);
+    await runTutorial(
+      "multiSendWithDelegatedProver",
+      multiSendWithDelegatedProver,
+      setIsMultiSendNotes,
+    );
   };
 
   const handleIncrementCounterContract = async () => {
-    setIsIncrementCounter(true);
-    await incrementCounterContract();
-    setIsIncrementCounter(false);
+    await runTutorial(
+      "incrementCounterContract",
+      incrementCounterContract,
+      setIsIncrementCounter,
+    );
   };
 
   const handleUnauthenticatedNoteTransfer = async () => {
-    setIsUnauthenticatedNoteTransfer(true);
-    await unauthenticatedNoteTransfer();
-    setIsUnauthenticatedNoteTransfer(false);
+    await runTutorial(
+      "unauthenticatedNoteTransfer",
+      unauthenticatedNoteTransfer,
+      setIsUnauthenticatedNoteTransfer,
+    );
   };
 
   const handleForeignProcedureInvocation = async () => {
-    setIsForeignProcedureInvocation(true);
-    await foreignProcedureInvocation();
-    setIsForeignProcedureInvocation(false);
+    await runTutorial(
+      "foreignProcedureInvocation",
+      foreignProcedureInvocation,
+      setIsForeignProcedureInvocation,
+    );
   };
 
   return (
@@ -52,6 +97,7 @@ export default function Home() {
         <div className="max-w-sm w-full bg-gray-800/20 border border-gray-600 rounded-2xl p-6 mx-auto flex flex-col gap-4">
           <button
             onClick={handleCreateMintConsume}
+            data-testid="tutorial-createMintConsume"
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isCreatingNotes
@@ -61,6 +107,7 @@ export default function Home() {
 
           <button
             onClick={handleMultiSendNotes}
+            data-testid="tutorial-multiSendWithDelegatedProver"
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isMultiSendNotes
@@ -70,6 +117,7 @@ export default function Home() {
 
           <button
             onClick={handleIncrementCounterContract}
+            data-testid="tutorial-incrementCounterContract"
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isIncrementCounter
@@ -79,6 +127,7 @@ export default function Home() {
 
           <button
             onClick={handleUnauthenticatedNoteTransfer}
+            data-testid="tutorial-unauthenticatedNoteTransfer"
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isUnauthenticatedNoteTransfer
@@ -88,6 +137,7 @@ export default function Home() {
 
           <button
             onClick={handleForeignProcedureInvocation}
+            data-testid="tutorial-foreignProcedureInvocation"
             className="w-full px-6 py-3 text-lg cursor-pointer bg-transparent border-2 border-orange-600 text-white rounded-lg transition-all hover:bg-orange-600 hover:text-white"
           >
             {isForeignProcedureInvocation

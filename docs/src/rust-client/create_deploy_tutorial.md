@@ -48,12 +48,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.12", features = ["testing", "tonic"] }
-miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
-miden-lib = { version = "0.12", default-features = false }
-miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.17.1", features = ["executable"] }
-miden-assembly = "0.18.3"
+miden-client = { version = "0.13.0", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.13.0", package = "miden-client-sqlite-store" }
+miden-protocol = { version = "0.13.0" }
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -73,8 +70,8 @@ Before interacting with the Miden network, we must instantiate the client. In th
 Copy and paste the following code into your `src/main.rs` file.
 
 ```rust no_run
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+use miden_client::auth::AuthFalcon512Rpo;
+use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -93,8 +90,9 @@ use miden_client::{
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+use miden_protocol::account::AccountIdVersion;
+use miden_client::{
+    account::{AccountBuilder, AccountStorageMode, AccountType},
     asset::{FungibleAsset, TokenSymbol},
     Felt,
 };
@@ -108,7 +106,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -163,13 +161,13 @@ println!("\n[STEP 1] Creating a new account for Alice");
 let mut init_seed = [0_u8; 32];
 client.rng().fill_bytes(&mut init_seed);
 
-let key_pair = AuthSecretKey::new_rpo_falcon512();
+let key_pair = AuthSecretKey::new_falcon512_rpo();
 
 // Build the account
 let alice_account = AccountBuilder::new(init_seed)
     .account_type(AccountType::RegularAccountUpdatableCode)
     .storage_mode(AccountStorageMode::Public)
-    .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+    .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
     .with_component(BasicWallet)
     .build()
     .unwrap();
@@ -208,13 +206,13 @@ let decimals = 8;
 let max_supply = Felt::new(1_000_000);
 
 // Generate key pair
-let key_pair = AuthSecretKey::new_rpo_falcon512();
+let key_pair = AuthSecretKey::new_falcon512_rpo();
 
 // Build the faucet account
 let faucet_account = AccountBuilder::new(init_seed)
     .account_type(AccountType::FungibleFaucet)
     .storage_mode(AccountStorageMode::Public)
-    .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+    .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
     .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
     .build()
     .unwrap();
@@ -239,9 +237,9 @@ _When tokens are minted from this faucet, each token batch is represented as a "
 
 Your updated `main()` function in `src/main.rs` should look like this:
 
-```rust
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+```rust no_run
+use miden_client::auth::AuthFalcon512Rpo;
+use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -260,8 +258,9 @@ use miden_client::{
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+use miden_protocol::account::AccountIdVersion;
+use miden_client::{
+    account::{AccountBuilder, AccountStorageMode, AccountType},
     asset::{FungibleAsset, TokenSymbol},
     Felt,
 };
@@ -275,7 +274,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -299,13 +298,13 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     // Build the account
     let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicWallet)
         .build()
         .unwrap();
@@ -334,13 +333,13 @@ async fn main() -> Result<(), ClientError> {
     let max_supply = Felt::new(1_000_000);
 
     // Generate key pair
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     // Build the faucet account
     let faucet_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
         .build()
         .unwrap();

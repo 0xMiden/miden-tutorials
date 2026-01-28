@@ -1,0 +1,7 @@
+{
+  "name": "miden-tutorials",
+  "private": true,
+  "scripts": {
+    "tutorials": "bash scripts/run_tutorials.sh"
+  }
+}
