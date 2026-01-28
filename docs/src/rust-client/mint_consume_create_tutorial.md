@@ -100,12 +100,15 @@ loop {
     let consumable_notes = client
         .get_consumable_notes(Some(alice_account.id()))
         .await?;
-    let list_of_note_ids: Vec<_> = consumable_notes.iter().map(|(note, _)| note.id()).collect();
+    let notes = consumable_notes
+        .iter()
+        .map(|(note, _)| note.clone().try_into())
+        .collect::<Result<Vec<_>, _>>()?;
 
-    if list_of_note_ids.len() == 5 {
+    if notes.len() == 5 {
         println!("Found 5 consumable notes for Alice. Consuming them now...");
         let transaction_request = TransactionRequestBuilder::new()
-            .build_consume_notes(list_of_note_ids)
+            .build_consume_notes(notes)
             .unwrap();
 
         let tx_id = client
@@ -119,7 +122,7 @@ loop {
     } else {
         println!(
             "Currently, Alice has {} consumable notes. Waiting...",
-            list_of_note_ids.len()
+            notes.len()
         );
         tokio::time::sleep(Duration::from_secs(3)).await;
     }
@@ -246,7 +249,7 @@ Note: _In a production environment do not use `AccountId::dummy()`, this is simp
 
 Your `src/main.rs` function should now look like this:
 
-```rust
+```rust no_run
 use miden_client::auth::AuthFalcon512Rpo;
 use rand::RngCore;
 use std::sync::Arc;
@@ -267,8 +270,9 @@ use miden_client::{
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_protocol::account::AccountIdVersion;
 use miden_client::{
-    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+    account::{AccountBuilder, AccountStorageMode, AccountType},
     asset::{FungibleAsset, TokenSymbol},
     Felt,
 };
@@ -411,12 +415,15 @@ async fn main() -> Result<(), ClientError> {
         let consumable_notes = client
             .get_consumable_notes(Some(alice_account.id()))
             .await?;
-        let list_of_note_ids: Vec<_> = consumable_notes.iter().map(|(note, _)| note.id()).collect();
+        let notes = consumable_notes
+            .iter()
+            .map(|(note, _)| note.clone().try_into())
+            .collect::<Result<Vec<_>, _>>()?;
 
-        if list_of_note_ids.len() == 5 {
+        if notes.len() == 5 {
             println!("Found 5 consumable notes for Alice. Consuming them now...");
             let transaction_request = TransactionRequestBuilder::new()
-                .build_consume_notes(list_of_note_ids)
+                .build_consume_notes(notes)
                 .unwrap();
 
             let tx_id = client
@@ -430,7 +437,7 @@ async fn main() -> Result<(), ClientError> {
         } else {
             println!(
                 "Currently, Alice has {} consumable notes. Waiting...",
-                list_of_note_ids.len()
+                notes.len()
             );
             tokio::time::sleep(Duration::from_secs(3)).await;
         }

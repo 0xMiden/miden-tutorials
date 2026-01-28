@@ -63,7 +63,7 @@ rand_chacha = "0.9.0"
 Similarly to previous tutorials, we must instantiate the client.
 We construct a `LocalTransactionProver` for this walkthrough.
 
-```rust
+```rust no_run
 use miden_client::auth::AuthSecretKey;
 use miden_client::auth::AuthFalcon512Rpo;
 use rand::RngCore;

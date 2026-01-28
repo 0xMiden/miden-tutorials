@@ -90,8 +90,9 @@ use miden_client::{
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_protocol::account::AccountIdVersion;
 use miden_client::{
-    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+    account::{AccountBuilder, AccountStorageMode, AccountType},
     asset::{FungibleAsset, TokenSymbol},
     Felt,
 };
@@ -236,7 +237,7 @@ _When tokens are minted from this faucet, each token batch is represented as a "
 
 Your updated `main()` function in `src/main.rs` should look like this:
 
-```rust
+```rust no_run
 use miden_client::auth::AuthFalcon512Rpo;
 use rand::RngCore;
 use std::sync::Arc;
@@ -257,8 +258,9 @@ use miden_client::{
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
+use miden_protocol::account::AccountIdVersion;
 use miden_client::{
-    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+    account::{AccountBuilder, AccountStorageMode, AccountType},
     asset::{FungibleAsset, TokenSymbol},
     Felt,
 };

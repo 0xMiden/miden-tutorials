@@ -550,7 +550,7 @@ let foreignAccount = ForeignAccount.public(
 
 let txRequest = new TransactionRequestBuilder()
   .withCustomScript(txScript)
-    .withForeignAccounts(new ForeignAccountArray([foreignAccount]))
+  .withForeignAccounts(new ForeignAccountArray([foreignAccount]))
   .build();
 ```
 

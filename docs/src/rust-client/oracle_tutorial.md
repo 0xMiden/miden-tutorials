@@ -51,7 +51,7 @@ rand_chacha = "0.9.0"
 
 Copy and paste the following code into your `src/main.rs` file:
 
-```rust
+```rust no_run
 use miden_client::{
     assembly::{
         Assembler,

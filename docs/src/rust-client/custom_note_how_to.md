@@ -133,7 +133,7 @@ With the note created, Bob can now consume it—but only if he provides the corr
 
 The following Rust code demonstrates how to implement the steps outlined above using the Miden client library:
 
-```rust
+```rust no_run
 use miden_client::auth::AuthFalcon512Rpo;
 use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
@@ -324,8 +324,9 @@ async fn main() -> Result<(), ClientError> {
         .await?;
 
     if let Some((note_record, _)) = consumable_notes.first() {
+        let note: Note = note_record.clone().try_into()?;
         let consume_request = TransactionRequestBuilder::new()
-            .build_consume_notes(vec![note_record.id()])
+            .build_consume_notes(vec![note])
             .unwrap();
 
         let tx_id = client

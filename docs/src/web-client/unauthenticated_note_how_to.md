@@ -42,6 +42,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 2. **WebClient Initialization:**
    - Set up the WebClient to connect with the Miden testnet.
+
 - Configure a local prover for improved performance.
 
 3. **Account Creation:**

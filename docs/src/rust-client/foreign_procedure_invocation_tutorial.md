@@ -428,7 +428,7 @@ In this tutorial created a smart contract that calls the `get_count` procedure i
 
 The final `src/main.rs` file should look like this:
 
-```rust
+```rust no_run
 use miden_client::auth::NoAuth;
 use miden_client::transaction::TransactionKernel;
 use rand::RngCore;

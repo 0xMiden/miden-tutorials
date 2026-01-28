@@ -52,7 +52,7 @@ Alice ➡ Bob ➡ Charlie ➡ Dave ➡ Eve ➡ Frank ➡ ...
 
 ## Full Rust code example
 
-```rust
+```rust no_run
 use miden_client::auth::AuthFalcon512Rpo;
 use rand::RngCore;
 use std::sync::Arc;
@@ -237,8 +237,9 @@ async fn main() -> Result<(), ClientError> {
     let consumable_notes = client.get_consumable_notes(Some(alice.id())).await?;
 
     if let Some((note_record, _)) = consumable_notes.first() {
+        let note: Note = note_record.clone().try_into()?;
         let transaction_request = TransactionRequestBuilder::new()
-            .build_consume_notes(vec![note_record.id()])
+            .build_consume_notes(vec![note])
             .unwrap();
 
         let consume_tx_id = client

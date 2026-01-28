@@ -390,7 +390,7 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust
+```rust no_run
 use miden_client::auth::NoAuth;
 use miden_client::transaction::TransactionKernel;
 use rand::RngCore;

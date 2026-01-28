@@ -209,9 +209,7 @@ export async function createMintConsume(): Promise<void> {
 
   // 5. Fetch minted notes
   const mintedNotes = await client.getConsumableNotes(alice.id());
-  const mintedNoteList = mintedNotes.map((n) =>
-    n.inputNoteRecord().toNote(),
-  );
+  const mintedNoteList = mintedNotes.map((n) => n.inputNoteRecord().toNote());
   console.log(
     'Minted notes:',
     mintedNoteList.map((note) => note.id().toString()),
