@@ -241,7 +241,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let attachment = NetworkAccountTarget::new(counter_contract.id(), NoteExecutionHint::Always)
         .map_err(|e| NoteError::other(e.to_string()))?
         .into();
-    // Use a default sender since we don't have sender anymore - create from destination address
     let metadata =
         NoteMetadata::new(alice_account.id(), NoteType::Public, tag).with_attachment(attachment);
 
