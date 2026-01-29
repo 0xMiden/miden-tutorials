@@ -58,7 +58,7 @@ can switch to delegated proving later by swapping in `TransactionProver.newRemot
 
 3. Install the Miden WebClient SDK:
    ```bash
-   yarn add @miden-sdk/miden-sdk@0.13.0-next.4
+   yarn add @miden-sdk/miden-sdk@0.13.0
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
