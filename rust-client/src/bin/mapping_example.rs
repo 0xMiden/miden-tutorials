@@ -3,21 +3,11 @@ use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::{
-        AccountBuilder,
-        AccountComponent,
-        AccountStorageMode,
-        AccountType,
-        StorageMap,
-        StorageSlot,
+        AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageMap, StorageSlot,
         StorageSlotName,
     },
     assembly::{
-        Assembler,
-        CodeBuilder,
-        DefaultSourceManager,
-        Library,
-        Module,
-        ModuleKind,
+        Assembler, CodeBuilder, DefaultSourceManager, Library, Module, ModuleKind,
         Path as AssemblyPath,
     },
     auth::NoAuth,

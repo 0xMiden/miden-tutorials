@@ -3,12 +3,7 @@ use std::{fs, path::Path, sync::Arc};
 use miden_client::{
     account::{AccountId, StorageSlotName},
     assembly::{
-        Assembler,
-        DefaultSourceManager,
-        Library,
-        Module,
-        ModuleKind,
-        Path as AssemblyPath,
+        Assembler, DefaultSourceManager, Library, Module, ModuleKind, Path as AssemblyPath,
     },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
@@ -65,7 +60,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_id) =
-        AccountId::from_bech32("mtst1arjemrxne8lj5qz4mg9c8mtyxg954483").unwrap();
+        AccountId::from_bech32("mtst1apfclszryn8a5qqae6sa6hscfgn4mnqp").unwrap();
 
     client
         .import_account_by_id(counter_contract_id)

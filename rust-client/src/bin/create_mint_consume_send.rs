@@ -5,10 +5,7 @@ use tokio::time::Duration;
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        AccountBuilder,
-        AccountId,
-        AccountStorageMode,
-        AccountType,
+        AccountBuilder, AccountId, AccountStorageMode, AccountType,
     },
     address::NetworkId,
     asset::{FungibleAsset, TokenSymbol},
@@ -18,8 +15,7 @@ use miden_client::{
     note::{create_p2id_note, NoteAttachment, NoteType},
     rpc::{Endpoint, GrpcClient},
     transaction::{OutputNote, TransactionRequestBuilder},
-    ClientError,
-    Felt,
+    ClientError, Felt,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
 use miden_protocol::account::AccountIdVersion;
@@ -169,7 +165,8 @@ async fn main() -> Result<(), ClientError> {
 
         if notes.len() == 5 {
             println!("Found 5 consumable notes for Alice. Consuming them now...");
-            let transaction_request = TransactionRequestBuilder::new().build_consume_notes(notes)?;
+            let transaction_request =
+                TransactionRequestBuilder::new().build_consume_notes(notes)?;
 
             let tx_id = client
                 .submit_new_transaction(alice_account.id(), transaction_request)

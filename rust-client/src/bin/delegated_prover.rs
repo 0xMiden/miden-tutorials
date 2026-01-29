@@ -9,10 +9,7 @@ use miden_client::{
     rpc::{Endpoint, GrpcClient},
     store::AccountRecordData,
     transaction::{
-        LocalTransactionProver,
-        ProvingOptions,
-        TransactionProver,
-        TransactionRequestBuilder,
+        LocalTransactionProver, ProvingOptions, TransactionProver, TransactionRequestBuilder,
     },
     ClientError,
 };

@@ -5,9 +5,7 @@ use tokio::time::{sleep, Duration, Instant};
 use miden_client::{
     account::{
         component::{BasicFungibleFaucet, BasicWallet},
-        AccountBuilder,
-        AccountStorageMode,
-        AccountType,
+        AccountBuilder, AccountStorageMode, AccountType,
     },
     address::NetworkId,
     asset::{FungibleAsset, TokenSymbol},
@@ -126,7 +124,7 @@ async fn main() -> Result<(), ClientError> {
     println!("\n[STEP 2] Creating new accounts");
 
     let mut accounts = vec![];
-    let number_of_accounts = 2;
+    let number_of_accounts = 5;
 
     for i in 0..number_of_accounts {
         let mut init_seed = [0_u8; 32];
@@ -290,7 +288,10 @@ async fn main() -> Result<(), ClientError> {
                 panic!("account is missing full account data")
             }
         };
-        let balance = new_account.vault().get_balance(faucet_account.id()).unwrap();
+        let balance = new_account
+            .vault()
+            .get_balance(faucet_account.id())
+            .unwrap();
         println!(
             "Account: {} balance: {}",
             account.id().to_bech32(NetworkId::Testnet),
