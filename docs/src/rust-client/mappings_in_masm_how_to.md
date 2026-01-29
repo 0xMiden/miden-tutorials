@@ -40,31 +40,34 @@ At a high level, this example involves:
 ### Example of smart contract that uses a mapping
 
 ```masm
-use.miden::active_account
-use.miden::native_account
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::core::word
+use miden::core::sys
+
+const MAP_SLOT = word("miden::tutorials::mapping::map")
 
 # Inputs: [KEY, VALUE]
 # Outputs: []
-export.write_to_map
-    # The storage map is in storage slot 1
-    push.1
-    # => [index, KEY, VALUE]
+pub proc write_to_map
+    # The storage map is in the mapping slot.
+    push.MAP_SLOT[0..2]
+    # => [slot_id_prefix, slot_id_suffix, KEY, VALUE]
 
     # Setting the key value pair in the map
     exec.native_account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # => [OLD_VALUE]
 
-    dropw dropw dropw dropw
+    dropw
     # => []
 end
 
 # Inputs: [KEY]
 # Outputs: [VALUE]
-export.get_value_in_map
-    # The storage map is in storage slot 1
-    push.1
-    # => [index]
+pub proc get_value_in_map
+    # The storage map is in the mapping slot.
+    push.MAP_SLOT[0..2]
+    # => [slot_id_prefix, slot_id_suffix, KEY]
 
     exec.active_account::get_map_item
     # => [VALUE]
@@ -72,9 +75,9 @@ end
 
 # Inputs: []
 # Outputs: [CURRENT_ROOT]
-export.get_current_map_root
-    # Getting the current root from slot 1
-    push.1 exec.active_account::get_item
+pub proc get_current_map_root
+    # Getting the current root from the mapping slot.
+    push.MAP_SLOT[0..2] exec.active_account::get_item
     # => [CURRENT_ROOT]
 
     exec.sys::truncate_stack
@@ -85,20 +88,20 @@ end
 ### Explanation of the assembly code
 
 - **write_to_map:**  
-  The procedure takes a key and a value as inputs. It pushes the storage index (`0` for our mapping) onto the stack, then calls the `set_map_item` procedure from the account library to update the mapping. After updating the map, it drops any unused outputs and increments the nonce.
+  The procedure takes a key and a value as inputs. It pushes the slot ID prefix and suffix for the mapping slot onto the stack, then calls the `set_map_item` procedure from the account library to update the mapping. After updating the map, it drops the old value.
 - **get_value_in_map:**  
-  This procedure takes a key as input and retrieves the corresponding value from the mapping by calling `get_map_item` after pushing the mapping index.
+  This procedure takes a key as input and retrieves the corresponding value from the mapping by calling `get_map_item` after pushing the mapping slot ID.
 
 - **get_current_map_root:**  
-  This procedure retrieves the current root of the mapping (stored at index `0`) by calling `get_item` and then truncating the stack to leave only the mapping root.
+  This procedure retrieves the current root of the mapping by calling `get_item` with the mapping slot ID and then truncating the stack to leave only the mapping root.
 
 **Security Note**: The procedure `write_to_map` calls the account procedure `incr_nonce`. This allows any external account to be able to write to the storage map of the account. Smart contract developers should know that procedures that call the `account::incr_nonce` procedure allow anyone to call the procedure and modify the state of the account.
 
 ### Transaction script that calls the smart contract
 
 ```masm
-use.miden_by_example::mapping_example_contract
-use.std::sys
+use miden_by_example::mapping_example_contract
+use miden::core::sys
 
 begin
     push.1.2.3.4
@@ -141,24 +144,33 @@ The script calls the `write_to_map` procedure in the account which writes the ke
 
 Below is the Rust code that deploys the smart contract, creates the transaction script, and submits a transaction to update the mapping in the account:
 
-```rust
-use miden_lib::account::auth::NoAuth;
-use miden_lib::transaction::TransactionKernel;
-use rand::{rngs::StdRng, RngCore};
+```rust no_run
+use miden_client::auth::NoAuth;
+use miden_client::transaction::TransactionKernel;
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{
+        Assembler,
+        CodeBuilder,
+        DefaultSourceManager,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
+    store::AccountRecordData,
     transaction::TransactionRequestBuilder,
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
+use miden_client::{
     account::{
         AccountBuilder, AccountComponent, AccountStorageMode, AccountType, StorageMap, StorageSlot,
+        StorageSlotName,
     },
     Felt, Word,
 };
@@ -167,12 +179,12 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_client::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -187,7 +199,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -212,24 +224,28 @@ async fn main() -> Result<(), ClientError> {
     let account_code = fs::read_to_string(file_path).unwrap();
 
     // Prepare assembler (debug mode = true)
-    let assembler: Assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler: Assembler = TransactionKernel::assembler();
 
     // Using an empty storage value in slot 0 since this is usually reserved
     // for the account pub_key and metadata
-    let empty_storage_slot = StorageSlot::Value(Word::default());
+    let empty_slot_name =
+        StorageSlotName::new("miden::tutorials::mapping::value").expect("valid slot name");
+    let empty_storage_slot = StorageSlot::with_value(empty_slot_name.clone(), Word::default());
 
     // initialize storage map
     let storage_map = StorageMap::new();
-    let storage_slot_map = StorageSlot::Map(storage_map.clone());
+    let map_slot_name =
+        StorageSlotName::new("miden::tutorials::mapping::map").expect("valid slot name");
+    let storage_slot_map = StorageSlot::with_map(map_slot_name.clone(), storage_map.clone());
 
     // Compile the account code into `AccountComponent` with one storage slot
-    let mapping_contract_component = AccountComponent::compile(
-        &account_code,
-        assembler.clone(),
-        vec![empty_storage_slot, storage_slot_map],
-    )
-    .unwrap()
-    .with_supports_all_types();
+    let component_code = CodeBuilder::new()
+        .compile_component_code("miden_by_example::mapping_example_contract", &account_code)
+        .unwrap();
+    let mapping_contract_component =
+        AccountComponent::new(component_code, vec![empty_storage_slot, storage_slot_map])
+            .unwrap()
+            .with_supports_all_types();
 
     // Init seed for the counter contract
     let mut init_seed = [0_u8; 32];
@@ -267,7 +283,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Compile the transaction script with the library.
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(&script_code)
@@ -292,21 +308,21 @@ async fn main() -> Result<(), ClientError> {
 
     client.sync_state().await.unwrap();
 
-    let account = client
+    let account_record = client
         .get_account(mapping_example_contract.id())
         .await
-        .unwrap();
-    let index = 1;
+        .unwrap()
+        .expect("mapping contract not found");
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("mapping contract is missing full account data"),
+    };
     let key = [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into();
     println!(
-        "Mapping state\n Index: {:?}\n Key: {:?}\n Value: {:?}",
-        index,
+        "Mapping state\n Slot: {:?}\n Key: {:?}\n Value: {:?}",
+        map_slot_name,
         key,
-        account
-            .unwrap()
-            .account()
-            .storage()
-            .get_map_item(index, key)
+        account.storage().get_map_item(&map_slot_name, key)
     );
 
     Ok(())

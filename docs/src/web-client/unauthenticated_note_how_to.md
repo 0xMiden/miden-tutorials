@@ -42,7 +42,8 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 2. **WebClient Initialization:**
    - Set up the WebClient to connect with the Miden testnet.
-   - Configure a delegated prover for improved performance.
+
+- Configure a local prover for improved performance.
 
 3. **Account Creation:**
    - Create wallet accounts for Alice and multiple transfer recipients.
@@ -75,7 +76,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   yarn add @demox-labs/miden-sdk@0.12.3
+   yarn add @miden-sdk/miden-sdk@0.13.0
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -142,7 +143,7 @@ Copy and paste the following code into the `lib/unauthenticatedNoteTransfer.ts` 
 
 ```ts
 /**
- * Demonstrates unauthenticated note transfer chain using a delegated prover on the Miden Network
+ * Demonstrates unauthenticated note transfer chain using a local prover on the Miden Network
  * Creates a chain of P2ID (Pay to ID) notes: Alice → wallet 1 → wallet 2 → wallet 3 → wallet 4
  *
  * @throws {Error} If the function cannot be executed in a browser environment
@@ -154,23 +155,22 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
   const {
     WebClient,
     AccountStorageMode,
+    AuthScheme,
     NoteType,
     TransactionProver,
     Note,
     NoteAssets,
     OutputNoteArray,
-    Felt,
     FungibleAsset,
     NoteAndArgsArray,
     NoteAndArgs,
+    NoteAttachment,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import('@demox-labs/miden-sdk');
+  } = await import('@miden-sdk/miden-sdk');
 
   const client = await WebClient.createClient('https://rpc.testnet.miden.io');
-  const prover = TransactionProver.newRemoteProver(
-    'https://tx-prover.testnet.miden.io',
-  );
+  const prover = TransactionProver.newLocalProver();
 
   console.log('Latest block:', (await client.syncState()).blockNum());
 
@@ -178,12 +178,20 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
   console.log('Creating accounts');
 
   console.log('Creating account for Alice…');
-  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+  const alice = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+    AuthScheme.AuthRpoFalcon512,
+  );
   console.log('Alice accout ID:', alice.id().toString());
 
   const wallets = [];
   for (let i = 0; i < 5; i++) {
-    const wallet = await client.newWallet(AccountStorageMode.public(), true, 0);
+    const wallet = await client.newWallet(
+      AccountStorageMode.public(),
+      true,
+      AuthScheme.AuthRpoFalcon512,
+    );
     wallets.push(wallet);
     console.log('wallet ', i.toString(), wallet.id().toString());
   }
@@ -195,7 +203,7 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
     'MID',
     8,
     BigInt(1_000_000),
-    0,
+    AuthScheme.AuthRpoFalcon512,
   );
   console.log('Faucet ID:', faucet.id().toString());
 
@@ -223,14 +231,14 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
   await client.syncState();
 
   // ── Consume the freshly minted note ──────────────────────────────────────────────
-  const noteIds = (await client.getConsumableNotes(alice.id())).map((rec) =>
-    rec.inputNoteRecord().id().toString(),
+  const noteList = (await client.getConsumableNotes(alice.id())).map((rec) =>
+    rec.inputNoteRecord().toNote(),
   );
 
   {
     const txResult = await client.executeTransaction(
       alice.id(),
-      client.newConsumeTransactionRequest(noteIds),
+      client.newConsumeTransactionRequest(noteList),
     );
     const proven = await client.proveTransaction(txResult, prover);
     const submissionHeight = await client.submitProvenTransaction(
@@ -259,7 +267,7 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
       receiver.id(),
       assets,
       NoteType.Public,
-      new Felt(BigInt(0)), // aux value
+      new NoteAttachment(),
     );
 
     const outputP2ID = OutputNote.full(p2idNote);
@@ -285,7 +293,7 @@ export async function unauthenticatedNoteTransfer(): Promise<void> {
     const noteIdAndArgs = new NoteAndArgs(p2idNote, null);
 
     const consumeRequest = new TransactionRequestBuilder()
-      .withUnauthenticatedInputNotes(new NoteAndArgsArray([noteIdAndArgs]))
+      .withInputNotes(new NoteAndArgsArray([noteIdAndArgs]))
       .build();
 
     {

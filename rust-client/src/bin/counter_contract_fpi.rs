@@ -1,37 +1,36 @@
-use miden_crypto::Felt;
-use miden_lib::account::auth::NoAuth;
-use miden_lib::transaction::TransactionKernel;
-use rand::{rngs::StdRng, RngCore};
+use rand::RngCore;
 use std::{fs, path::Path, sync::Arc, time::Duration};
 use tokio::time::sleep;
 
 use miden_client::{
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    account::{
+        AccountBuilder, AccountComponent, AccountId, AccountStorageMode, AccountType, StorageSlot,
+        StorageSlotName,
+    },
+    assembly::{
+        Assembler, CodeBuilder, DefaultSourceManager, Library, Module, ModuleKind,
+        Path as AssemblyPath,
+    },
+    auth::NoAuth,
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{domain::account::AccountStorageRequirements, Endpoint, GrpcClient},
-    transaction::{ForeignAccount, TransactionRequestBuilder},
-    ClientError,
+    store::AccountRecordData,
+    transaction::{ForeignAccount, TransactionKernel, TransactionRequestBuilder},
+    ClientError, Felt, Word,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{
-        AccountBuilder, AccountComponent, AccountId, AccountStorageMode, AccountType, StorageSlot,
-    },
-    assembly::mast::MastNodeExt,
-    Word,
-};
 
 fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -40,13 +39,13 @@ fn create_library(
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
     // Initialize client
-    let endpoint = Endpoint::testnet();
+    let endpoint = Endpoint::devnet();
     let timeout_ms = 10_000;
     let rpc_client = Arc::new(GrpcClient::new(&endpoint, timeout_ms));
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -71,13 +70,23 @@ async fn main() -> Result<(), ClientError> {
     let count_reader_code = fs::read_to_string(count_reader_path).unwrap();
 
     // Prepare assembler (debug mode = true)
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler = TransactionKernel::assembler();
 
     // Compile the account code into `AccountComponent` with one storage slot
-    let count_reader_component = AccountComponent::compile(
-        &count_reader_code,
-        TransactionKernel::assembler(),
-        vec![StorageSlot::Value(Word::default())],
+    let count_reader_slot_name =
+        StorageSlotName::new("miden::tutorials::count_reader").expect("valid slot name");
+    let count_reader_component_code = CodeBuilder::new()
+        .compile_component_code(
+            "external_contract::count_reader_contract",
+            &count_reader_code,
+        )
+        .unwrap();
+    let count_reader_component = AccountComponent::new(
+        count_reader_component_code,
+        vec![StorageSlot::with_value(
+            count_reader_slot_name.clone(),
+            Word::default(),
+        )],
     )
     .unwrap()
     .with_supports_all_types();
@@ -113,7 +122,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Define the Counter Contract account id from counter contract deploy
     let (_, counter_contract_id) =
-        AccountId::from_bech32("mtst1arjemrxne8lj5qz4mg9c8mtyxg954483").unwrap();
+        AccountId::from_bech32("mtst1apfclszryn8a5qqae6sa6hscfgn4mnqp").unwrap();
 
     println!("counter contract id: {:?}", counter_contract_id);
 
@@ -122,19 +131,19 @@ async fn main() -> Result<(), ClientError> {
         .await
         .unwrap();
 
-    let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
-
-    let counter_contract = if let Some(account_record) = counter_contract_details {
-        // Clone the account to get an owned instance
-        let account = account_record.account().clone();
-        println!(
-            "Account details: {:?}",
-            account.storage().slots().first().unwrap()
-        );
-        account // Now returns an owned account
-    } else {
-        panic!("Counter contract not found!");
+    let counter_contract_details = client
+        .get_account(counter_contract_id)
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let counter_contract = match counter_contract_details.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
     };
+    println!(
+        "Account details: {:?}",
+        counter_contract.storage().slots().first().unwrap()
+    );
 
     // -------------------------------------------------------------------------
     // STEP 3: Call the Counter Contract via Foreign Procedure Invocation (FPI)
@@ -144,31 +153,20 @@ async fn main() -> Result<(), ClientError> {
     let counter_contract_path = Path::new("../masm/accounts/counter.masm");
     let counter_contract_code = fs::read_to_string(counter_contract_path).unwrap();
 
-    let counter_contract_component = AccountComponent::compile(
-        &counter_contract_code,
-        TransactionKernel::assembler(),
-        vec![],
-    )
-    .unwrap()
-    .with_supports_all_types();
-
-    // Getting the hash of the `get_count` procedure
-    let get_proc_export = counter_contract_component
-        .library()
-        .exports()
-        .find(|export| export.name.name.as_str() == "get_count")
+    let counter_contract_component_code = CodeBuilder::new()
+        .compile_component_code(
+            "external_contract::counter_contract",
+            &counter_contract_code,
+        )
         .unwrap();
-
-    let get_proc_mast_id = counter_contract_component
-        .library()
-        .get_export_node_id(&get_proc_export.name);
-
-    let get_count_hash = counter_contract_component
-        .library()
-        .mast_forest()
-        .get_node_by_id(get_proc_mast_id)
+    let counter_contract_component = AccountComponent::new(counter_contract_component_code, vec![])
         .unwrap()
-        .digest()
+        .with_supports_all_types();
+
+    let library = counter_contract_component.component_code().as_library();
+    let get_count_hash = library
+        .get_procedure_root_by_path("external_contract::counter_contract::get_count")
+        .expect("get_count export not found")
         .as_elements()
         .iter()
         .map(|f: &Felt| format!("{}", f.as_int()))
@@ -176,8 +174,8 @@ async fn main() -> Result<(), ClientError> {
         .join(".");
 
     println!("get count hash: {:?}", get_count_hash);
-    println!("counter id prefix: {:?}", counter_contract.id().prefix());
-    println!("suffix: {:?}", counter_contract.id().suffix());
+    println!("counter id prefix: {:?}", counter_contract_id.prefix());
+    println!("suffix: {:?}", counter_contract_id.suffix());
 
     // Build the script that calls the count_copy_contract
     let script_path = Path::new("../masm/scripts/reader_script.masm");
@@ -186,11 +184,11 @@ async fn main() -> Result<(), ClientError> {
         .replace("{get_count_proc_hash}", &get_count_hash)
         .replace(
             "{account_id_suffix}",
-            &counter_contract.id().suffix().to_string(),
+            &counter_contract_id.suffix().to_string(),
         )
         .replace(
             "{account_id_prefix}",
-            &counter_contract.id().prefix().to_string(),
+            &counter_contract_id.prefix().to_string(),
         );
 
     let account_component_lib = create_library(
@@ -201,7 +199,7 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(&script_code)
@@ -235,19 +233,36 @@ async fn main() -> Result<(), ClientError> {
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented counter
-    let account_1 = client.get_account(counter_contract.id()).await.unwrap();
+    let counter_slot_name =
+        StorageSlotName::new("miden::tutorials::counter").expect("valid slot name");
+    let account_1 = client
+        .get_account(counter_contract_id)
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let account_1 = match account_1.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
+    };
     println!(
         "counter contract storage: {:?}",
-        account_1.unwrap().account().storage().get_item(0)
+        account_1.storage().get_item(&counter_slot_name)
     );
 
-    let account_2 = client
+    let account_2_record = client
         .get_account(count_reader_contract.id())
         .await
-        .unwrap();
+        .unwrap()
+        .expect("count reader contract not found");
+    let account_2 = match account_2_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => {
+            panic!("count reader contract is missing full account data")
+        }
+    };
     println!(
         "count reader contract storage: {:?}",
-        account_2.unwrap().account().storage().get_item(0)
+        account_2.storage().get_item(&count_reader_slot_name)
     );
 
     Ok(())

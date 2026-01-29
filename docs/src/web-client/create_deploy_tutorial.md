@@ -53,7 +53,7 @@ It is useful to think of notes on Miden as "cryptographic cashier's checks" that
 
 3. Install the Miden WebClient SDK:
    ```bash
-   yarn add @demox-labs/miden-sdk@0.12.3
+   yarn add @miden-sdk/miden-sdk@0.13.0
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -90,7 +90,7 @@ export async function createMintConsume(): Promise<void> {
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
   const { WebClient, AccountStorageMode, AccountId, NoteType } =
-    await import('@demox-labs/miden-sdk');
+    await import('@miden-sdk/miden-sdk');
 
   // Connect to Miden testnet RPC endpoint
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
@@ -165,8 +165,8 @@ export async function createMintConsume(): Promise<void> {
     return;
   }
 
-  const { WebClient, AccountStorageMode } = await import(
-    "@demox-labs/miden-sdk"
+  const { WebClient, AccountStorageMode, AuthScheme } = await import(
+    "@miden-sdk/miden-sdk"
   );
 
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
@@ -181,7 +181,7 @@ export async function createMintConsume(): Promise<void> {
   const alice = await client.newWallet(
     AccountStorageMode.public(),  // Public: account state is visible on-chain
     true,                         // Mutable: account code can be upgraded later
-    0                             // Auth Scheme: 0 for RPO Falcon 512, 1 for ECDSA 256 Keccak
+    AuthScheme.AuthRpoFalcon512   // Auth Scheme: RPO Falcon 512
   );
   console.log('Alice ID:', alice.id().toString());
 }
@@ -205,7 +205,7 @@ const faucetAccount = await client.newFaucet(
   "MID",                        // Token symbol (like ETH, BTC, etc.)
   8,                            // Decimals (8 means 1 MID = 100,000,000 base units)
   BigInt(1_000_000),            // Max supply: total tokens that can ever be minted
-  0                             // Auth Scheme: 0 for RPO Falcon 512, 1 for ECDSA 256 Keccak
+  AuthScheme.AuthRpoFalcon512   // Auth Scheme: RPO Falcon 512
 );
 console.log('Faucet account ID:', faucetAccount.id().toString());
 
@@ -243,8 +243,8 @@ export async function createMintConsume(): Promise<void> {
   }
 
   // dynamic import → only in the browser, so WASM is loaded client‑side
-  const { WebClient, AccountStorageMode, NoteType, Address } =
-    await import('@demox-labs/miden-sdk');
+  const { WebClient, AccountStorageMode, AuthScheme, NoteType, Address } =
+    await import('@miden-sdk/miden-sdk');
 
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
@@ -255,7 +255,11 @@ export async function createMintConsume(): Promise<void> {
 
   // 2. Create Alice's account
   console.log('Creating account for Alice…');
-  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+  const alice = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+    AuthScheme.AuthRpoFalcon512,
+  );
   console.log('Alice ID:', alice.id().toString());
 
   // 3. Deploy a fungible faucet
@@ -266,7 +270,7 @@ export async function createMintConsume(): Promise<void> {
     'MID',
     8,
     BigInt(1_000_000),
-    0,
+    AuthScheme.AuthRpoFalcon512,
   );
   console.log('Faucet ID:', faucet.id().toString());
 

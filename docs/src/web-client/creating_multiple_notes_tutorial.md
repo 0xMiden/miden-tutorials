@@ -17,7 +17,7 @@ The entire flow is wrapped in a helper called `multiSendWithDelegatedProver()` t
 
 ## What we’ll cover
 
-1. Setting‑up the WebClient and initializing a remote prover
+1. Setting‑up the WebClient and initializing a local prover
 2. Building three P2ID notes worth 100 `MID` each
 3. Submitting the transaction _using delegated proving_
 
@@ -37,6 +37,9 @@ _How does it work?_ When a user choses to use delegated proving, they send off a
 
 Anyone can run their own delegated prover server. If you are building a product on Miden, it may make sense to run your own delegated prover server for your users. To run your own delegated proving server, follow the instructions here: https://crates.io/crates/miden-proving-service
 
+To keep this tutorial runnable without external services, the code below uses a local prover. You
+can switch to delegated proving later by swapping in `TransactionProver.newRemoteProver(...)`.
+
 ## Step 1: Initialize your Next.js project
 
 1. Create a new Next.js app with TypeScript:
@@ -55,7 +58,7 @@ Anyone can run their own delegated prover server. If you are building a product 
 
 3. Install the Miden WebClient SDK:
    ```bash
-   yarn add @demox-labs/miden-sdk@0.12.3
+   yarn add @miden-sdk/miden-sdk@0.13.0
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -111,7 +114,7 @@ export default function Home() {
 
 ## Step 3 — Initalize the WebClient
 
-Create the file `lib/multiSendWithDelegatedProver.ts` and add the following code. This snippet implements the function `multiSendWithDelegatedProver`, and initializes the WebClient along with the delegated prover endpoint.
+Create the file `lib/multiSendWithDelegatedProver.ts` and add the following code. This snippet implements the function `multiSendWithDelegatedProver`, and initializes the WebClient along with a local prover.
 
 ```
 mkdir -p lib
@@ -126,22 +129,21 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const {
     WebClient,
     AccountStorageMode,
-    AccountId,
+    AuthScheme,
+    Address,
     NoteType,
     TransactionProver,
     Note,
     NoteAssets,
     OutputNoteArray,
-    Felt,
+    NoteAttachment,
     FungibleAsset,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import('@demox-labs/miden-sdk');
+  } = await import('@miden-sdk/miden-sdk');
 
   const client = await WebClient.createClient('https://rpc.testnet.miden.io');
-  const prover = TransactionProver.newRemoteProver(
-    'https://tx-prover.testnet.miden.io',
-  );
+  const prover = TransactionProver.newLocalProver();
 
   console.log('Latest block:', (await client.syncState()).blockNum());
 }
@@ -154,7 +156,11 @@ Add the code snippet below to the `multiSendWithDelegatedProver` function. This 
 ```ts
 // ── Creating new account ──────────────────────────────────────────────────────
 console.log('Creating account for Alice…');
-const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+const alice = await client.newWallet(
+  AccountStorageMode.public(),
+  true,
+  AuthScheme.AuthRpoFalcon512,
+);
 console.log('Alice accout ID:', alice.id().toString());
 
 // ── Creating new faucet ──────────────────────────────────────────────────────
@@ -164,7 +170,7 @@ const faucet = await client.newFaucet(
   'MID',
   8,
   BigInt(1_000_000),
-  0,
+  AuthScheme.AuthRpoFalcon512,
 );
 console.log('Faucet ID:', faucet.id().toString());
 
@@ -192,14 +198,14 @@ console.log('Faucet ID:', faucet.id().toString());
 }
 
 // ── consume the freshly minted notes ──────────────────────────────────────────────
-const noteIds = (await client.getConsumableNotes(alice.id())).map((rec) =>
-  rec.inputNoteRecord().id().toString(),
+const noteList = (await client.getConsumableNotes(alice.id())).map((rec) =>
+  rec.inputNoteRecord().toNote(),
 );
 
 {
   const txResult = await client.executeTransaction(
     alice.id(),
-    client.newConsumeTransactionRequest(noteIds),
+    client.newConsumeTransactionRequest(noteList),
   );
   const proven = await client.proveTransaction(txResult, prover);
   await client.syncState();
@@ -218,21 +224,21 @@ Add the following code to the `multiSendWithDelegatedProver` function. This code
 ```ts
 // ── build 3 P2ID notes (100 MID each) ─────────────────────────────────────────────
 const recipientAddresses = [
-  '0xbf1db1694c83841000008cefd4fce0',
-  '0xee1a75244282c32000010a29bed5f4',
-  '0x67dc56bd0cbe629000006f36d81029',
+  'mtst1aqezqc90x7dkzypr9m5fmlpp85w6cl04',
+  'mtst1apjg2ul76wrkxyr5qlcnczaskypa4ljn',
+  'mtst1arpee6y9cm8t7ypn33pc8fzj6gkzz7kd',
 ];
 
 const assets = new NoteAssets([new FungibleAsset(faucet.id(), BigInt(100))]);
 
 const p2idNotes = recipientAddresses.map((addr) => {
-  const receiverAccountId = AccountId.fromHex(addr);
+  const receiverAccountId = Address.fromBech32(addr).accountId();
   const note = Note.createP2IDNote(
     alice.id(),
     receiverAccountId,
     assets,
     NoteType.Public,
-    new Felt(BigInt(0)),
+    new NoteAttachment(),
   );
 
   return OutputNote.full(note);
@@ -255,7 +261,7 @@ Your `lib/multiSendWithDelegatedProver.ts` file sould now look like this:
 
 ```ts
 /**
- * Demonstrates multi-send functionality using a delegated prover on the Miden Network
+ * Demonstrates multi-send functionality using a local prover on the Miden Network
  * Creates multiple P2ID (Pay to ID) notes for different recipients
  *
  * @throws {Error} If the function cannot be executed in a browser environment
@@ -267,29 +273,31 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   const {
     WebClient,
     AccountStorageMode,
+    AuthScheme,
     Address,
     NoteType,
     TransactionProver,
-    NetworkId,
     Note,
     NoteAssets,
     OutputNoteArray,
-    Felt,
     FungibleAsset,
+    NoteAttachment,
     TransactionRequestBuilder,
     OutputNote,
-  } = await import('@demox-labs/miden-sdk');
+  } = await import('@miden-sdk/miden-sdk');
 
   const client = await WebClient.createClient('https://rpc.testnet.miden.io');
-  const prover = TransactionProver.newRemoteProver(
-    'https://tx-prover.testnet.miden.io',
-  );
+  const prover = TransactionProver.newLocalProver();
 
   console.log('Latest block:', (await client.syncState()).blockNum());
 
   // ── Creating new account ──────────────────────────────────────────────────────
   console.log('Creating account for Alice…');
-  const alice = await client.newWallet(AccountStorageMode.public(), true, 0);
+  const alice = await client.newWallet(
+    AccountStorageMode.public(),
+    true,
+    AuthScheme.AuthRpoFalcon512,
+  );
   console.log('Alice accout ID:', alice.id().toString());
 
   // ── Creating new faucet ──────────────────────────────────────────────────────
@@ -299,7 +307,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
     'MID',
     8,
     BigInt(1_000_000),
-    0,
+    AuthScheme.AuthRpoFalcon512,
   );
   console.log('Faucet ID:', faucet.id().toString());
 
@@ -327,14 +335,14 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
   }
 
   // ── consume the freshly minted notes ──────────────────────────────────────────────
-  const noteIds = (await client.getConsumableNotes(alice.id())).map((rec) =>
-    rec.inputNoteRecord().id().toString(),
+  const noteList = (await client.getConsumableNotes(alice.id())).map((rec) =>
+    rec.inputNoteRecord().toNote(),
   );
 
   {
     const txResult = await client.executeTransaction(
       alice.id(),
-      client.newConsumeTransactionRequest(noteIds),
+      client.newConsumeTransactionRequest(noteList),
     );
     const proven = await client.proveTransaction(txResult, prover);
     await client.syncState();
@@ -361,7 +369,7 @@ export async function multiSendWithDelegatedProver(): Promise<void> {
       receiverAccountId,
       assets,
       NoteType.Public,
-      new Felt(BigInt(0)),
+      new NoteAttachment(),
     );
 
     return OutputNote.full(note);

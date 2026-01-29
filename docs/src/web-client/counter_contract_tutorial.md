@@ -42,7 +42,7 @@ This tutorial assumes you have a basic understanding of Miden assembly. To quick
 
 3. Install the Miden WebClient SDK:
    ```bash
-   yarn add @demox-labs/miden-sdk@0.12.3
+   yarn add @miden-sdk/miden-sdk@0.13.0
    ```
 
 **NOTE!**: Be sure to add the `--webpack` command to your `package.json` when running the `dev script`. The dev script should look like this:
@@ -122,12 +122,11 @@ export async function incrementCounterContract(): Promise<void> {
     AccountComponent,
     AccountStorageMode,
     AccountType,
-    SecretKey,
-    StorageMap,
+    AuthSecretKey,
     StorageSlot,
     TransactionRequestBuilder,
     WebClient,
-  } = await import('@demox-labs/miden-sdk');
+  } = await import('@miden-sdk/miden-sdk');
 
   const nodeEndpoint = 'https://rpc.testnet.miden.io';
   const client = await WebClient.createClient(nodeEndpoint);
@@ -135,47 +134,36 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Counter contract code in Miden Assembly
   const counterContractCode = `
-  use.miden::active_account
-  use.miden::native_account
-  use.std::sys
+  use miden::protocol::active_account
+  use miden::protocol::native_account
+  use miden::core::word
+  use miden::core::sys
 
-  const.COUNTER_SLOT=0
+  const COUNTER_SLOT = word("miden::tutorials::counter")
 
   #! Inputs:  []
   #! Outputs: [count]
-  export.get_count
-      push.COUNTER_SLOT
-      # => [index]
-
-      exec.active_account::get_item
+  pub proc get_count
+      push.COUNTER_SLOT[0..2] exec.active_account::get_item
       # => [count]
 
-      # clean up stack
-      movdn.4 dropw
+      exec.sys::truncate_stack
       # => [count]
   end
 
   #! Inputs:  []
   #! Outputs: []
-  export.increment_count
-      push.COUNTER_SLOT
-      # => [index]
-
-      exec.active_account::get_item
+  pub proc increment_count
+      push.COUNTER_SLOT[0..2] exec.active_account::get_item
       # => [count]
 
       add.1
       # => [count+1]
 
-      debug.stack
+      push.COUNTER_SLOT[0..2] exec.native_account::set_item
+      # => []
 
-      push.COUNTER_SLOT
-      # [index, count+1]
-
-      exec.native_account::set_item
-      # => [OLD_VALUE]
-
-      dropw
+      exec.sys::truncate_stack
       # => []
   end
 `;
@@ -198,30 +186,35 @@ export async function incrementCounterContract(): Promise<void> {
     }
   }
 
-  const builder = client.createScriptBuilder();
-  const storageMap = new StorageMap();
-  const storageSlotMap = StorageSlot.map(storageMap);
+  const builder = client.createCodeBuilder();
+  const counterSlotName = 'miden::tutorials::counter';
+  const counterStorageSlot = StorageSlot.emptyValue(counterSlotName);
 
-  const mappingAccountComponent = AccountComponent.compile(
-    counterContractCode,
-    builder,
-    [storageSlotMap],
+  const counterComponentCode =
+    builder.compileAccountComponentCode(counterContractCode);
+  const counterAccountComponent = AccountComponent.compile(
+    counterComponentCode,
+    [counterStorageSlot],
   ).withSupportsAllTypes();
 
   const walletSeed = new Uint8Array(32);
   crypto.getRandomValues(walletSeed);
 
-  const secretKey = SecretKey.rpoFalconWithRNG(walletSeed);
-  const authComponent = AccountComponent.createAuthComponent(secretKey);
+  const secretKey = AuthSecretKey.rpoFalconWithRNG(walletSeed);
+  const authComponent =
+    AccountComponent.createAuthComponentFromSecretKey(secretKey);
 
   const accountBuilderResult = new AccountBuilder(walletSeed)
     .accountType(AccountType.RegularAccountImmutableCode)
     .storageMode(AccountStorageMode.public())
     .withAuthComponent(authComponent)
-    .withComponent(mappingAccountComponent)
+    .withComponent(counterAccountComponent)
     .build();
 
-  await client.addAccountSecretKeyToWebStore(secretKey);
+  await client.addAccountSecretKeyToWebStore(
+    accountBuilderResult.account.id(),
+    secretKey,
+  );
   await client.newAccount(accountBuilderResult.account, false);
 
   await client.syncState();
@@ -235,7 +228,7 @@ export async function incrementCounterContract(): Promise<void> {
 
   // Building the transaction script which will call the counter contract
   const txScriptCode = `
-use.external_contract::counter_contract
+use external_contract::counter_contract
 begin
 call.counter_contract::increment_count
 end
@@ -260,7 +253,7 @@ end
 
   // Here we get the first Word from storage of the counter contract
   // A word is comprised of 4 Felts, 2**64 - 2**32 + 1
-  const count = counter?.storage().getItem(0);
+  const count = counter?.storage().getItem(counterSlotName);
 
   // Converting the Word represented as a hex to a single integer value
   const counterValue = Number(
@@ -290,64 +283,52 @@ incrementCounterContract.ts:153 Count:  3
 
 #### Here's a breakdown of what the `get_count` procedure does:
 
-1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
-2. Calls `account::get_item` with the index of `0`.
+1. Pushes the slot ID prefix and suffix for `miden::tutorials::counter` onto the stack.
+2. Calls `active_account::get_item` with the slot ID.
 3. Calls `sys::truncate_stack` to truncate the stack to size 16.
-4. The value returned from `account::get_item` is still on the stack and will be returned when this procedure is called.
+4. The value returned from `active_account::get_item` is still on the stack and will be returned when this procedure is called.
 
 #### Here's a breakdown of what the `increment_count` procedure does:
 
-1. Pushes `0` (COUNTER_SLOT) onto the stack, representing the index of the storage slot to read.
-2. Calls `account::get_item` with the index of `0`.
+1. Pushes the slot ID prefix and suffix for `miden::tutorials::counter` onto the stack.
+2. Calls `active_account::get_item` with the slot ID.
 3. Pushes `1` onto the stack.
-4. Adds `1` to the count value returned from `account::get_item`.
-5. _For demonstration purposes_, calls `debug.stack` to see the state of the stack
-6. Pushes `0` (COUNTER_SLOT) onto the stack, which is the index of the storage slot we want to write to.
-7. Calls `account::set_item` which saves the incremented count to storage at index `0`
-8. Calls `sys::truncate_stack` to truncate the stack to size 16.
+4. Adds `1` to the count value returned from `active_account::get_item`.
+5. Pushes the slot ID prefix and suffix again so we can write the updated count.
+6. Calls `native_account::set_item` which saves the incremented count to storage.
+7. Calls `sys::truncate_stack` to truncate the stack to size 16.
 
 ```masm
-use.miden::active_account
-use.miden::native_account
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::core::word
+use miden::core::sys
 
-const.COUNTER_SLOT=0
+const COUNTER_SLOT = word("miden::tutorials::counter")
 
 #! Inputs:  []
 #! Outputs: [count]
-export.get_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc get_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
-    # clean up stack
-    movdn.4 dropw
+    exec.sys::truncate_stack
     # => [count]
 end
 
 #! Inputs:  []
 #! Outputs: []
-export.increment_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc increment_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
     add.1
     # => [count+1]
 
-    debug.stack
+    push.COUNTER_SLOT[0..2] exec.native_account::set_item
+    # => []
 
-    push.COUNTER_SLOT
-    # [index, count+1]
-
-    exec.native_account::set_item
-    # => [OLD_VALUE]
-
-    dropw
+    exec.sys::truncate_stack
     # => []
 end
 ```
@@ -367,7 +348,7 @@ This `NoAuth` component allows any user to interact with the smart contract with
 This is the Miden assembly script that calls the `increment_count` procedure during the transaction.
 
 ```masm
-use.external_contract::counter_contract
+use external_contract::counter_contract
 
 begin
     call.counter_contract::increment_count

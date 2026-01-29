@@ -37,12 +37,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.12", features = ["testing", "tonic"] }
-miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
-miden-lib = { version = "0.12", default-features = false }
-miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.17.1", features = ["executable"] }
-miden-assembly = "0.18.3"
+miden-client = { version = "0.13.0", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.13.0", package = "miden-client-sqlite-store" }
+miden-protocol = { version = "0.13.0" }
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -73,47 +70,36 @@ masm/
 Inside of the `masm/accounts/` directory, create the `counter.masm` file:
 
 ```masm
-use.miden::active_account
-use.miden::native_account
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::core::word
+use miden::core::sys
 
-const.COUNTER_SLOT=0
+const COUNTER_SLOT = word("miden::tutorials::counter")
 
 #! Inputs:  []
 #! Outputs: [count]
-export.get_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc get_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
-    # clean up stack
-    movdn.4 dropw
+    exec.sys::truncate_stack
     # => [count]
 end
 
 #! Inputs:  []
 #! Outputs: []
-export.increment_count
-    push.COUNTER_SLOT
-    # => [index]
-
-    exec.active_account::get_item
+pub proc increment_count
+    push.COUNTER_SLOT[0..2] exec.active_account::get_item
     # => [count]
 
     add.1
     # => [count+1]
 
-    debug.stack
+    push.COUNTER_SLOT[0..2] exec.native_account::set_item
+    # => []
 
-    push.COUNTER_SLOT
-    # [index, count+1]
-
-    exec.native_account::set_item
-    # => [OLD_VALUE]
-
-    dropw
+    exec.sys::truncate_stack
     # => []
 end
 ```
@@ -121,7 +107,7 @@ end
 Inside of the `masm/scripts/` directory, create the `counter_script.masm` file:
 
 ```masm
-use.external_contract::counter_contract
+use external_contract::counter_contract
 
 begin
     call.counter_contract::increment_count
@@ -135,16 +121,22 @@ end
 Copy and paste the following code into your `src/main.rs` file:
 
 ```rust no_run
-use miden_lib::transaction::TransactionKernel;
-use rand::rngs::StdRng;
+use miden_client::transaction::TransactionKernel;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{
+        Assembler,
+        DefaultSourceManager,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
+    store::AccountRecordData,
     transaction::TransactionRequestBuilder,
     ClientError,
 };
@@ -154,12 +146,12 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_client::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -174,7 +166,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -216,19 +208,20 @@ client
     .await
     .unwrap();
 
-let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
+let counter_contract_details = client
+    .get_account(counter_contract_id)
+    .await
+    .unwrap()
+    .expect("counter contract not found");
 
-let counter_contract = if let Some(account_record) = counter_contract_details {
-    // Clone the account to get an owned instance
-    let account = account_record.account().clone();
-    println!(
-        "Account details: {:?}",
-        account.storage().slots().first().unwrap()
-    );
-    account // Now returns an owned account
-} else {
-    panic!("Counter contract not found!");
+let counter_contract = match counter_contract_details.account_data() {
+    AccountRecordData::Full(account) => account,
+    AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
 };
+println!(
+    "Account details: {:?}",
+    counter_contract.storage().slots().first().unwrap()
+);
 ```
 
 Run the following command to execute src/main.rs:
@@ -261,7 +254,7 @@ let script_code = fs::read_to_string(script_path).unwrap();
 let counter_path = Path::new("../masm/accounts/counter.masm");
 let counter_code = fs::read_to_string(counter_path).unwrap();
 
-let assembler = TransactionKernel::assembler().with_debug_mode(true);
+let assembler = TransactionKernel::assembler();
 let account_component_lib = create_library(
     assembler.clone(),
     "external_contract::counter_contract",
@@ -270,7 +263,7 @@ let account_component_lib = create_library(
 .unwrap();
 
 let tx_script = client
-    .script_builder()
+    .code_builder()
     .with_dynamically_linked_library(&account_component_lib)
     .unwrap()
     .compile_tx_script(&script_code)
@@ -296,10 +289,21 @@ println!(
 client.sync_state().await.unwrap();
 
 // Retrieve updated contract data to see the incremented counter
-let account = client.get_account(counter_contract.id()).await.unwrap();
+let account_record = client
+    .get_account(counter_contract.id())
+    .await
+    .unwrap()
+    .expect("counter contract not found");
+let account = match account_record.account_data() {
+    AccountRecordData::Full(account) => account,
+    AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
+};
+let counter_slot_name =
+    miden_client::account::StorageSlotName::new("miden::tutorials::counter")
+        .expect("valid slot name");
 println!(
     "counter contract storage: {:?}",
-    account.unwrap().account().storage().get_item(0)
+    account.storage().get_item(&counter_slot_name)
 );
 ```
 
@@ -307,17 +311,23 @@ println!(
 
 The final `src/main.rs` file should look like this:
 
-```rust
-use miden_lib::transaction::TransactionKernel;
-use rand::rngs::StdRng;
+```rust no_run
+use miden_client::transaction::TransactionKernel;
 use std::{fs, path::Path, sync::Arc};
 
 use miden_client::{
     account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{
+        Assembler,
+        DefaultSourceManager,
+        Module,
+        ModuleKind,
+        Path as AssemblyPath,
+    },
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
+    store::AccountRecordData,
     transaction::TransactionRequestBuilder,
     ClientError,
 };
@@ -327,12 +337,12 @@ fn create_library(
     assembler: Assembler,
     library_path: &str,
     source_code: &str,
-) -> Result<miden_objects::assembly::Library, Box<dyn std::error::Error>> {
+) -> Result<miden_client::assembly::Library, Box<dyn std::error::Error>> {
     let source_manager = Arc::new(DefaultSourceManager::default());
     let module = Module::parser(ModuleKind::Library).parse_str(
-        LibraryPath::new(library_path)?,
+        AssemblyPath::new(library_path),
         source_code,
-        &source_manager,
+        source_manager.clone(),
     )?;
     let library = assembler.clone().assemble_library([module])?;
     Ok(library)
@@ -347,7 +357,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -376,19 +386,20 @@ async fn main() -> Result<(), ClientError> {
         .await
         .unwrap();
 
-    let counter_contract_details = client.get_account(counter_contract_id).await.unwrap();
+    let counter_contract_details = client
+        .get_account(counter_contract_id)
+        .await
+        .unwrap()
+        .expect("counter contract not found");
 
-    let counter_contract = if let Some(account_record) = counter_contract_details {
-        // Clone the account to get an owned instance
-        let account = account_record.account().clone();
-        println!(
-            "Account details: {:?}",
-            account.storage().slots().first().unwrap()
-        );
-        account // Now returns an owned account
-    } else {
-        panic!("Counter contract not found!");
+    let counter_contract = match counter_contract_details.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
     };
+    println!(
+        "Account details: {:?}",
+        counter_contract.storage().slots().first().unwrap()
+    );
 
     // -------------------------------------------------------------------------
     // STEP 2: Call the Counter Contract with a script
@@ -402,7 +413,7 @@ async fn main() -> Result<(), ClientError> {
     let counter_path = Path::new("../masm/accounts/counter.masm");
     let counter_code = fs::read_to_string(counter_path).unwrap();
 
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let assembler = TransactionKernel::assembler();
     let account_component_lib = create_library(
         assembler.clone(),
         "external_contract::counter_contract",
@@ -411,7 +422,7 @@ async fn main() -> Result<(), ClientError> {
     .unwrap();
 
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .with_dynamically_linked_library(&account_component_lib)
         .unwrap()
         .compile_tx_script(&script_code)
@@ -437,10 +448,21 @@ async fn main() -> Result<(), ClientError> {
     client.sync_state().await.unwrap();
 
     // Retrieve updated contract data to see the incremented counter
-    let account = client.get_account(counter_contract.id()).await.unwrap();
+    let account_record = client
+        .get_account(counter_contract.id())
+        .await
+        .unwrap()
+        .expect("counter contract not found");
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("counter contract is missing full account data"),
+    };
+    let counter_slot_name =
+        miden_client::account::StorageSlotName::new("miden::tutorials::counter")
+            .expect("valid slot name");
     println!(
         "counter contract storage: {:?}",
-        account.unwrap().account().storage().get_item(0)
+        account.storage().get_item(&counter_slot_name)
     );
     Ok(())
 }

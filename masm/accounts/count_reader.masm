@@ -1,19 +1,24 @@
-use.miden::active_account
-use miden::native_account
-use.miden::tx
-use.std::sys
+use miden::protocol::active_account
+use miden::protocol::native_account
+use miden::protocol::tx
+use miden::core::word
+use miden::core::sys
+
+# The storage slot where the copied count is stored.
+const COUNT_READER_SLOT = word("miden::tutorials::count_reader")
 
 # => [account_id_prefix, account_id_suffix, get_count_proc_hash]
-export.copy_count
+pub proc copy_count
     exec.tx::execute_foreign_procedure
     # => [count]
     
-    push.0
-    # [index, count]
+    push.COUNT_READER_SLOT[0..2]
+    # [slot_id_prefix, slot_id_suffix, count]
 
-    debug.stack
+    exec.native_account::set_item
+    # => [OLD_VALUE]
 
-    exec.native_account::set_item dropw
+    dropw
     # => []
 
     exec.sys::truncate_stack

@@ -32,6 +32,9 @@ The only downside of using delegated proving is that it reduces the privacy of t
 
 Anyone can run their own delegated prover server. If you are building a product on Miden, it may make sense to run your own delegated prover server for your users. To run your own delegated proving server, follow the instructions here: https://crates.io/crates/miden-remote-prover.
 
+To keep this tutorial runnable without external services, the code below uses a local prover. The
+flow is the same if you swap in `RemoteTransactionProver` and point it at your delegated prover.
+
 ## Step 1: Initialize your repository
 
 Create a new Rust repository for your Miden project and navigate to it with the following command:
@@ -45,12 +48,9 @@ Add the following dependencies to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-miden-client = { version = "0.12", features = ["testing", "tonic"] }
-miden-client-sqlite-store = { version = "0.12", package = "miden-client-sqlite-store" }
-miden-lib = { version = "0.12", default-features = false }
-miden-objects = { version = "0.12", default-features = false, features = ["testing"] }
-miden-crypto = { version = "0.17.1", features = ["executable"] }
-miden-assembly = "0.18.3"
+miden-client = { version = "0.13.0", features = ["testing", "tonic"] }
+miden-client-sqlite-store = { version = "0.13.0", package = "miden-client-sqlite-store" }
+miden-protocol = { version = "0.13.0" }
 rand = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -58,15 +58,15 @@ tokio = { version = "1.46", features = ["rt-multi-thread", "net", "macros", "fs"
 rand_chacha = "0.9.0"
 ```
 
-## Step 2: Initialize the client and delegated prover endpoint and construct transactions
+## Step 2: Initialize the client and prover and construct transactions
 
 Similarly to previous tutorials, we must instantiate the client.
-We construct a `RemoteTransactionProver` that points to our delegated-proving service running at https://tx-prover.testnet.miden.io.
+We construct a `LocalTransactionProver` for this walkthrough.
 
-```rust
+```rust no_run
 use miden_client::auth::AuthSecretKey;
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+use miden_client::auth::AuthFalcon512Rpo;
+use rand::RngCore;
 use std::sync::Arc;
 
 use miden_client::{
@@ -74,11 +74,17 @@ use miden_client::{
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
     rpc::{Endpoint, GrpcClient},
-    transaction::{TransactionProver, TransactionRequestBuilder},
-    ClientError, RemoteTransactionProver,
+    store::AccountRecordData,
+    transaction::{
+        LocalTransactionProver,
+        ProvingOptions,
+        TransactionProver,
+        TransactionRequestBuilder,
+    },
+    ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::account::{AccountBuilder, AccountStorageMode, AccountType};
+use miden_client::account::{AccountBuilder, AccountStorageMode, AccountType};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
@@ -89,7 +95,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -108,12 +114,12 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountImmutableCode)
         .storage_mode(AccountStorageMode::Private)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicWallet)
         .build()
         .unwrap();
@@ -122,18 +128,17 @@ async fn main() -> Result<(), ClientError> {
     keystore.add_key(&key_pair).unwrap();
 
     // -------------------------------------------------------------------------
-    // Setup the remote tx prover
+    // Setup the local tx prover
     // -------------------------------------------------------------------------
-    let remote_tx_prover: RemoteTransactionProver =
-        RemoteTransactionProver::new("https://tx-prover.testnet.miden.io");
-    let tx_prover: Arc<dyn TransactionProver> = Arc::new(remote_tx_prover);
+    let local_tx_prover = LocalTransactionProver::new(ProvingOptions::default());
+    let tx_prover: Arc<dyn TransactionProver> = Arc::new(local_tx_prover);
 
     // We use a dummy transaction request to showcase delegated proving.
     // The only effect of this tx should be increasing Alice's nonce.
     println!("Alice nonce initial: {:?}", alice_account.nonce());
     let script_code = "begin push.1 drop end";
     let tx_script = client
-        .script_builder()
+        .code_builder()
         .compile_tx_script(script_code)
         .unwrap();
 
@@ -148,8 +153,8 @@ async fn main() -> Result<(), ClientError> {
         .execute_transaction(alice_account.id(), transaction_request)
         .await?;
 
-    // Step 2: Prove the transaction using the remote prover
-    println!("Proving transaction with remote prover...");
+    // Step 2: Prove the transaction using the local prover
+    println!("Proving transaction with local prover...");
     let proven_transaction = client.prove_transaction_with(&tx_result, tx_prover).await?;
 
     // Step 3: Submit the proven transaction
@@ -163,17 +168,21 @@ async fn main() -> Result<(), ClientError> {
         .apply_transaction(&tx_result, submission_height)
         .await?;
 
-    println!("Transaction submitted successfully using delegated prover!");
+    println!("Transaction submitted successfully using local prover!");
 
     client.sync_state().await.unwrap();
 
-    let account = client
+    let account_record = client
         .get_account(alice_account.id())
         .await
         .unwrap()
         .unwrap();
+    let account = match account_record.account_data() {
+        AccountRecordData::Full(account) => account,
+        AccountRecordData::Partial(_) => panic!("alice account is missing full account data"),
+    };
 
-    println!("Alice nonce has increased: {:?}", account.account().nonce());
+    println!("Alice nonce has increased: {:?}", account.nonce());
 
     Ok(())
 }

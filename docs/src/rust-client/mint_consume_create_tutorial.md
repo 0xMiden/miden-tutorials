@@ -100,12 +100,15 @@ loop {
     let consumable_notes = client
         .get_consumable_notes(Some(alice_account.id()))
         .await?;
-    let list_of_note_ids: Vec<_> = consumable_notes.iter().map(|(note, _)| note.id()).collect();
+    let notes = consumable_notes
+        .iter()
+        .map(|(note, _)| note.clone().try_into())
+        .collect::<Result<Vec<_>, _>>()?;
 
-    if list_of_note_ids.len() == 5 {
+    if notes.len() == 5 {
         println!("Found 5 consumable notes for Alice. Consuming them now...");
         let transaction_request = TransactionRequestBuilder::new()
-            .build_consume_notes(list_of_note_ids)
+            .build_consume_notes(notes)
             .unwrap();
 
         let tx_id = client
@@ -119,7 +122,7 @@ loop {
     } else {
         println!(
             "Currently, Alice has {} consumable notes. Waiting...",
-            list_of_note_ids.len()
+            notes.len()
         );
         tokio::time::sleep(Duration::from_secs(3)).await;
     }
@@ -176,7 +179,7 @@ for _ in 1..=4 {
         target_account_id,
         vec![fungible_asset.into()],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         client.rng(),
     )?;
     p2id_notes.push(p2id_note);
@@ -224,7 +227,7 @@ let p2id_note = create_p2id_note(
     target_account_id,
     vec![fungible_asset.into()],
     NoteType::Public,
-    Felt::new(0),
+    NoteAttachment::default(),
     client.rng(),
 )?;
 
@@ -240,15 +243,15 @@ let tx_id = client
 println!("Submitted final P2ID transaction. TX: {:?}", tx_id);
 ```
 
-Note: _In a production environment do not use `AccountId::new_dummy()`, this is simply for the sake of the tutorial example._
+Note: _In a production environment do not use `AccountId::dummy()`, this is simply for the sake of the tutorial example._
 
 ## Summary
 
 Your `src/main.rs` function should now look like this:
 
-```rust
-use miden_lib::account::auth::AuthRpoFalcon512;
-use rand::{rngs::StdRng, RngCore};
+```rust no_run
+use miden_client::auth::AuthFalcon512Rpo;
+use rand::RngCore;
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -261,14 +264,15 @@ use miden_client::{
     auth::AuthSecretKey,
     builder::ClientBuilder,
     keystore::FilesystemKeyStore,
-    note::{create_p2id_note, NoteType},
+    note::{create_p2id_note, NoteAttachment, NoteType},
     rpc::{Endpoint, GrpcClient},
     transaction::{OutputNote, TransactionRequestBuilder},
     ClientError,
 };
 use miden_client_sqlite_store::ClientBuilderSqliteExt;
-use miden_objects::{
-    account::{AccountBuilder, AccountIdVersion, AccountStorageMode, AccountType},
+use miden_protocol::account::AccountIdVersion;
+use miden_client::{
+    account::{AccountBuilder, AccountStorageMode, AccountType},
     asset::{FungibleAsset, TokenSymbol},
     Felt,
 };
@@ -282,7 +286,7 @@ async fn main() -> Result<(), ClientError> {
 
     // Initialize keystore
     let keystore_path = std::path::PathBuf::from("./keystore");
-    let keystore = Arc::new(FilesystemKeyStore::<StdRng>::new(keystore_path).unwrap());
+    let keystore = Arc::new(FilesystemKeyStore::new(keystore_path).unwrap());
 
     let store_path = std::path::PathBuf::from("./store.sqlite3");
 
@@ -306,13 +310,13 @@ async fn main() -> Result<(), ClientError> {
     let mut init_seed = [0_u8; 32];
     client.rng().fill_bytes(&mut init_seed);
 
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     // Build the account
     let alice_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicWallet)
         .build()
         .unwrap();
@@ -341,13 +345,13 @@ async fn main() -> Result<(), ClientError> {
     let max_supply = Felt::new(1_000_000);
 
     // Generate key pair
-    let key_pair = AuthSecretKey::new_rpo_falcon512();
+    let key_pair = AuthSecretKey::new_falcon512_rpo();
 
     // Build the faucet account
     let faucet_account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(AuthRpoFalcon512::new(key_pair.public_key().to_commitment()))
+        .with_auth_component(AuthFalcon512Rpo::new(key_pair.public_key().to_commitment()))
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply).unwrap())
         .build()
         .unwrap();
@@ -411,12 +415,15 @@ async fn main() -> Result<(), ClientError> {
         let consumable_notes = client
             .get_consumable_notes(Some(alice_account.id()))
             .await?;
-        let list_of_note_ids: Vec<_> = consumable_notes.iter().map(|(note, _)| note.id()).collect();
+        let notes = consumable_notes
+            .iter()
+            .map(|(note, _)| note.clone().try_into())
+            .collect::<Result<Vec<_>, _>>()?;
 
-        if list_of_note_ids.len() == 5 {
+        if notes.len() == 5 {
             println!("Found 5 consumable notes for Alice. Consuming them now...");
             let transaction_request = TransactionRequestBuilder::new()
-                .build_consume_notes(list_of_note_ids)
+                .build_consume_notes(notes)
                 .unwrap();
 
             let tx_id = client
@@ -430,7 +437,7 @@ async fn main() -> Result<(), ClientError> {
         } else {
             println!(
                 "Currently, Alice has {} consumable notes. Waiting...",
-                list_of_note_ids.len()
+                notes.len()
             );
             tokio::time::sleep(Duration::from_secs(3)).await;
         }
@@ -467,7 +474,7 @@ async fn main() -> Result<(), ClientError> {
             target_account_id,
             vec![fungible_asset.into()],
             NoteType::Public,
-            Felt::new(0),
+            NoteAttachment::default(),
             client.rng(),
         )?;
         p2id_notes.push(p2id_note);
@@ -507,7 +514,7 @@ async fn main() -> Result<(), ClientError> {
         target_account_id,
         vec![fungible_asset.into()],
         NoteType::Public,
-        Felt::new(0),
+        NoteAttachment::default(),
         client.rng(),
     )?;
 
